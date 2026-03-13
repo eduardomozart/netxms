@@ -52,7 +52,6 @@ DashboardBase::DashboardBase(const TCHAR *name, DashboardBase *source) : super(n
    }
    m_numColumns = source->m_numColumns;
    m_flags = source->m_flags;
-   setComments(source->getComments());
 }
 
 /**
@@ -823,6 +822,7 @@ void DashboardTemplate::autobindPoll(PollerInfo *poller, ClientSession *session,
          if (!found)
          {
             shared_ptr<Dashboard> dashboard = make_shared<Dashboard>(objectName, object->getId(), this);
+            dashboard->setComments(getCommentsSource());
             NetObjInsert(dashboard, true, false);
             unique_ptr<SharedObjectArray<NetObj>> parents = this->getParents();
             if (parents->size() == 0)
