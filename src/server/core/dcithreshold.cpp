@@ -438,7 +438,23 @@ ThresholdCheckResult Threshold::check(ItemValue &value, ItemValue **ppPrevValues
             parameters[1] = vm->createValue(tvalue.getString());
             if (vm->run(2, parameters))
             {
-               match = vm->getResult()->getValueAsBoolean();
+               NXSL_Value *result = vm->getResult();
+               if (result->isHashMap())
+               {
+                  NXSL_HashMap *map = result->getValueAsHashMap();
+                  NXSL_Value *matchValue = map->get(L"match");
+                  match = (matchValue != nullptr) ? matchValue->isTrue() : false;
+                  NXSL_Value *cv = map->get(L"currentValue");
+                  if (cv != nullptr)
+                     fvalue = cv->getValueAsCString();
+                  NXSL_Value *tv = map->get(L"thresholdValue");
+                  if (tv != nullptr)
+                     tvalue = tv->getValueAsCString();
+               }
+               else
+               {
+                  match = result->getValueAsBoolean();
+               }
             }
             else
             {
