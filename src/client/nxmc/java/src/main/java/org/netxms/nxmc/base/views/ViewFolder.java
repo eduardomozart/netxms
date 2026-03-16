@@ -173,11 +173,11 @@ public class ViewFolder extends ViewContainer
          public void mouseUp(MouseEvent e)
          {
          }
-         
+
          @Override
          public void mouseDown(MouseEvent e)
          {
-            if (e.button == 2) //middle mouse button 
+            if (e.button == 2) //middle mouse button
             {
                // FInd tab item under mouse and block event if click is not on the tab
                CTabItem tab = null;
@@ -194,11 +194,11 @@ public class ViewFolder extends ViewContainer
                {
                   View view = (View)tab.getData("view");
                   if(view.isCloseable())
-                     closeView(view);                  
+                     closeView(view);
                }
-            }            
+            }
          }
-         
+
          @Override
          public void mouseDoubleClick(MouseEvent e)
          {
@@ -359,14 +359,16 @@ public class ViewFolder extends ViewContainer
          }
       });
 
-      Menu menu = tabMenuManager.createContextMenu(tabFolder);
-      tabFolder.setMenu(menu);
+      final Menu menu = tabMenuManager.createContextMenu(tabFolder);
 
+      // Do not use tabFolder.setMenu(menu) - instead show menu manually from MenuDetectListener.
+      // This works around RAP/RWT bug (eclipse-rap #350) where CTabFolder fires context menu on
+      // MouseDown but MenuDetectListener on MouseUp, which prevents e.doit from blocking the menu
+      // when clicking on tab content area rather than tab headers.
       tabFolder.addMenuDetectListener(new MenuDetectListener() {
          @Override
          public void menuDetected(MenuDetectEvent e)
          {
-            // FInd tab item under mouse and block event if click is not on the tab
             contextMenuTabItem = null;
             Point pt = tabFolder.toControl(e.x, e.y);
             for(CTabItem t : tabFolder.getItems())
@@ -377,7 +379,12 @@ public class ViewFolder extends ViewContainer
                   break;
                }
             }
-            e.doit = (contextMenuTabItem != null);
+            e.doit = false; // Always prevent default - we show the menu manually
+            if (contextMenuTabItem != null)
+            {
+               menu.setLocation(e.x, e.y);
+               menu.setVisible(true);
+            }
          }
       });
    }
@@ -437,7 +444,7 @@ public class ViewFolder extends ViewContainer
          });
       }
    }
-   
+
    /**
     * Hide view
     */
@@ -1019,7 +1026,7 @@ public class ViewFolder extends ViewContainer
 
    /**
     * Remove selection listener.
-    * 
+    *
     * @param listener listener to remove
     */
    public void removeSelectionListener(ViewFolderSelectionListener listener)
@@ -1113,7 +1120,7 @@ public class ViewFolder extends ViewContainer
 
    /**
     * Get ID for given view. Depending on operation mode will return base or global view ID.
-    * 
+    *
     * @param view view to get ID from
     * @return view ID according to current operation mode
     */
