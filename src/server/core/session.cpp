@@ -5509,7 +5509,8 @@ bool ClientSession::getCollectedDataFromDB(const NXCPMessage& request, NXCPMessa
       }
       response->setField(VID_DCI_NAME, dci->getName());
       response->setField(VID_DESCRIPTION, dci->getDescription());
-      response->setField(VID_POLLING_INTERVAL, dci->getEffectivePollingInterval());
+      int dataSource = dci->getDataSource();
+      response->setField(VID_POLLING_INTERVAL, ((dataSource != DS_PUSH_AGENT) && (dataSource != DS_OTLP)) ? dci->getEffectivePollingInterval() : 0);
       response->setField(VID_STORE_CHANGES_ONLY, dci->isStoreChangesOnly());
       sendMessage(response);
 
@@ -5633,7 +5634,8 @@ read_from_db:
 	      }
 	      response->setField(VID_DCI_NAME, dci->getName());
 	      response->setField(VID_DESCRIPTION, dci->getDescription());
-	      response->setField(VID_POLLING_INTERVAL, dci->getEffectivePollingInterval());
+	      int dataSource = dci->getDataSource();
+	      response->setField(VID_POLLING_INTERVAL, ((dataSource != DS_PUSH_AGENT) && (dataSource != DS_OTLP)) ? dci->getEffectivePollingInterval() : 0);
 	      response->setField(VID_STORE_CHANGES_ONLY, dci->isStoreChangesOnly());
 	      sendMessage(response);
 
