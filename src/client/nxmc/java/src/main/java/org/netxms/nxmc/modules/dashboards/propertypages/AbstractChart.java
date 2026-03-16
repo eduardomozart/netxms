@@ -64,6 +64,7 @@ public class AbstractChart extends DashboardElementPropertyPage
 	private Button checkShowGrid;
 	private Button checkTranslucent;
 	private Button checkTransposed;
+   private Button checkInvertedAxis;
    private Button checkDoughnutRendering;
    private Button checkShowTotal;
    private Button checkLogScale;
@@ -219,6 +220,14 @@ public class AbstractChart extends DashboardElementPropertyPage
 			gd.horizontalAlignment = SWT.FILL;
 			gd.grabExcessHorizontalSpace = true;
 			checkTransposed.setLayoutData(gd);
+
+         checkInvertedAxis = new Button(optionsGroup, SWT.CHECK);
+         checkInvertedAxis.setText(i18n.tr("&Inverted axis"));
+         checkInvertedAxis.setSelection((config instanceof BarChartConfig) ? ((BarChartConfig)config).isInvertedAxis() : ((ScriptedBarChartConfig)config).isInvertedAxis());
+         gd = new GridData();
+         gd.horizontalAlignment = SWT.FILL;
+         gd.grabExcessHorizontalSpace = true;
+         checkInvertedAxis.setLayoutData(gd);
 		}
 
       if ((config instanceof PieChartConfig) || (config instanceof ScriptedPieChartConfig))
@@ -406,10 +415,12 @@ public class AbstractChart extends DashboardElementPropertyPage
 		if (config instanceof BarChartConfig)
 		{
 			((BarChartConfig)config).setTransposed(checkTransposed.getSelection());
+			((BarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
 		}
       else if (config instanceof ScriptedBarChartConfig)
       {
          ((ScriptedBarChartConfig)config).setTransposed(checkTransposed.getSelection());
+         ((ScriptedBarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
       }
 
 		if (config instanceof LineChartConfig)

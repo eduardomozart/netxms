@@ -56,6 +56,7 @@ public class TableComparisonChart extends DashboardElementPropertyPage
    private Button checkExtendedLegend;
 	private Button checkTranslucent;
 	private Button checkTransposed;
+   private Button checkInvertedAxis;
    private YAxisRangeEditor yAxisRange;
    private ObjectSelector drillDownObject;
 
@@ -168,6 +169,14 @@ public class TableComparisonChart extends DashboardElementPropertyPage
 			gd.horizontalAlignment = SWT.FILL;
 			gd.grabExcessHorizontalSpace = true;
 			checkTransposed.setLayoutData(gd);
+
+         checkInvertedAxis = new Button(optionsGroup, SWT.CHECK);
+         checkInvertedAxis.setText(i18n.tr("&Inverted axis"));
+         checkInvertedAxis.setSelection(((TableBarChartConfig)config).isInvertedAxis());
+         gd = new GridData();
+         gd.horizontalAlignment = SWT.FILL;
+         gd.grabExcessHorizontalSpace = true;
+         checkInvertedAxis.setLayoutData(gd);
 		}
 
 		gd = new GridData();
@@ -251,6 +260,7 @@ public class TableComparisonChart extends DashboardElementPropertyPage
 		if (config instanceof TableBarChartConfig)
 		{
 			((TableBarChartConfig)config).setTransposed(checkTransposed.getSelection());
+			((TableBarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
 		}
 		return true;
 	}
