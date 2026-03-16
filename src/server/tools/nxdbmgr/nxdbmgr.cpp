@@ -397,6 +397,7 @@ static void AddLogToList(const char *logname, StringList *tableList)
    }
    else if (!stricmp(logname, "all"))
    {
+      tableList->add(_T("ai_task_execution_log"));
       tableList->add(_T("alarms"));
       tableList->add(_T("alarm_events"));
       tableList->add(_T("alarm_notes"));
@@ -404,9 +405,12 @@ static void AddLogToList(const char *logname, StringList *tableList)
       tableList->add(_T("asset_change_log"));
       tableList->add(_T("audit_log"));
       tableList->add(_T("certificate_action_log"));
+      tableList->add(_T("downtime_log"));
       tableList->add(_T("event_log"));
+      tableList->add(_T("incident_activity_log"));
       tableList->add(_T("maintenance_journal"));
       tableList->add(_T("notification_log"));
+      tableList->add(_T("package_deployment_log"));
       tableList->add(_T("server_action_execution_log"));
       tableList->add(_T("snmp_trap_log"));
       tableList->add(_T("syslog"));
@@ -454,6 +458,22 @@ static void AddLogToList(const char *logname, StringList *tableList)
    else if (!stricmp(logname, "winevent"))
    {
       tableList->add(_T("win_event_log"));
+   }
+   else if (!stricmp(logname, "ai"))
+   {
+      tableList->add(_T("ai_task_execution_log"));
+   }
+   else if (!stricmp(logname, "deployment"))
+   {
+      tableList->add(_T("package_deployment_log"));
+   }
+   else if (!stricmp(logname, "downtime"))
+   {
+      tableList->add(_T("downtime_log"));
+   }
+   else if (!stricmp(logname, "incident"))
+   {
+      tableList->add(_T("incident_activity_log"));
    }
 }
 
@@ -601,7 +621,8 @@ stop_search:
                      _T("   * DBA credentials should be provided in form login/password\n")
                      _T("   * Configuration variable name pattern can include character %% to match any number of characters\n")
                      _T("   * Valid log names for -L and -Z options:\n")
-                     _T("        action, alarm, asset, audit, certificate, event, maintenance, notification, snmptrap, syslog, winevent\n")
+                     _T("        action, ai, alarm, asset, audit, certificate, deployment, downtime,\n")
+                     _T("        event, incident, maintenance, notification, snmptrap, syslog, winevent\n")
                      _T("   * Use -Z all to exclude all logs\n")
                      _T("\n"), configFile);
             bStart = false;
@@ -843,7 +864,7 @@ stop_search:
    int exitCode = 0;
    if (!strcmp(argv[optind], "init"))
    {
-      if (argc - optind < 2) 
+      if (argc - optind < 2)
       {
          TCHAR shareDir[MAX_PATH];
          GetNetXMSDirectory(nxDirShare, shareDir);
