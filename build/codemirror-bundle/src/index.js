@@ -49,7 +49,7 @@ var editorTheme = EditorView.theme({
       backgroundColor: '#e8e8e8',
    },
    '.cm-activeLine': {
-      backgroundColor: '#f0f4ff',
+      backgroundColor: 'rgba(62, 120, 214, 0.07)',
    },
    '.cm-nxsl-error-line': {
       backgroundColor: 'rgba(255, 0, 0, 0.15)',
