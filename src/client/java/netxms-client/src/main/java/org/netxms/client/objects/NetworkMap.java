@@ -45,7 +45,7 @@ import org.netxms.client.objects.interfaces.PollingTarget;
  */
 public class NetworkMap extends GenericObject implements AutoBindObject, PollingTarget
 {
-	public static final UUID GEOMAP_BACKGROUND = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"); 
+	public static final UUID GEOMAP_BACKGROUND = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
 	public static final int MF_SHOW_STATUS_ICON        = 0x000001;
 	public static final int MF_SHOW_STATUS_FRAME       = 0x000002;
@@ -62,6 +62,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
    public static final int MF_FIT_TO_SCREEN           = 0x001000;
    public final static int MF_SHOW_AS_OBJECT_VIEW     = 0x002000;
    public final static int MF_SHOW_TRAFFIC             = 0x004000;
+   public static final int MF_SHOW_WIFI_CLIENTS       = 0x008000;
 
    public static final int MF_BKGND_IMAGE_FLAGS       = 0x000900;
 
@@ -141,7 +142,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
 	/**
 	 * Prepare object creation and modification data to create map copy
-	 * 
+	 *
 	 * @param cd object creation data
 	 * @param md object modification data
 	 */
@@ -210,7 +211,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
 	/**
 	 * Create map page from map object's data
-	 * 
+	 *
 	 * @return new map page
 	 */
 	public NetworkMapPage createMapPage()
@@ -301,7 +302,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 	{
 		return filter;
 	}
-	
+
    /**
     * @return the updateLinkScript
     */
@@ -332,7 +333,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_SHOW_STATUS_ICON flag status
-    * 
+    *
     * @return true if MF_SHOW_STATUS_ICON flag is set
     */
    public boolean isShowStatusIcon()
@@ -342,7 +343,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_SHOW_STATUS_FRAME flag status
-    * 
+    *
     * @return true if MF_SHOW_STATUS_FRAME flag is set
     */
    public boolean isShowStatusFrame()
@@ -352,7 +353,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_SHOW_STATUS_BKGND flag status
-    * 
+    *
     * @return true if MF_SHOW_STATUS_BKGND flag is set
     */
    public boolean isShowStatusBackground()
@@ -362,7 +363,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_SHOW_END_NODES flag status
-    * 
+    *
     * @return true if MF_SHOW_END_NODES flag is set
     */
    public boolean isShowEndNodes()
@@ -372,7 +373,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_SHOW_LINK_DIRECTION flag status
-    * 
+    *
     * @return true if MF_SHOW_LINK_DIRECTION flag is set
     */
    public boolean isShowLinkDirection()
@@ -382,7 +383,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_CALCULATE_STATUS flag status
-    * 
+    *
     * @return true if MF_CALCULATE_STATUS flag is set
     */
    public boolean isCalculateStatus()
@@ -392,7 +393,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_CENTER_BKGND_IMAGE flag status
-    * 
+    *
     * @return true if MF_CENTER_BKGND_IMAGE flag is set
     */
    public boolean isCenterBackgroundImage()
@@ -402,7 +403,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_TRANSLUCENT_LABEL_BKGND flag status
-    * 
+    *
     * @return true if MF_TRANSLUCENT_LABEL_BKGND flag is set
     */
    public boolean isTranslucentLabelBackground()
@@ -412,7 +413,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_DONT_UPDATE_LINK_TEXT flag status
-    * 
+    *
     * @return true if MF_DONT_UPDATE_LINK_TEXT flag is set
     */
    public boolean isDontUpdateLinkText()
@@ -430,7 +431,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Returns the MF_FIT_TO_SCREEN flag status
-    * 
+    *
     * @return true if MF_FIT_TO_SCREEN flag is set
     */
    public boolean isFitToScreen()
@@ -476,7 +477,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 
    /**
     * Update modification data with template fields form this map
-    * 
+    *
     * @param md modification data
     */
    public void updateWithTemplateData(NXCObjectModificationData md)
@@ -484,7 +485,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
       md.setObjectFlags(flags);
       md.setMapBackground(background, backgroundLocation, backgroundZoom, backgroundColor);
       md.setMapSize(mapWidth, mapHeight);
-      md.setFilter(filter);      
+      md.setFilter(filter);
       md.setMapObjectDisplayMode(objectDisplayMode);
       md.setConnectionRouting(defaultLinkRouting);
       md.setLinkColor(defaultLinkColor);

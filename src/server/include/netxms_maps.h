@@ -54,6 +54,7 @@
 #define LINK_TYPE_ICMP_PROXY    7
 #define LINK_TYPE_SENSOR_PROXY  8
 #define LINK_TYPE_ZONE_PROXY    9
+#define LINK_TYPE_WIFI_CLIENT   10
 
 /**
  * Link between objects

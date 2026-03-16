@@ -225,7 +225,7 @@ class NXCORE_EXPORTABLE TcpProxyCallback
 {
 public:
    virtual ~TcpProxyCallback() = default;
-   
+
    virtual void onTcpProxyData(AgentConnectionEx *conn, uint32_t channelId, const void *data, size_t size, bool errorIndicator) = 0;
    virtual void onTcpProxyAgentDisconnect(AgentConnectionEx *conn) = 0;
 };
@@ -4475,7 +4475,7 @@ public:
    }
 
    shared_ptr<NetworkMapObjectList> getAndUpdateL2Topology(uint32_t *status, int radius, bool useL1Topology);
-   shared_ptr<NetworkMapObjectList> buildL2Topology(int radius, bool includeEndNodes, bool useL1Topology, NetworkMap *filterProvider);
+   shared_ptr<NetworkMapObjectList> buildL2Topology(int radius, bool includeEndNodes, bool useL1Topology, bool includeWiFiClients, NetworkMap *filterProvider);
    shared_ptr<ForwardingDatabase> getSwitchForwardingDatabase() const { return GetAttributeWithLock(m_fdb, m_topologyMutex); }
    shared_ptr<NetObj> findConnectionPoint(UINT32 *localIfId, BYTE *localMacAddr, int *type);
    void addHostConnections(LinkLayerNeighbors *nbs);

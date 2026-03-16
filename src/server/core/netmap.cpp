@@ -1166,7 +1166,7 @@ bool NetworkMap::buildTopologyGraphFromSeed(const shared_ptr<Node>& seed, Networ
    {
       case MAP_TYPE_HYBRID_TOPOLOGY:
       case MAP_TYPE_LAYER2_TOPOLOGY:
-         topology = seed->buildL2Topology(m_discoveryRadius, (m_flags & MF_SHOW_END_NODES) != 0, (m_flags & MF_USE_L1_TOPOLOGY) != 0, filterProvider);
+         topology = seed->buildL2Topology(m_discoveryRadius, (m_flags & MF_SHOW_END_NODES) != 0, (m_flags & MF_USE_L1_TOPOLOGY) != 0, (m_flags & MF_SHOW_WIFI_CLIENTS) != 0, filterProvider);
          break;
       case MAP_TYPE_IP_TOPOLOGY:
          topology = shared_ptr<NetworkMapObjectList>(BuildIPTopology(seed, filterProvider, m_discoveryRadius, (m_flags & MF_SHOW_END_NODES) != 0).release());

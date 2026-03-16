@@ -11467,7 +11467,7 @@ shared_ptr<NetworkMapObjectList> Node::getAndUpdateL2Topology(uint32_t *status, 
 /**
  * Rebuild layer 2 topology and return it
  */
-shared_ptr<NetworkMapObjectList> Node::buildL2Topology(int radius, bool includeEndNodes, bool useL1Topology, NetworkMap *filterProvider)
+shared_ptr<NetworkMapObjectList> Node::buildL2Topology(int radius, bool includeEndNodes, bool useL1Topology, bool includeWiFiClients, NetworkMap *filterProvider)
 {
    m_topologyMutex.lock();
    if ((m_linkLayerNeighbors == nullptr) && isSNMPSupported() &&
@@ -11481,7 +11481,7 @@ shared_ptr<NetworkMapObjectList> Node::buildL2Topology(int radius, bool includeE
 
    shared_ptr<NetworkMapObjectList> result = make_shared<NetworkMapObjectList>();
    int nDepth = (radius <= 0) ? ConfigReadInt(_T("Topology.DefaultDiscoveryRadius"), 5) : radius;
-   BuildL2Topology(*result, this, filterProvider, nDepth, includeEndNodes, useL1Topology);
+   BuildL2Topology(*result, this, filterProvider, nDepth, includeEndNodes, useL1Topology, includeWiFiClients);
    return result;
 }
 

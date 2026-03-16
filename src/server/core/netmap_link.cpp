@@ -210,6 +210,12 @@ bool NetworkMapLink::update(const ObjLink& src, bool updateNames)
       configModified = true;
    }
 
+   if (src.type == LINK_TYPE_WIFI_CLIENT && json_object_get_uint32(json, "style", 0) != 2)
+   {
+      json_object_set_new(json, "style", json_integer(2));
+      configModified = true;
+   }
+
    json_t *statusList = json_object_get(json, "objectStatusList");
    if (json_array_size(statusList) != 0)
    {

@@ -33,7 +33,7 @@ public class NetworkMapLink
 {
    //Link flags
    public static final int AUTO_GENERATED = 0x1;
-   public static final int EXCLUDE_FROM_AUTO_UPDATE = 0x2; 
+   public static final int EXCLUDE_FROM_AUTO_UPDATE = 0x2;
 
    // Link types
    public static final int NORMAL = 0;
@@ -46,6 +46,7 @@ public class NetworkMapLink
    public static final int ICMP_PROXY = 7;
    public static final int SENSOR_PROXY = 8;
    public static final int ZONE_PROXY = 9;
+   public static final int WIFI_CLIENT = 10;
 
    // Routing types
    public static final int ROUTING_DEFAULT = 0;
@@ -123,7 +124,7 @@ public class NetworkMapLink
     * @param type link type
     * @param element1 network map internal element id
     * @param element2 network map internal element id
-    * @param connectorName1 connector name 1 (will be displayed close to element 1)  
+    * @param connectorName1 connector name 1 (will be displayed close to element 1)
     * @param connectorName2 connector name 2 (will be displayed close to element 2)
     * @param flags link flags
     */
@@ -465,7 +466,7 @@ public class NetworkMapLink
 
    /**
     * Set if this link is excluded from automatic DCI data update
-    * 
+    *
     * @param exclude if it is excluded
     */
    public void setExcludedFromAutomaticUpdate(boolean exclude)
@@ -505,7 +506,7 @@ public class NetworkMapLink
 
    /**
     * Get copy of DCIs configured on this link as list. Any changes to returned list will not affect link configuration.
-    * 
+    *
     * @return copy of DCIs configured on this link as list
     */
    public List<MapLinkDataSource> getDciAsList()
@@ -627,7 +628,7 @@ public class NetworkMapLink
 
    /**
     * Get common first element - used to check if links are inverted to each other
-    * 
+    *
     * @return common first element
     */
    public long getCommonFirstElement()
@@ -636,7 +637,7 @@ public class NetworkMapLink
    }
 
    /**
-    * Update common first element and set inverted flag 
+    * Update common first element and set inverted flag
     * @param commonFirstElement
     */
    public void setCommonFirstElement(long commonFirstElement)
@@ -647,7 +648,7 @@ public class NetworkMapLink
 
    /**
     * If link direction is inverted to other links
-    * 
+    *
     * @return
     */
    public boolean isDirectionInverted()
@@ -663,7 +664,7 @@ public class NetworkMapLink
    {
       return "NetworkMapLink [name=" + name + ", type=" + type + ", element1=" + element1 + ", element2=" + element2
             + ", connectorName1=" + connectorName1 + ", connectorName2=" + connectorName2 + ", colorSource=" + colorSource + ", color=" +
-            color + ", statusObject=" + config.getObjectStatusList() + ", routing=" + config.getRouting() + ", flags=" + flags + 
+            color + ", statusObject=" + config.getObjectStatusList() + ", routing=" + config.getRouting() + ", flags=" + flags +
             ", labelPosition=" + config.getLabelPosition() + "]";
    }
 }

@@ -54,8 +54,8 @@ public class MapOptions extends ObjectPropertyPage
 {
    private final I18n i18n = LocalizationHelper.getI18n(MapOptions.class);
    private static final int FLAG_MASK = (NetworkMap.MF_SHOW_END_NODES | NetworkMap.MF_SHOW_STATUS_ICON | NetworkMap.MF_SHOW_STATUS_FRAME | NetworkMap.MF_SHOW_STATUS_BKGND |
-         NetworkMap.MF_CALCULATE_STATUS | NetworkMap.MF_SHOW_LINK_DIRECTION | NetworkMap.MF_TRANSLUCENT_LABEL_BKGND | NetworkMap.MF_USE_L1_TOPOLOGY | 
-         NetworkMap.MF_DONT_UPDATE_LINK_TEXT | NetworkMap.MF_SHOW_TRAFFIC);
+         NetworkMap.MF_CALCULATE_STATUS | NetworkMap.MF_SHOW_LINK_DIRECTION | NetworkMap.MF_TRANSLUCENT_LABEL_BKGND | NetworkMap.MF_USE_L1_TOPOLOGY |
+         NetworkMap.MF_DONT_UPDATE_LINK_TEXT | NetworkMap.MF_SHOW_TRAFFIC | NetworkMap.MF_SHOW_WIFI_CLIENTS);
 
    private NetworkMap map;
 	private Button checkShowStatusIcon;
@@ -74,6 +74,7 @@ public class MapOptions extends ObjectPropertyPage
    private LabeledCombo comboLinkStyle;
    private LabeledSpinner spinerLineWidth;
 	private Button checkIncludeEndNodes;
+	private Button checkIncludeWiFiClients;
 	private Button checkCustomRadius;
 	private Spinner topologyRadius;
 	private Button checkCalculateStatus;
@@ -219,12 +220,12 @@ public class MapOptions extends ObjectPropertyPage
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
-      comboLinkStyle.setLayoutData(gd);      
+      comboLinkStyle.setLayoutData(gd);
 
       spinerLineWidth = new LabeledSpinner(linkGroup, SWT.NONE);
       spinerLineWidth.setLabel(i18n.tr("Line width (0 for client default)"));
       spinerLineWidth.setRange(0, 100);
-      spinerLineWidth.setSelection(map.getDefaultLinkWidth());    
+      spinerLineWidth.setSelection(map.getDefaultLinkWidth());
 
 		/**** topology options ****/
       if (map.getMapType() != MapType.CUSTOM)
@@ -245,7 +246,11 @@ public class MapOptions extends ObjectPropertyPage
          checkUseL1Topology = new Button(topoGroup, SWT.CHECK);
          checkUseL1Topology.setText(i18n.tr("Use &physical link information"));
          checkUseL1Topology.setSelection((map.getFlags() & NetworkMap.MF_USE_L1_TOPOLOGY) != 0);
-         
+
+         checkIncludeWiFiClients = new Button(topoGroup, SWT.CHECK);
+         checkIncludeWiFiClients.setText(i18n.tr("Include &WiFi clients"));
+         checkIncludeWiFiClients.setSelection((map.getFlags() & NetworkMap.MF_SHOW_WIFI_CLIENTS) != 0);
+
          checkCustomRadius = new Button(topoGroup, SWT.CHECK);
          checkCustomRadius.setText(i18n.tr("Custom discovery &radius"));
          checkCustomRadius.setSelection(map.getDiscoveryRadius() > 0);
@@ -260,8 +265,8 @@ public class MapOptions extends ObjectPropertyPage
 	      topologyRadius = WidgetHelper.createLabeledSpinner(topoGroup, SWT.BORDER, i18n.tr("Topology discovery radius"), 1, 255, WidgetHelper.DEFAULT_LAYOUT_DATA);
          topologyRadius.setSelection(map.getDiscoveryRadius());
          topologyRadius.setEnabled(map.getDiscoveryRadius() > 0);
-      }      
-      
+      }
+
       /**** Link options ****/
       Group linkDisplayGroup = new Group(dialogArea, SWT.NONE);
       linkDisplayGroup.setText(i18n.tr("Link options"));
@@ -305,13 +310,13 @@ public class MapOptions extends ObjectPropertyPage
 
 	/**
 	 * Apply changes
-	 * 
+	 *
 	 * @param isApply true if update operation caused by "Apply" button
 	 */
 	protected boolean applyChanges(final boolean isApply)
 	{
 		final NXCObjectModificationData md = new NXCObjectModificationData(object.getObjectId());
-		
+
 		int flags = 0;
 
 		if ((checkIncludeEndNodes != null) && checkIncludeEndNodes.getSelection())
@@ -330,6 +335,8 @@ public class MapOptions extends ObjectPropertyPage
          flags |= NetworkMap.MF_TRANSLUCENT_LABEL_BKGND;
       if ((checkUseL1Topology != null) && checkUseL1Topology.getSelection())
          flags |= NetworkMap.MF_USE_L1_TOPOLOGY;
+      if ((checkIncludeWiFiClients != null) && checkIncludeWiFiClients.getSelection())
+         flags |= NetworkMap.MF_SHOW_WIFI_CLIENTS;
       if ((checkDontUpdateLinkText != null) && checkDontUpdateLinkText.getSelection())
          flags |= NetworkMap.MF_DONT_UPDATE_LINK_TEXT;
       if (checkShowTraffic.getSelection())
@@ -382,7 +389,7 @@ public class MapOptions extends ObjectPropertyPage
                runInUIThread(() -> MapOptions.this.setValid(true));
 			}
 		}.start();
-		
+
 		return true;
 	}
 }

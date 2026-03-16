@@ -28,7 +28,7 @@
 /**
  * Build layer 2 topology for switch
  */
-void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *filterProvider, int depth, bool includeEndNodes, bool useL1Topology)
+void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *filterProvider, int depth, bool includeEndNodes, bool useL1Topology, bool includeWiFiClients)
 {
 	if (topology.isObjectExist(root->getId()))
 		return;  // loop in object connections
@@ -37,6 +37,35 @@ void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *fil
       return;
 
 	topology.addObject(root->getId());
+
+   // Add WiFi clients connected to this node (handles both seed nodes and recursively visited nodes)
+   if (includeWiFiClients && (root->isWirelessAccessPoint() || root->isWirelessController()))
+   {
+      ObjectArray<WirelessStationInfo> *stations = root->getWirelessStations();
+      if (stations != nullptr)
+      {
+         for(int j = 0; j < stations->size(); j++)
+         {
+            WirelessStationInfo *ws = stations->get(j);
+            if (ws->nodeId != 0)
+            {
+               shared_ptr<Node> clientNode = static_pointer_cast<Node>(FindObjectById(ws->nodeId, OBJECT_NODE));
+               if ((clientNode != nullptr) && ((filterProvider == nullptr) || filterProvider->isAllowedOnMap(clientNode)))
+               {
+                  shared_ptr<Interface> apIface = root->findInterfaceByIndex(ws->rfIndex);
+                  shared_ptr<Interface> clientIface = clientNode->findInterfaceByMAC(MacAddress(ws->macAddr, MAC_ADDR_LENGTH));
+                  topology.addObject(clientNode->getId());
+                  topology.linkObjects(root->getId(), (apIface != nullptr) ? apIface->getId() : 0, (apIface == nullptr) ? ws->rfName : nullptr,
+                        clientNode->getId(), (clientIface != nullptr) ? clientIface->getId() : 0, nullptr,
+                        ws->ssid, LINK_TYPE_WIFI_CLIENT);
+                  nxlog_debug_tag(DEBUG_TAG, 5, _T("BuildL2Topology: added WiFi client %s [%u] connected to %s [%u] (SSID=%s)"),
+                        clientNode->getName(), clientNode->getId(), root->getName(), root->getId(), ws->ssid);
+               }
+            }
+         }
+         delete stations;
+      }
+   }
 
 	if (depth <= 0)
 	   return;
@@ -54,7 +83,7 @@ void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *fil
 
       if ((peer->getObjectClass() == OBJECT_NODE) && (static_cast<Node&>(*peer).isBridge() || includeEndNodes))
       {
-         BuildL2Topology(topology, static_cast<Node*>(peer.get()), filterProvider, depth - 1, includeEndNodes, useL1Topology);
+         BuildL2Topology(topology, static_cast<Node*>(peer.get()), filterProvider, depth - 1, includeEndNodes, useL1Topology, includeWiFiClients);
          shared_ptr<Interface> ifLocal = root->findInterfaceByIndex(info->ifLocal);
          shared_ptr<Interface> ifRemote = static_cast<Node&>(*peer).findInterfaceByIndex(info->ifRemote);
          nxlog_debug_tag(DEBUG_TAG, 5, _T("BuildL2Topology: root=%s [%u], node=%s [%u], ifLocal=[ifIndex=%u ifName=%s], ifRemote=[ifIndex=%u ifName=%s]"),
@@ -68,6 +97,38 @@ void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *fil
          shared_ptr<Interface> ifLocal = root->findInterfaceByIndex(info->ifLocal);
          topology.addObject(peer->getId());
          topology.linkObjects(root->getId(), ifLocal.get(), peer->getId(), nullptr);
+
+         if (includeWiFiClients)
+         {
+            AccessPoint *ap = static_cast<AccessPoint*>(peer.get());
+            shared_ptr<Node> controller = ap->getController();
+            if (controller != nullptr)
+            {
+               ObjectArray<WirelessStationInfo> *stations = controller->getWirelessStations(ap->getId());
+               if (stations != nullptr)
+               {
+                  for(int j = 0; j < stations->size(); j++)
+                  {
+                     WirelessStationInfo *ws = stations->get(j);
+                     if (ws->nodeId != 0)
+                     {
+                        shared_ptr<Node> clientNode = static_pointer_cast<Node>(FindObjectById(ws->nodeId, OBJECT_NODE));
+                        if ((clientNode != nullptr) && ((filterProvider == nullptr) || filterProvider->isAllowedOnMap(clientNode)))
+                        {
+                           shared_ptr<Interface> clientIface = clientNode->findInterfaceByMAC(MacAddress(ws->macAddr, MAC_ADDR_LENGTH));
+                           topology.addObject(clientNode->getId());
+                           topology.linkObjects(peer->getId(), 0, ws->rfName,
+                                 clientNode->getId(), (clientIface != nullptr) ? clientIface->getId() : 0, nullptr,
+                                 ws->ssid, LINK_TYPE_WIFI_CLIENT);
+                           nxlog_debug_tag(DEBUG_TAG, 5, _T("BuildL2Topology: added WiFi client %s [%u] connected to AP %s [%u] (SSID=%s)"),
+                                 clientNode->getName(), clientNode->getId(), peer->getName(), peer->getId(), ws->ssid);
+                        }
+                     }
+                  }
+                  delete stations;
+               }
+            }
+         }
       }
 	}
 
@@ -81,7 +142,7 @@ void BuildL2Topology(NetworkMapObjectList &topology, Node *root, NetworkMap *fil
       shared_ptr<Node> node = static_pointer_cast<Node>(FindObjectById(info->objectId, OBJECT_NODE));
       if ((node != nullptr) && (node->isBridge() || includeEndNodes))
       {
-         BuildL2Topology(topology, node.get(), filterProvider, depth - 1, includeEndNodes, useL1Topology);
+         BuildL2Topology(topology, node.get(), filterProvider, depth - 1, includeEndNodes, useL1Topology, includeWiFiClients);
          shared_ptr<Interface> ifLocal = static_pointer_cast<Interface>(FindObjectById(info->ifLocal, OBJECT_INTERFACE));
          shared_ptr<Interface> ifRemote = static_pointer_cast<Interface>(FindObjectById(info->ifRemote, OBJECT_INTERFACE));
          uint32_t ifLocalIndex = ifLocal->getIfIndex();
