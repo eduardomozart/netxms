@@ -190,6 +190,9 @@ public class BarChart extends GenericComparisonChart
       Color axisColor = ThemeEngine.getForegroundColor("Chart.PlotArea");
       gc.setForeground(axisColor);
 
+      ChartConfiguration config = chart.getConfiguration();
+      boolean inverted = config.isInvertedAxis();
+
       // Value of single pixel
       double pixelValue = (maxValue - minValue) / (size.y - MARGIN_HEIGHT * 2);
       double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)));
@@ -197,22 +200,34 @@ public class BarChart extends GenericComparisonChart
 
       int baseLine; // Position of X axis
       if (minValue == 0)
-         baseLine = size.y - MARGIN_HEIGHT;
+         baseLine = inverted ? MARGIN_HEIGHT : size.y - MARGIN_HEIGHT;
       else if (maxValue == 0)
-         baseLine = MARGIN_HEIGHT;
+         baseLine = inverted ? size.y - MARGIN_HEIGHT : MARGIN_HEIGHT;
       else
-         baseLine = MARGIN_HEIGHT + (int)(maxValue / pixelValue);
+         baseLine = inverted ? (size.y - MARGIN_HEIGHT - (int)(maxValue / pixelValue)) : (MARGIN_HEIGHT + (int)(maxValue / pixelValue));
 
-      // Prepare Y axis labels
-      ChartConfiguration config = chart.getConfiguration();
+      // Prepare Y axis labels (top to bottom)
       List<Label> labels = new ArrayList<>();
       int labelWidth = 0;
-      for(double v = maxValue; v >= minValue; v -= step)
+      if (inverted)
       {
-         Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
-         if (label.size.x > labelWidth)
-            labelWidth = label.size.x;
-         labels.add(label);
+         for(double v = minValue; v <= maxValue; v += step)
+         {
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            if (label.size.x > labelWidth)
+               labelWidth = label.size.x;
+            labels.add(label);
+         }
+      }
+      else
+      {
+         for(double v = maxValue; v >= minValue; v -= step)
+         {
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            if (label.size.x > labelWidth)
+               labelWidth = label.size.x;
+            labels.add(label);
+         }
       }
       labelWidth += MARGIN_LABELS;
 
@@ -257,9 +272,9 @@ public class BarChart extends GenericComparisonChart
                int color = items.get(i).getColorAsInt();
                gc.setBackground(chart.getColorCache().create((color == -1) ? chart.getPaletteEntry(i).getRGBObject() : ColorConverter.rgbFromInt(color)));
                int h = (int)Math.abs(value / pixelValue);
-               gc.fillRectangle(x + margin, (value > 0) ? baseLine - h : baseLine, itemWidth - margin * 2, h);
-               Rectangle r = new Rectangle(x + margin, (value > 0) ? baseLine - h : baseLine, itemWidth - margin * 2, h);           
-               elements.add(r);
+               int barY = inverted ? ((value > 0) ? baseLine : baseLine - h) : ((value > 0) ? baseLine - h : baseLine);
+               gc.fillRectangle(x + margin, barY, itemWidth - margin * 2, h);
+               elements.add(new Rectangle(x + margin, barY, itemWidth - margin * 2, h));
             }
             else
             {
@@ -285,6 +300,9 @@ public class BarChart extends GenericComparisonChart
       Color axisColor = ThemeEngine.getForegroundColor("Chart.PlotArea");
       gc.setForeground(axisColor);
 
+      ChartConfiguration config = chart.getConfiguration();
+      boolean inverted = config.isInvertedAxis();
+
       // Value of single pixel
       double pixelValue = (maxValue - minValue) / (size.x - MARGIN_WIDTH * 2);
       double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)));
@@ -292,20 +310,30 @@ public class BarChart extends GenericComparisonChart
 
       int baseLine; // Position of Y axis
       if (minValue == 0)
-         baseLine = MARGIN_WIDTH;
+         baseLine = inverted ? size.x - MARGIN_WIDTH : MARGIN_WIDTH;
       else if (maxValue == 0)
-         baseLine = size.x - MARGIN_WIDTH;
+         baseLine = inverted ? MARGIN_WIDTH : size.x - MARGIN_WIDTH;
       else
-         baseLine = MARGIN_WIDTH + (int)(minValue / pixelValue);
+         baseLine = inverted ? (size.x - MARGIN_WIDTH + (int)(minValue / pixelValue)) : (MARGIN_WIDTH + (int)(minValue / pixelValue));
 
-      // Prepare Y axis labels
+      // Prepare X axis labels (left to right)
       int labelHeight = gc.textExtent("000").y + MARGIN_LABELS;
-      ChartConfiguration config = chart.getConfiguration();
       List<Label> labels = new ArrayList<>();
-      for(double v = minValue; v <= maxValue; v += step)
+      if (inverted)
       {
-         Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
-         labels.add(label);
+         for(double v = maxValue; v >= minValue; v -= step)
+         {
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            labels.add(label);
+         }
+      }
+      else
+      {
+         for(double v = minValue; v <= maxValue; v += step)
+         {
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            labels.add(label);
+         }
       }
 
       // Draw Y axis
@@ -333,7 +361,7 @@ public class BarChart extends GenericComparisonChart
          }
       }
       gc.setLineStyle(SWT.LINE_SOLID);
-      
+
       List<Rectangle> elements = new ArrayList<Rectangle>();
       // Draw data blocks
       if (itemHeight >= 4)
@@ -349,9 +377,9 @@ public class BarChart extends GenericComparisonChart
                int color = items.get(i).getColorAsInt();
                gc.setBackground(chart.getColorCache().create((color == -1) ? chart.getPaletteEntry(i).getRGBObject() : ColorConverter.rgbFromInt(color)));
                int w = (int)Math.abs(value / pixelValue);
-               gc.fillRectangle(((value < 0) ? baseLine - w : baseLine) + 1, y + margin, w, itemHeight - margin * 2);
-               Rectangle r = new Rectangle(((value < 0) ? baseLine - w : baseLine) + 1, y + margin, w, itemHeight - margin * 2);           
-               elements.add(r);
+               int barX = inverted ? (((value > 0) ? baseLine - w : baseLine) + 1) : (((value < 0) ? baseLine - w : baseLine) + 1);
+               gc.fillRectangle(barX, y + margin, w, itemHeight - margin * 2);
+               elements.add(new Rectangle(barX, y + margin, w, itemHeight - margin * 2));
             }
             else
             {

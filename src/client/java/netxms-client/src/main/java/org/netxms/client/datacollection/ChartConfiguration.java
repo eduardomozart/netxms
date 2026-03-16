@@ -90,6 +90,9 @@ public class ChartConfiguration
    protected boolean transposed = false;
 
    @Element(required = false)
+   protected boolean invertedAxis = false;
+
+   @Element(required = false)
    protected boolean translucent = false;
 
    @Element(required = false)
@@ -233,6 +236,7 @@ public class ChartConfiguration
       logScale = src.logScale;
       stacked = src.stacked;
       transposed = src.transposed;
+      invertedAxis = src.invertedAxis;
       translucent = src.translucent;
       doughnutRendering = src.doughnutRendering;
       showTotal = src.showTotal;
@@ -506,6 +510,22 @@ public class ChartConfiguration
    public void setTransposed(boolean transposed)
    {
       this.transposed = transposed;
+   }
+
+   /**
+    * @return the invertedAxis
+    */
+   public boolean isInvertedAxis()
+   {
+      return invertedAxis;
+   }
+
+   /**
+    * @param invertedAxis the invertedAxis to set
+    */
+   public void setInvertedAxis(boolean invertedAxis)
+   {
+      this.invertedAxis = invertedAxis;
    }
 
    /**

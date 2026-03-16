@@ -30,6 +30,9 @@ public class TableBarChartConfig extends TableComparisonChartConfig
 	@Element(required=false)
 	private boolean transposed = false;
 
+	@Element(required=false)
+	private boolean invertedAxis = false;
+
 	/**
 	 * @return the transposed
 	 */
@@ -44,5 +47,21 @@ public class TableBarChartConfig extends TableComparisonChartConfig
 	public void setTransposed(boolean transposed)
 	{
 		this.transposed = transposed;
+	}
+
+	/**
+	 * @return the invertedAxis
+	 */
+	public boolean isInvertedAxis()
+	{
+		return invertedAxis;
+	}
+
+	/**
+	 * @param invertedAxis the invertedAxis to set
+	 */
+	public void setInvertedAxis(boolean invertedAxis)
+	{
+		this.invertedAxis = invertedAxis;
 	}
 }
