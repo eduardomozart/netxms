@@ -49,6 +49,7 @@ public class InputFieldEditDialog extends Dialog
 	private LabeledText name;
 	private Combo type;
 	private LabeledText displayName;
+	private LabeledText defaultValue;
 	private Button checkValidatePassword;
 
 	/**
@@ -119,6 +120,15 @@ public class InputFieldEditDialog extends Dialog
 		gd.widthHint = 350;
 		displayName.setLayoutData(gd);
 
+		defaultValue = new LabeledText(dialogArea, SWT.NONE);
+      defaultValue.setLabel(i18n.tr("Default value"));
+		defaultValue.setText(field.getDefaultValue());
+		gd = new GridData();
+		gd.horizontalAlignment = SWT.FILL;
+		gd.grabExcessHorizontalSpace = true;
+		gd.widthHint = 350;
+		defaultValue.setLayoutData(gd);
+
 		checkValidatePassword = new Button(dialogArea, SWT.CHECK);
       checkValidatePassword.setText(i18n.tr("Validate password after entry"));
 		checkValidatePassword.setVisible(field.getType() == InputFieldType.PASSWORD);
@@ -134,9 +144,10 @@ public class InputFieldEditDialog extends Dialog
 	protected void okPressed()
 	{
 	   if (create)
-	      field.setName(name.getText());    
+	      field.setName(name.getText());
       field.setType(InputFieldType.getByValue(type.getSelectionIndex()));
 	   field.setDisplayName(displayName.getText());
+	   field.setDefaultValue(defaultValue.getText());
 
 	   if (field.getType() == InputFieldType.PASSWORD)
 	   {

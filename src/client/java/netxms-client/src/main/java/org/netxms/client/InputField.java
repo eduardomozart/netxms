@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2021 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  * <p>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ public class InputField
    private String displayName;
    private int orderNumber;
    private int flags;
+   private String defaultValue = "";
 
    /**
     * Create text input field with default settings.
@@ -78,6 +79,7 @@ public class InputField
       this.displayName = src.displayName;
       this.orderNumber = src.orderNumber;
       this.flags = src.flags;
+      this.defaultValue = src.defaultValue;
    }
 
    /**
@@ -93,6 +95,7 @@ public class InputField
       displayName = msg.getFieldAsString(baseId + 2);
       flags = msg.getFieldAsInt32(baseId + 3);
       orderNumber = msg.getFieldAsInt32(baseId + 4);
+      defaultValue = msg.getFieldAsString(baseId + 5);
    }
 
    /**
@@ -108,6 +111,7 @@ public class InputField
       msg.setField(baseId + 2, displayName);
       msg.setFieldInt32(baseId + 3, flags);
       msg.setFieldInt16(baseId + 4, orderNumber);
+      msg.setField(baseId + 5, defaultValue);
    }
 
    /**
@@ -193,6 +197,22 @@ public class InputField
    }
 
    /**
+    * @return the defaultValue
+    */
+   public String getDefaultValue()
+   {
+      return defaultValue;
+   }
+
+   /**
+    * @param defaultValue the defaultValue to set
+    */
+   public void setDefaultValue(String defaultValue)
+   {
+      this.defaultValue = defaultValue;
+   }
+
+   /**
     * @return the sequence
     */
    public int getSequence()
@@ -214,6 +234,6 @@ public class InputField
    @Override
    public String toString()
    {
-      return "InputField [name=" + name + ", type=" + type + ", displayName=" + displayName + ", orderNumber=" + orderNumber + ", flags=" + flags + "]";
+      return "InputField [name=" + name + ", type=" + type + ", displayName=" + displayName + ", orderNumber=" + orderNumber + ", flags=" + flags + ", defaultValue=" + defaultValue + "]";
    }
 }

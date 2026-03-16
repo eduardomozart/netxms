@@ -77,7 +77,7 @@ public class InputFieldEntryDialog extends Dialog
       super(parentShell);
       this.title = title;
       this.fields = fields;
-      this.controls = new LabeledControl[inputValues.size()];
+      this.controls = new LabeledControl[fields.length];
       values = inputValues;
    }
 

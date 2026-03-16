@@ -5981,6 +5981,7 @@ struct InputField
 {
    TCHAR name[32];
    TCHAR displayName[128];
+   TCHAR defaultValue[256];
    uint32_t flags;
    int16_t type;
    int16_t orderNumber;

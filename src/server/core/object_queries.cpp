@@ -87,7 +87,8 @@ ObjectQuery::ObjectQuery(const NXCPMessage& msg) :
       msg.getFieldAsString(fieldId++, f->displayName, 128);
       f->flags = msg.getFieldAsUInt32(fieldId++);
       f->orderNumber = msg.getFieldAsInt16(fieldId++);
-      fieldId += 5;
+      msg.getFieldAsString(fieldId++, f->defaultValue, 256);
+      fieldId += 4;
    }
 
    compile();
@@ -105,7 +106,7 @@ ObjectQuery::ObjectQuery(DB_HANDLE hdb, DB_RESULT hResult, int row) :
    m_guid = DBGetFieldGUID(hResult, row, 1);
    DBGetField(hResult, row, 2, m_name, MAX_OBJECT_NAME);
 
-   DB_RESULT hParams = DBSelectFormatted(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num FROM input_fields WHERE category='Q' AND owner_id=%u ORDER BY sequence_num"), m_id);
+   DB_RESULT hParams = DBSelectFormatted(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num,default_value FROM input_fields WHERE category='Q' AND owner_id=%u ORDER BY sequence_num"), m_id);
    if (hParams != nullptr)
    {
       int count = DBGetNumRows(hParams);
@@ -117,6 +118,7 @@ ObjectQuery::ObjectQuery(DB_HANDLE hdb, DB_RESULT hResult, int row) :
          DBGetField(hParams, i, 2, p->displayName, 128);
          p->flags = DBGetFieldULong(hResult, i, 3);
          p->orderNumber = static_cast<int16_t>(DBGetFieldLong(hResult, i, 4));
+         DBGetField(hParams, i, 5, p->defaultValue, 256);
       }
       DBFreeResult(hParams);
    }
@@ -165,7 +167,7 @@ bool ObjectQuery::saveToDatabase(DB_HANDLE hdb) const
 
    if (success && !m_inputFields.isEmpty())
    {
-      hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,display_name,input_type,flags,sequence_num) VALUES ('Q',?,?,?,?,?,?)"));
+      hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,display_name,input_type,flags,sequence_num,default_value) VALUES ('Q',?,?,?,?,?,?,?)"));
       if (hStmt != nullptr)
       {
          TCHAR type[2];
@@ -181,6 +183,7 @@ bool ObjectQuery::saveToDatabase(DB_HANDLE hdb) const
             DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, type, DB_BIND_STATIC);
             DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, p->flags);
             DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, p->orderNumber);
+            DBBind(hStmt, 7, DB_SQLTYPE_VARCHAR, p->defaultValue, DB_BIND_STATIC);
             success = DBExecute(hStmt);
          }
 
@@ -232,7 +235,8 @@ uint32_t ObjectQuery::fillMessage(NXCPMessage *msg, uint32_t baseId) const
       msg->setField(fieldId++, f->displayName);
       msg->setField(fieldId++, f->flags);
       msg->setField(fieldId++, f->orderNumber);
-      fieldId += 5;
+      msg->setField(fieldId++, f->defaultValue);
+      fieldId += 4;
    }
    return fieldId;
 }

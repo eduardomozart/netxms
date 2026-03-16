@@ -1223,7 +1223,7 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
    uint32_t numFields = msg.getFieldAsUInt16(VID_NUM_FIELDS);
    if (numFields > 0)
    {
-      hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num) VALUES ('T',?,?,?,?,?,?)"), numFields > 1);
+      hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num,default_value) VALUES ('T',?,?,?,?,?,?,?)"), numFields > 1);
       if (hStmt == nullptr)
          return ReturnDBFailure(hdb, hStmt);
       DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, toolId);
@@ -1235,7 +1235,8 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
          DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, msg.getFieldAsString(fieldId++), DB_BIND_DYNAMIC);
          DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, msg.getFieldAsUInt32(fieldId++));
          DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, msg.getFieldAsInt16(fieldId++));
-         fieldId += 5;
+         DBBind(hStmt, 7, DB_SQLTYPE_VARCHAR, msg.getFieldAsString(fieldId++), DB_BIND_DYNAMIC);
+         fieldId += 4;
 
          if (!DBExecute(hStmt))
             return ReturnDBFailure(hdb, hStmt);
@@ -1422,7 +1423,7 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
       unique_ptr<ObjectArray<ConfigEntry>> inputFields = inputFieldsRoot->getOrderedSubEntries(_T("inputField#*"));
       if (inputFields->size() > 0)
       {
-         hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num) VALUES ('T',?,?,?,?,?,?)"));
+         hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num,default_value) VALUES ('T',?,?,?,?,?,?,?)"));
          if (hStmt == nullptr)
             return ImportFailure(hdb, nullptr, context);
 
@@ -1435,6 +1436,7 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
             DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, c->getSubEntryValue(_T("displayName")), DB_BIND_STATIC);
             DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, c->getSubEntryValueAsInt(_T("flags")));
             DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, i + 1);
+            DBBind(hStmt, 7, DB_SQLTYPE_VARCHAR, c->getSubEntryValue(_T("defaultValue")), DB_BIND_STATIC);
 
             if (!DBExecute(hStmt))
                return ImportFailure(hdb, hStmt, context);
@@ -1624,7 +1626,7 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
    {
       if (json_array_size(inputFields) > 0)
       {
-         hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num) VALUES ('T',?,?,?,?,?,?)"));
+         hStmt = DBPrepare(hdb, _T("INSERT INTO input_fields (category,owner_id,name,input_type,display_name,flags,sequence_num,default_value) VALUES ('T',?,?,?,?,?,?,?)"));
          if (hStmt == nullptr)
             return ImportFailure(hdb, nullptr, context);
 
@@ -1638,12 +1640,14 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
 
             String fieldName = json_object_get_string(c, "name", _T(""));
             String displayName = json_object_get_string(c, "displayName", _T(""));
+            String defValue = json_object_get_string(c, "defaultValue", _T(""));
 
             DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, fieldName, DB_BIND_STATIC);
             DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, json_object_get_int32(c, "type", 0));
             DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, displayName, DB_BIND_STATIC);
             DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, json_object_get_int32(c, "flags", 0));
             DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, (int32_t)(index + 1));
+            DBBind(hStmt, 7, DB_SQLTYPE_VARCHAR, defValue, DB_BIND_STATIC);
 
             if (!DBExecute(hStmt))
                return ImportFailure(hdb, hStmt, context);
@@ -1705,7 +1709,7 @@ static json_t *CreateObjectToolInputFieldExportRecords(DB_HANDLE hdb, uint32_t i
 {
    json_t *inputFields = json_array();
 
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags FROM input_fields WHERE category='T' AND owner_id=?"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags,default_value FROM input_fields WHERE category='T' AND owner_id=?"));
    if (hStmt == nullptr)
       return inputFields;
 
@@ -1729,6 +1733,11 @@ static json_t *CreateObjectToolInputFieldExportRecords(DB_HANDLE hdb, uint32_t i
          MemFree(displayName);
 
          json_object_set_new(inputField, "flags", json_integer(DBGetFieldLong(hResult, i, 3)));
+
+         TCHAR *defValue = DBGetField(hResult, i, 4, nullptr, 0);
+         json_object_set_new(inputField, "defaultValue", json_string_t(CHECK_NULL_EX(defValue)));
+         MemFree(defValue);
+
          json_array_append_new(inputFields, inputField);
       }
       DBFreeResult(hResult);
@@ -1805,7 +1814,7 @@ json_t *CreateObjectToolExportRecord(uint32_t id)
  */
 static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, NXCPMessage *msg, uint32_t countFieldId, uint32_t baseFieldId)
 {
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num FROM input_fields WHERE category='T' AND owner_id=? ORDER BY name"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num,default_value FROM input_fields WHERE category='T' AND owner_id=? ORDER BY name"));
    if (hStmt == nullptr)
       return false;
 
@@ -1820,7 +1829,7 @@ static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, NXCPMessag
       uint32_t fieldId = baseFieldId;
       for(int i = 0; i < count; i++)
       {
-         TCHAR buffer[128];
+         TCHAR buffer[256];
 
          DBGetField(hResult, i, 0, buffer, 128);
          msg->setField(fieldId++, buffer);
@@ -1837,7 +1846,10 @@ static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, NXCPMessag
             seq = i;
          msg->setField(fieldId++, static_cast<int16_t>(seq));
 
-         fieldId += 5;
+         DBGetField(hResult, i, 5, buffer, 256);
+         msg->setField(fieldId++, buffer);
+
+         fieldId += 4;
       }
       DBFreeResult(hResult);
       success = true;
@@ -2058,7 +2070,7 @@ static FlagNameMapping s_toolFlagMapping[] =
  */
 static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, json_t *tool)
 {
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num FROM input_fields WHERE category='T' AND owner_id=? ORDER BY name"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT name,input_type,display_name,flags,sequence_num,default_value FROM input_fields WHERE category='T' AND owner_id=? ORDER BY name"));
    if (hStmt == nullptr)
       return false;
 
@@ -2090,6 +2102,9 @@ static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, json_t *to
          if (seq == -1)
             seq = i;
          json_object_set_new(field, "sequence", json_integer(seq));
+
+         DBGetFieldUTF8(hResult, i, 5, buffer, sizeof(buffer));
+         json_object_set_new(field, "defaultValue", json_string(buffer));
          json_array_append_new(fields, field);
       }
       DBFreeResult(hResult);

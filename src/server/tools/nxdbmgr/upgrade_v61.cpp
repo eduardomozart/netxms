@@ -24,6 +24,16 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.16 to 61.17
+ */
+static bool H_UpgradeFromV16()
+{
+   CHK_EXEC(SQLQuery(L"ALTER TABLE input_fields ADD default_value varchar(255)"));
+   CHK_EXEC(SetMinorSchemaVersion(17));
+   return true;
+}
+
+/**
  * Upgrade from 61.15 to 61.16
  */
 static bool H_UpgradeFromV15()
@@ -439,6 +449,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 16, 61, 17, H_UpgradeFromV16 },
    { 15, 61, 16, H_UpgradeFromV15 },
    { 14, 61, 15, H_UpgradeFromV14 },
    { 13, 61, 14, H_UpgradeFromV13 },

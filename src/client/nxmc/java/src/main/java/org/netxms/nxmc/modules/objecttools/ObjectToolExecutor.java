@@ -136,8 +136,8 @@ public final class ObjectToolExecutor
       }
 
       final List<String> maskedFields = new ArrayList<String>();
-      final Map<String, String> inputValues;
       final InputField[] fields = tool.getInputFields();
+      final Map<String, String> inputValues;
       if (fields.length > 0)
       {
          Arrays.sort(fields, new Comparator<InputField>() {
@@ -147,7 +147,49 @@ public final class ObjectToolExecutor
                return f1.getSequence() - f2.getSequence();
             }
          });
-         inputValues = readInputFields(tool.getDisplayName(), fields);
+
+         // Build default values map, expanding macros if needed
+         Map<String, String> defaultValues = new HashMap<String, String>();
+         boolean hasMacros = false;
+         for(InputField f : fields)
+         {
+            String dv = f.getDefaultValue();
+            if (dv != null && !dv.isEmpty())
+            {
+               defaultValues.put(f.getName(), dv);
+               if (dv.contains("%"))
+                  hasMacros = true;
+            }
+         }
+         if (hasMacros && !objects.isEmpty())
+         {
+            try
+            {
+               NXCSession session = Registry.getSession();
+               ObjectContext ctx = objects.iterator().next();
+               List<String> textsToExpand = new ArrayList<String>();
+               List<String> fieldNames = new ArrayList<String>();
+               for(Map.Entry<String, String> e : defaultValues.entrySet())
+               {
+                  if (e.getValue().contains("%"))
+                  {
+                     fieldNames.add(e.getKey());
+                     textsToExpand.add(e.getValue());
+                  }
+               }
+               List<String> expanded = session.substituteMacros(ctx, textsToExpand, null);
+               for(int i = 0; i < fieldNames.size(); i++)
+               {
+                  defaultValues.put(fieldNames.get(i), expanded.get(i));
+               }
+            }
+            catch(Exception e)
+            {
+               // Use unexpanded defaults on error
+            }
+         }
+
+         inputValues = readInputFields(tool.getDisplayName(), fields, defaultValues);
          if (inputValues == null)
             return;  // cancelled
          for (int i = 0; i < fields.length; i++)
@@ -326,14 +368,19 @@ public final class ObjectToolExecutor
 
    /**
     * Read input fields
-    * 
+    *
     * @param title Input dialog title
     * @param fields Input fields to read
+    * @param defaultValues default values for input fields (can be empty)
     * @return values for input fields
     */
-   private static Map<String, String> readInputFields(String title, InputField[] fields)
+   private static Map<String, String> readInputFields(String title, InputField[] fields, Map<String, String> defaultValues)
    {
-      InputFieldEntryDialog dlg = new InputFieldEntryDialog(Registry.getMainWindowShell(), title, fields);
+      InputFieldEntryDialog dlg;
+      if (defaultValues != null && !defaultValues.isEmpty())
+         dlg = new InputFieldEntryDialog(Registry.getMainWindowShell(), title, fields, defaultValues);
+      else
+         dlg = new InputFieldEntryDialog(Registry.getMainWindowShell(), title, fields);
       if (dlg.open() != Window.OK)
          return null;
       return dlg.getValues();
