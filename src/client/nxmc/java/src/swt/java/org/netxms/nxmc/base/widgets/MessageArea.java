@@ -231,6 +231,16 @@ public class MessageArea extends Canvas implements MessageAreaHolder
    }
 
    /**
+    * Check if message area is empty.
+    *
+    * @return true if message area is empty
+    */
+   public boolean isEmpty()
+   {
+      return messages.isEmpty();
+   }
+
+   /**
     * @return the messageTimeout
     */
    public long getMessageTimeout()

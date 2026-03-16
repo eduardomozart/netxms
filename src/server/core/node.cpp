@@ -3581,6 +3581,23 @@ restart_status_poll:
       }
    }
 
+   // Check if agent restart is pending
+   if (!(m_state & DCSF_UNREACHABLE) && isNativeAgent())
+   {
+      TCHAR buffer[MAX_RESULT_LENGTH];
+      if (getMetricFromAgent(L"Agent.IsRestartPending", buffer, MAX_RESULT_LENGTH) == DCE_SUCCESS)
+      {
+         if (_tcstol(buffer, nullptr, 0) != 0)
+            m_state |= NSF_AGENT_RESTART_PENDING;
+         else
+            m_state &= ~NSF_AGENT_RESTART_PENDING;
+      }
+      else
+      {
+         nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, L"StatusPoll(%s [%u]): unable to get agent restart pending status", m_name, m_id);
+      }
+   }
+
    // Check time on remote system
    if (!(m_state & DCSF_UNREACHABLE) && isNativeAgent())
    {
@@ -13867,6 +13884,7 @@ static FlagNameMapping s_stateMapping[] =
    { NSF_SSH_UNREACHABLE, "sshUnreachable" },
    { NSF_MODBUS_UNREACHABLE, "modbusUnreachable" },
    { NSF_DECOMMISSIONED, "decommissioned" },
+   { NSF_AGENT_RESTART_PENDING, "agentRestartPending" },
    { 0, nullptr }
 };
 

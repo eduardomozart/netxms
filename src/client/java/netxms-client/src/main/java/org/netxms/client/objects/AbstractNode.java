@@ -124,6 +124,7 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
 	public static final int NSF_SSH_UNREACHABLE          = 0x00400000;
 	public static final int NSF_MODBUS_UNREACHABLE       = 0x00800000;
 	public static final int NSF_DECOMMISSIONED           = 0x01000000;
+	public static final int NSF_AGENT_RESTART_PENDING    = 0x02000000;
 
 	public static final int IFXTABLE_DEFAULT = 0;
 	public static final int IFXTABLE_ENABLED = 1;
@@ -440,6 +441,16 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
    public boolean isDecommissioned()
    {
       return (stateFlags & NSF_DECOMMISSIONED) != 0;
+   }
+
+   /**
+    * Check if this node's agent has a pending restart.
+    *
+    * @return true if agent restart is pending
+    */
+   public boolean isAgentRestartPending()
+   {
+      return (stateFlags & NSF_AGENT_RESTART_PENDING) != 0;
    }
 
    /**

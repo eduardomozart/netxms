@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ import org.netxms.client.NXCSession;
 import org.netxms.client.ObjectFilter;
 import org.netxms.client.SessionNotification;
 import org.netxms.client.constants.ObjectStatus;
+import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Condition;
 import org.netxms.client.objects.Container;
@@ -69,14 +70,17 @@ import org.netxms.client.objects.Rack;
 import org.netxms.client.objects.ServiceRoot;
 import org.netxms.client.objects.Subnet;
 import org.netxms.client.objects.Zone;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.netxms.nxmc.Memento;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.views.ViewPlacement;
 import org.netxms.nxmc.base.views.ViewWithContext;
+import org.netxms.nxmc.base.widgets.MessageArea;
 import org.netxms.nxmc.base.widgets.RoundedLabel;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.agentmanagement.views.AgentConfigurationEditor;
@@ -168,6 +172,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
    private Composite headerArea;
    private Label objectName;
    private RoundedLabel objectStatus;
+   private MessageArea objectMessageArea;
    private Composite objectDetails;
    private ObjectInfo objectGeneralInfo;
    private PollStates objectPollState;
@@ -417,6 +422,11 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
       expandButton.setLayoutData(gd);
 
+      objectMessageArea = new MessageArea(headerArea, SWT.NONE);
+      gd = new GridData(SWT.FILL, SWT.FILL, true, false);
+      gd.horizontalSpan = 9;
+      objectMessageArea.setLayoutData(gd);
+
       PreferenceStore.getInstance().addPropertyChangeListener((event) -> {
          if (event.getProperty().equals("ObjectPerspective.showObjectDetails"))
          {
@@ -558,6 +568,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
          updateObjectToolBar(object);
          updateObjectMenuBar(object);
          updateContextDashboardsAndMaps(object);
+         updateObjectMessages(object);
       }
       else
       {
@@ -565,6 +576,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
          objectName.setText("");
          objectStatus.setText("");
          objectStatus.setLabelBackground(null);
+         objectMessageArea.clearMessages();
       }
       headerArea.layout();
 
@@ -596,6 +608,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       updateObjectToolBar(object);
       updateObjectMenuBar(object);
       updateContextDashboardsAndMaps(object);
+      updateObjectMessages(object);
 
       if (objectDetails != null)
          updateObjectDetails(object);
@@ -623,6 +636,33 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       }
       objectComments.setObject(object);
       layoutMainArea();
+   }
+
+   /**
+    * Update object-specific messages
+    *
+    * @param object currently selected object
+    */
+   private void updateObjectMessages(AbstractObject object)
+   {
+      boolean modified = false;
+      if (!objectMessageArea.isEmpty())
+      {
+         objectMessageArea.clearMessages();
+         modified = true;
+      }
+
+      if (object instanceof AbstractNode)
+      {
+         if (((AbstractNode)object).isAgentRestartPending())
+         {
+            objectMessageArea.addMessage(MessageArea.WARNING, i18n.tr("Agent restart is pending"), true, i18n.tr("Restart agent"), () -> restartAgent(object.getObjectId()));
+            modified = true;
+         }
+      }
+
+      if (modified)
+         layoutMainArea();
    }
 
    /**
@@ -937,5 +977,28 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
          if (object != null)
             objectBrowser.selectObject(object);
       }
+   }
+
+   /**
+    * Restart agent on given node.
+    *
+    * @param nodeId node ID
+    */
+   private void restartAgent(long nodeId)
+   {
+      new Job(i18n.tr("Restarting agent"), null, objectMessageArea, getWindow().getShell().getDisplay()) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            Registry.getSession().executeAction(nodeId, "Agent.Restart", null);
+            runInUIThread(() -> objectMessageArea.addMessage(MessageArea.SUCCESS, i18n.tr("Agent restart command successfully sent")));
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Cannot restart agent");
+         }
+      }.start();
    }
 }

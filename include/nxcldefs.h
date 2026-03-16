@@ -339,6 +339,7 @@
 #define NSF_SSH_UNREACHABLE            0x00400000
 #define NSF_MODBUS_UNREACHABLE         0x00800000
 #define NSF_DECOMMISSIONED             0x01000000
+#define NSF_AGENT_RESTART_PENDING      0x02000000
 
 /**
  * Sensor capabilities

@@ -4286,6 +4286,7 @@ public:
    bool isDown() { return is_bit_set(m_state, DCSF_UNREACHABLE); }
    time_t getDownSince() const { return m_downSince; }
    bool isDecommissioned() const { return is_bit_set(m_state, NSF_DECOMMISSIONED); }
+   bool isAgentRestartPending() const { return is_bit_set(m_state, NSF_AGENT_RESTART_PENDING); }
    time_t getDecommissionTime() const { return m_decommissionTime; }
    void decommission(time_t expirationTime, bool clearIpAddresses);
 

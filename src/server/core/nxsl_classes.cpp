@@ -2980,6 +2980,10 @@ NXSL_Value *NXSL_NodeClass::getAttr(NXSL_Object *object, const NXSL_Identifier& 
    {
       value = vm->createValue(node->isNativeAgent());
    }
+   else if (NXSL_COMPARE_ATTRIBUTE_NAME("isAgentRestartPending"))
+   {
+      value = vm->createValue(node->isAgentRestartPending());
+   }
    else if (NXSL_COMPARE_ATTRIBUTE_NAME("isBridge"))
    {
       value = vm->createValue(node->isBridge());
