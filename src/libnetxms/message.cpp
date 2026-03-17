@@ -1,4 +1,4 @@
-/* 
+/*
 ** NetXMS - Network Management System
 ** NetXMS Foundation Library
 ** Copyright (C) 2003-2024 Victor Kirhenshtein
@@ -453,7 +453,7 @@ void *NXCPMessage::set(uint32_t fieldId, BYTE type, const void *value, bool isSi
             size_t length = _tcslen(static_cast<const TCHAR*>(value));
             if ((size > 0) && (length > size))
                length = size;
-#ifdef UNICODE         
+#ifdef UNICODE
 #if UNICODE_UCS2
 #define ucs2buffer value
 #define ucs2length length
@@ -461,7 +461,7 @@ void *NXCPMessage::set(uint32_t fieldId, BYTE type, const void *value, bool isSi
             UCS2CHAR localBuffer[256];
             UCS2CHAR *ucs2buffer = (length < 256) ? localBuffer : m_pool.allocateArray<UCS2CHAR>(length + 1);
             size_t ucs2length = ucs4_to_ucs2(static_cast<const WCHAR*>(value), length, ucs2buffer, length + 1);
-#endif         
+#endif
 #else		/* not UNICODE */
             UCS2CHAR localBuffer[256];
             UCS2CHAR *ucs2buffer = (length < 256) ? localBuffer : m_pool.allocateArray<UCS2CHAR>(length + 1);
@@ -572,7 +572,7 @@ void *NXCPMessage::get(uint32_t fieldId, BYTE requiredType, BYTE *fieldType) con
    if (fieldType != nullptr)
       *fieldType = field->type;
    return (field->type == NXCP_DT_INT16) ?
-           ((void *)((BYTE *)field + 6)) : 
+           ((void *)((BYTE *)field + 6)) :
            ((void *)((BYTE *)field + 8));
 }
 
@@ -810,7 +810,7 @@ InetAddress NXCPMessage::getFieldAsInetAddress(uint32_t fieldId) const
 
    if (f->type == NXCP_DT_INETADDR)
    {
-      InetAddress a = 
+      InetAddress a =
          (f->df_inetaddr.family == NXCP_AF_INET) ?
             InetAddress(f->df_inetaddr.addr.v4) :
             ((f->df_inetaddr.family == NXCP_AF_INET6) ? InetAddress(f->df_inetaddr.addr.v6) : InetAddress());
@@ -1356,16 +1356,6 @@ void NXCPMessage::setField(uint32_t fieldId, const StringSet &data)
 }
 
 /**
- * set string field to a JSON object
- */
-void NXCPMessage::setField(uint32_t fieldId, json_t *json)
-{
-   char *s = json_dumps(json, 0);
-   setFieldFromUtf8String(fieldId, s);
-   MemFree(s);
-}
-
-/**
  * Set field from multibyte string
  */
 void NXCPMessage::setFieldFromMBString(uint32_t fieldId, const char *value)
@@ -1380,6 +1370,16 @@ void NXCPMessage::setFieldFromMBString(uint32_t fieldId, const char *value)
 }
 
 #endif
+
+/**
+ * set string field to a JSON object
+ */
+void NXCPMessage::setField(uint32_t fieldId, json_t *json)
+{
+   char *s = json_dumps(json, 0);
+   setFieldFromUtf8String(fieldId, s);
+   MemFree(s);
+}
 
 /**
  * set binary field to an array of UINT32s
@@ -1614,7 +1614,7 @@ StringBuffer NXCPMessage::dump(const NXCP_MESSAGE *msg, int version)
       msgData = reinterpret_cast<const BYTE*>(msg) + NXCP_HEADER_SIZE;
       allocatedMsgData = NULL;
    }
-   
+
    // Parse data fields
    TCHAR *str;
    size_t pos = 0;
@@ -1692,7 +1692,7 @@ StringBuffer NXCPMessage::dump(const NXCP_MESSAGE *msg, int version)
             break;
          case NXCP_DT_INETADDR:
             {
-               InetAddress a = 
+               InetAddress a =
                   (convertedField->df_inetaddr.family == NXCP_AF_INET) ?
                      InetAddress(ntohl(convertedField->df_inetaddr.addr.v4)) :
                      InetAddress(convertedField->df_inetaddr.addr.v6);
