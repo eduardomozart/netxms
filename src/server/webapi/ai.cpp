@@ -196,6 +196,16 @@ int H_AiChatGetStatus(Context *context)
          }
          break;
 
+      case AsyncRequestState::ERROR:
+         {
+            json_object_set_new(response, "status", json_string("error"));
+            char *errorMessage = chat->takeAsyncErrorMessage();
+            if (errorMessage != nullptr && *errorMessage != '\0')
+               json_object_set_new(response, "errorMessage", json_string(errorMessage));
+            MemFree(errorMessage);
+         }
+         break;
+
       case AsyncRequestState::IDLE:
       default:
          json_object_set_new(response, "status", json_string("idle"));

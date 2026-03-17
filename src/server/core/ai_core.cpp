@@ -736,6 +736,7 @@ Chat::Chat(NetObj *context, json_t *eventData, uint32_t userId, const char *syst
    m_pendingQuestion = nullptr;
    m_asyncState = AsyncRequestState::IDLE;
    m_asyncResult = nullptr;
+   m_asyncErrorMessage = nullptr;
    m_currentFunction = nullptr;
    m_isInteractive = isInteractive;
    strlcpy(m_slot, isInteractive ? "interactive" : "background", sizeof(m_slot));
@@ -781,6 +782,7 @@ Chat::~Chat()
    json_decref(m_functionDeclarations);
    delete m_pendingQuestion;
    MemFree(m_asyncResult);
+   MemFree(m_asyncErrorMessage);
 }
 
 /**
@@ -1270,6 +1272,7 @@ char *Chat::sendRequest(const char *prompt, int maxIterations, const char *conte
    if (provider == nullptr)
    {
       nxlog_debug_tag(DEBUG_TAG, 4, L"No provider available for slot \"%hs\"", m_slot);
+      m_lastError = "No AI provider available";
       s_currentChat = nullptr;
       return nullptr;
    }
@@ -1312,6 +1315,7 @@ char *Chat::sendRequest(const char *prompt, int maxIterations, const char *conte
 
       if (message == nullptr)
       {
+         m_lastError = "LLM request failed";
          s_currentChat = nullptr;
          return nullptr;
       }
@@ -1400,6 +1404,7 @@ bool Chat::startAsyncRequest(const char *prompt, int maxIterations, const char *
 
    m_asyncState = AsyncRequestState::PROCESSING;
    MemFreeAndNull(m_asyncResult);
+   MemFreeAndNull(m_asyncErrorMessage);
    m_asyncMutex.unlock();
 
    // Copy parameters for background thread
@@ -1416,8 +1421,16 @@ bool Chat::startAsyncRequest(const char *prompt, int maxIterations, const char *
          char *result = self->sendRequest(promptCopy, maxIterations, contextCopy);
 
          self->m_asyncMutex.lock();
-         self->m_asyncResult = result;
-         self->m_asyncState = AsyncRequestState::COMPLETED;
+         if (result != nullptr)
+         {
+            self->m_asyncResult = result;
+            self->m_asyncState = AsyncRequestState::COMPLETED;
+         }
+         else
+         {
+            self->m_asyncErrorMessage = MemCopyStringA(self->m_lastError.c_str());
+            self->m_asyncState = AsyncRequestState::ERROR;
+         }
          self->m_asyncMutex.unlock();
 
          nxlog_debug_tag(DEBUG_TAG, 5, _T("Chat [%u]: async request processing completed"), self->m_id);
@@ -1443,6 +1456,22 @@ char *Chat::takeAsyncResult()
    m_asyncResult = nullptr;
    m_asyncState = AsyncRequestState::IDLE;
    return result;
+}
+
+/**
+ * Take async error message (transfers ownership to caller, resets state to IDLE)
+ * Returns nullptr if not in error state
+ */
+char *Chat::takeAsyncErrorMessage()
+{
+   LockGuard lockGuard(m_asyncMutex);
+   if (m_asyncState != AsyncRequestState::ERROR)
+      return nullptr;
+
+   char *errorMessage = m_asyncErrorMessage;
+   m_asyncErrorMessage = nullptr;
+   m_asyncState = AsyncRequestState::IDLE;
+   return errorMessage;
 }
 
 /**

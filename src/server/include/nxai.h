@@ -154,7 +154,8 @@ enum class AsyncRequestState
 {
    IDLE = 0,
    PROCESSING = 1,
-   COMPLETED = 2
+   COMPLETED = 2,
+   ERROR = 3
 };
 
 /**
@@ -177,8 +178,10 @@ private:
    Mutex m_questionMutex;
    AsyncRequestState m_asyncState;
    char *m_asyncResult;
+   char *m_asyncErrorMessage;
    const char *m_currentFunction;
    Mutex m_asyncMutex;
+   std::string m_lastError;
    bool m_isInteractive;
    char m_slot[32];  // Provider slot (e.g., "interactive", "background", "fast", "analytical")
 
@@ -226,6 +229,7 @@ public:
    AsyncRequestState getAsyncState() const { return m_asyncState; }
    const char *getCurrentFunction() const { return m_currentFunction; }
    char *takeAsyncResult();
+   char *takeAsyncErrorMessage();
 
    void clear();
 

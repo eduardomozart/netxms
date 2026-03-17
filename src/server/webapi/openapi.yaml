@@ -415,8 +415,8 @@ paths:
       summary: Get AI chat processing status
       description: |
         Poll for the current processing status of an AI chat session.
-        Returns the status (idle, processing, or completed) along with
-        any pending question or completed response.
+        Returns the status (idle, processing, completed, or error) along with
+        any pending question, completed response, or error message.
       parameters:
         - name: chat-id
           in: path
@@ -434,7 +434,7 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [idle, processing, completed]
+                    enum: [idle, processing, completed, error]
                     description: Current processing state
                   pendingQuestion:
                     description: Pending question from AI (present when status is processing)
@@ -447,6 +447,9 @@ paths:
                     type: string
                     description: AI response text (present when status is completed)
                     nullable: true
+                  errorMessage:
+                    type: string
+                    description: Error description (present when status is error)
         '400':
           description: Invalid chat ID
         '401':
