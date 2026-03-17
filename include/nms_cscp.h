@@ -1695,6 +1695,11 @@ typedef struct
 #define VID_NUM_MAPPING_TABLES      ((uint32_t)967)
 #define VID_MAPPING_TABLE_LIST      ((uint32_t)968)
 #define VID_MAX_DATA_POINTS         ((uint32_t)969)
+#define VID_SNMP_TRAP_AUTH_OBJECT   ((uint32_t)970)
+#define VID_SNMP_TRAP_AUTH_PASSWORD ((uint32_t)971)
+#define VID_SNMP_TRAP_PRIV_PASSWORD ((uint32_t)972)
+#define VID_SNMP_TRAP_USM_METHODS  ((uint32_t)973)
+#define VID_SNMP_TRAP_VERSION      ((uint32_t)974)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)

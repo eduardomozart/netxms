@@ -167,6 +167,12 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
 	protected String snmpPrivPassword;
 	protected int snmpAuthMethod;
 	protected int snmpPrivMethod;
+	protected SnmpVersion snmpTrapVersion;
+	protected String snmpTrapAuthName;
+	protected String snmpTrapAuthPassword;
+	protected String snmpTrapPrivPassword;
+	protected int snmpTrapAuthMethod;
+	protected int snmpTrapPrivMethod;
 	protected String snmpOID;
    protected SnmpVersion snmpVersion;
 	protected int snmpPort;
@@ -295,6 +301,20 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
 		snmpOID = msg.getFieldAsString(NXCPCodes.VID_SNMP_OID);
 		snmpPort = msg.getFieldAsInt32(NXCPCodes.VID_SNMP_PORT);
       snmpVersion = SnmpVersion.getByValue(msg.getFieldAsInt32(NXCPCodes.VID_SNMP_VERSION));
+      snmpTrapAuthName = msg.getFieldAsString(NXCPCodes.VID_SNMP_TRAP_AUTH_OBJECT);
+      if (snmpTrapAuthName != null && !snmpTrapAuthName.isEmpty())
+      {
+         snmpTrapVersion = SnmpVersion.getByValue(msg.getFieldAsInt32(NXCPCodes.VID_SNMP_TRAP_VERSION));
+         snmpTrapAuthPassword = msg.getFieldAsString(NXCPCodes.VID_SNMP_TRAP_AUTH_PASSWORD);
+         snmpTrapPrivPassword = msg.getFieldAsString(NXCPCodes.VID_SNMP_TRAP_PRIV_PASSWORD);
+         int trapMethods = msg.getFieldAsInt32(NXCPCodes.VID_SNMP_TRAP_USM_METHODS);
+         snmpTrapAuthMethod = trapMethods & 0xFF;
+         snmpTrapPrivMethod = trapMethods >> 8;
+      }
+      else
+      {
+         snmpTrapAuthName = null;
+      }
 		systemDescription = msg.getFieldAsString(NXCPCodes.VID_SYS_DESCRIPTION);
 		snmpSysName = msg.getFieldAsString(NXCPCodes.VID_SYS_NAME);
       snmpSysContact = msg.getFieldAsString(NXCPCodes.VID_SYS_CONTACT);
@@ -727,9 +747,67 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
 		return snmpPrivMethod;
 	}
 
+   /**
+    * Check if node has separate SNMP trap credentials configured.
+    *
+    * @return true if separate trap credentials are set
+    */
+   public boolean hasSnmpTrapCredentials()
+   {
+      return snmpTrapAuthName != null;
+   }
+
+   /**
+    * @return the snmpTrapVersion
+    */
+   public SnmpVersion getSnmpTrapVersion()
+   {
+      return snmpTrapVersion;
+   }
+
+   /**
+    * @return the snmpTrapAuthName
+    */
+   public String getSnmpTrapAuthName()
+   {
+      return snmpTrapAuthName;
+   }
+
+   /**
+    * @return the snmpTrapAuthPassword
+    */
+   public String getSnmpTrapAuthPassword()
+   {
+      return snmpTrapAuthPassword;
+   }
+
+   /**
+    * @return the snmpTrapPrivPassword
+    */
+   public String getSnmpTrapPrivPassword()
+   {
+      return snmpTrapPrivPassword;
+   }
+
+   /**
+    * @return the snmpTrapAuthMethod
+    */
+   public int getSnmpTrapAuthMethod()
+   {
+      return snmpTrapAuthMethod;
+   }
+
+   /**
+    * @return the snmpTrapPrivMethod
+    */
+   public int getSnmpTrapPrivMethod()
+   {
+      return snmpTrapPrivMethod;
+   }
+
 	/**
     * Check if node has NetXMS agent.
-    * 
+    *
     * @return true if node has NetXMS agent
     */
 	public boolean hasAgent()

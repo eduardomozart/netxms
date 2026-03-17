@@ -125,6 +125,8 @@ Node::Node() : super(Pollable::STATUS | Pollable::CONFIGURATION | Pollable::DISC
    m_snmpVersion = SNMP_VERSION_2C;
    m_snmpPort = SNMP_DEFAULT_PORT;
    m_snmpSecurity = new SNMP_SecurityContext("public");
+   m_snmpTrapSecurity = nullptr;
+   m_snmpTrapVersion = SNMP_VERSION_2C;
    m_snmpCodepage[0] = 0;
    m_ospfRouterId = 0;
    m_downSince = 0;
@@ -254,6 +256,8 @@ Node::Node(const NewNodeData *newNodeData, uint32_t flags) : super(Pollable::STA
       m_snmpSecurity = new SNMP_SecurityContext(newNodeData->snmpSecurity);
    else
       m_snmpSecurity = new SNMP_SecurityContext("public");
+   m_snmpTrapSecurity = nullptr;
+   m_snmpTrapVersion = SNMP_VERSION_2C;
    if (newNodeData->name[0] != 0)
       _tcslcpy(m_name, newNodeData->name, MAX_OBJECT_NAME);
    else
@@ -384,6 +388,7 @@ Node::~Node()
    MemFree(m_sysDescription);
    delete m_vrrpInfo;
    delete m_snmpSecurity;
+   delete m_snmpTrapSecurity;
    delete m_radioInterfaces;
    delete m_wirelessStations;
    MemFree(m_lldpNodeId);
@@ -433,7 +438,8 @@ bool Node::loadFromDatabase(DB_HANDLE hdb, uint32_t id, DB_STATEMENT *preparedSt
       _T("cip_status,cip_state,eip_proxy,eip_port,hardware_id,cip_vendor_code,agent_cert_mapping_method,")
       _T("agent_cert_mapping_data,snmp_engine_id,ssh_port,ssh_key_id,syslog_codepage,snmp_codepage,ospf_router_id,")
       _T("mqtt_proxy,modbus_proxy,modbus_tcp_port,modbus_unit_id,snmp_context_engine_id,vnc_password,vnc_port,")
-      _T("vnc_proxy,path_check_reason,path_check_node_id,path_check_iface_id,expected_capabilities,last_events,decommission_time FROM nodes WHERE id=?"));
+      _T("vnc_proxy,path_check_reason,path_check_node_id,path_check_iface_id,expected_capabilities,last_events,decommission_time,")
+      _T("trap_snmp_version,trap_community,trap_usm_auth_password,trap_usm_priv_password,trap_usm_methods FROM nodes WHERE id=?"));
    if (hStmt == nullptr)
       return false;
 
@@ -625,6 +631,32 @@ bool Node::loadFromDatabase(DB_HANDLE hdb, uint32_t id, DB_STATEMENT *preparedSt
    for (i = 0; i < MIN(elements.size(), MAX_LAST_EVENTS); i++)
       m_lastEvents[i] = _tcstoul(elements.get(i), nullptr, 10);
    m_decommissionTime = static_cast<time_t>(DBGetFieldInt64(hResult, 0, 91));
+
+   // SNMP trap credential columns (null = use polling credentials)
+   char trapAuthObject[256], trapAuthPassword[256], trapPrivPassword[256];
+   DBGetFieldA(hResult, 0, 93, trapAuthObject, 256);
+   DBGetFieldA(hResult, 0, 94, trapAuthPassword, 256);
+   DBGetFieldA(hResult, 0, 95, trapPrivPassword, 256);
+   if (trapAuthObject[0] != 0)
+   {
+      m_snmpTrapVersion = static_cast<SNMP_Version>(DBGetFieldLong(hResult, 0, 92));
+      int trapMethods = DBGetFieldLong(hResult, 0, 96);
+      delete m_snmpTrapSecurity;
+      if (m_snmpTrapVersion == SNMP_VERSION_3)
+      {
+         m_snmpTrapSecurity = new SNMP_SecurityContext(trapAuthObject, trapAuthPassword, trapPrivPassword,
+                  static_cast<SNMP_AuthMethod>(trapMethods & 0xFF), static_cast<SNMP_EncryptionMethod>(trapMethods >> 8));
+         m_snmpTrapSecurity->recalculateKeys();
+      }
+      else
+      {
+         m_snmpTrapSecurity = new SNMP_SecurityContext(trapAuthObject);
+         m_snmpTrapSecurity->setAuthMethod(static_cast<SNMP_AuthMethod>(trapMethods & 0xFF));
+         m_snmpTrapSecurity->setAuthPassword(trapAuthPassword);
+         m_snmpTrapSecurity->setPrivMethod(static_cast<SNMP_EncryptionMethod>(trapMethods >> 8));
+         m_snmpTrapSecurity->setPrivPassword(trapPrivPassword);
+      }
+   }
 
    DBFreeResult(hResult);
 
@@ -1076,7 +1108,8 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
          _T("agent_cert_mapping_method"), _T("agent_cert_mapping_data"), _T("snmp_engine_id"), _T("snmp_context_engine_id"),
          _T("syslog_codepage"), _T("snmp_codepage"), _T("ospf_router_id"), _T("mqtt_proxy"), _T("modbus_proxy"), _T("modbus_tcp_port"),
          _T("modbus_unit_id"), _T("vnc_password"), _T("vnc_port"), _T("vnc_proxy"), _T("path_check_reason"), _T("path_check_node_id"),
-         _T("path_check_iface_id"), L"expected_capabilities", L"last_events", L"decommission_time", nullptr
+         _T("path_check_iface_id"), L"expected_capabilities", L"last_events", L"decommission_time",
+         L"trap_snmp_version", L"trap_community", L"trap_usm_auth_password", L"trap_usm_priv_password", L"trap_usm_methods", nullptr
       };
 
       DB_STATEMENT hStmt = DBPrepareMerge(hdb, L"nodes", L"id", m_id, columns);
@@ -1225,7 +1258,24 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
          }
          DBBind(hStmt, 91, DB_SQLTYPE_VARCHAR, lastEvents.join(L";"), DB_BIND_DYNAMIC);
          DBBind(hStmt, 92, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_decommissionTime));
-         DBBind(hStmt, 93, DB_SQLTYPE_INTEGER, m_id);
+         if (m_snmpTrapSecurity != nullptr)
+         {
+            int32_t trapMethods = m_snmpTrapSecurity->getAuthMethod() | (m_snmpTrapSecurity->getPrivMethod() << 8);
+            DBBind(hStmt, 93, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_snmpTrapVersion));
+            DBBind(hStmt, 94, DB_SQLTYPE_VARCHAR, WideStringFromMBString(m_snmpTrapSecurity->getAuthName()), DB_BIND_DYNAMIC);
+            DBBind(hStmt, 95, DB_SQLTYPE_VARCHAR, WideStringFromMBString(m_snmpTrapSecurity->getAuthPassword()), DB_BIND_DYNAMIC);
+            DBBind(hStmt, 96, DB_SQLTYPE_VARCHAR, WideStringFromMBString(m_snmpTrapSecurity->getPrivPassword()), DB_BIND_DYNAMIC);
+            DBBind(hStmt, 97, DB_SQLTYPE_INTEGER, trapMethods);
+         }
+         else
+         {
+            DBBind(hStmt, 93, DB_SQLTYPE_INTEGER, static_cast<int32_t>(0));
+            DBBind(hStmt, 94, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
+            DBBind(hStmt, 95, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
+            DBBind(hStmt, 96, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
+            DBBind(hStmt, 97, DB_SQLTYPE_INTEGER, static_cast<int32_t>(0));
+         }
+         DBBind(hStmt, 98, DB_SQLTYPE_INTEGER, m_id);
 
          success = DBExecute(hStmt);
          DBFreeStatement(hStmt);
@@ -9421,6 +9471,15 @@ void Node::fillMessageLocked(NXCPMessage *msg, uint32_t userId)
    msg->setField(VID_PATH_CHECK_NODE_ID, m_pathCheckResult.rootCauseNodeId);
    msg->setField(VID_PATH_CHECK_INTERFACE_ID, m_pathCheckResult.rootCauseInterfaceId);
    msg->setFieldFromTime(VID_DECOMMISSION_TIME, m_decommissionTime);
+
+   if (m_snmpTrapSecurity != nullptr)
+   {
+      msg->setField(VID_SNMP_TRAP_VERSION, static_cast<uint16_t>(m_snmpTrapVersion));
+      msg->setFieldFromMBString(VID_SNMP_TRAP_AUTH_OBJECT, m_snmpTrapSecurity->getAuthName());
+      msg->setFieldFromMBString(VID_SNMP_TRAP_AUTH_PASSWORD, m_snmpTrapSecurity->getAuthPassword());
+      msg->setFieldFromMBString(VID_SNMP_TRAP_PRIV_PASSWORD, m_snmpTrapSecurity->getPrivPassword());
+      msg->setField(VID_SNMP_TRAP_USM_METHODS, static_cast<uint16_t>(static_cast<uint16_t>(m_snmpTrapSecurity->getAuthMethod()) | (static_cast<uint16_t>(m_snmpTrapSecurity->getPrivMethod()) << 8)));
+   }
 }
 
 /**
@@ -9651,6 +9710,41 @@ uint32_t Node::modifyFromMessageInternal(const NXCPMessage& msg, ClientSession *
 
       if (m_snmpVersion == SNMP_VERSION_3)
          m_snmpSecurity->recalculateKeys();
+   }
+
+   // Change SNMP trap credentials
+   if (msg.isFieldExist(VID_SNMP_TRAP_AUTH_OBJECT))
+   {
+      char mbBuffer[256];
+      msg.getFieldAsMBString(VID_SNMP_TRAP_AUTH_OBJECT, mbBuffer, 256);
+      if (mbBuffer[0] != 0)
+      {
+         // Set separate trap credentials
+         if (msg.isFieldExist(VID_SNMP_TRAP_VERSION))
+            m_snmpTrapVersion = static_cast<SNMP_Version>(msg.getFieldAsUInt16(VID_SNMP_TRAP_VERSION));
+
+         delete m_snmpTrapSecurity;
+         if (m_snmpTrapVersion == SNMP_VERSION_3)
+         {
+            char authPassword[256], privPassword[256];
+            msg.getFieldAsMBString(VID_SNMP_TRAP_AUTH_PASSWORD, authPassword, 256);
+            msg.getFieldAsMBString(VID_SNMP_TRAP_PRIV_PASSWORD, privPassword, 256);
+            uint16_t methods = msg.getFieldAsUInt16(VID_SNMP_TRAP_USM_METHODS);
+            m_snmpTrapSecurity = new SNMP_SecurityContext(mbBuffer, authPassword, privPassword,
+                     static_cast<SNMP_AuthMethod>(methods & 0xFF), static_cast<SNMP_EncryptionMethod>(methods >> 8));
+            m_snmpTrapSecurity->recalculateKeys();
+         }
+         else
+         {
+            m_snmpTrapSecurity = new SNMP_SecurityContext(mbBuffer);
+         }
+      }
+      else
+      {
+         // Empty auth object means revert to polling credentials
+         delete m_snmpTrapSecurity;
+         m_snmpTrapSecurity = nullptr;
+      }
    }
 
    // Change EtherNet/IP port
@@ -11250,6 +11344,20 @@ SNMP_SecurityContext *Node::getSnmpSecurityContext() const
 {
    lockProperties();
    SNMP_SecurityContext *ctx = new SNMP_SecurityContext(m_snmpSecurity);
+   unlockProperties();
+   return ctx;
+}
+
+/**
+ * Get SNMP security context for trap reception
+ * Returns separate trap credentials if configured, otherwise falls back to polling credentials
+ * ATTENTION: This method returns new copy of security context
+ * which must be destroyed by the caller
+ */
+SNMP_SecurityContext *Node::getSnmpTrapSecurityContext() const
+{
+   lockProperties();
+   SNMP_SecurityContext *ctx = (m_snmpTrapSecurity != nullptr) ? new SNMP_SecurityContext(m_snmpTrapSecurity) : new SNMP_SecurityContext(m_snmpSecurity);
    unlockProperties();
    return ctx;
 }

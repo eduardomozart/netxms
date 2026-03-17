@@ -3884,6 +3884,8 @@ protected:
    uint16_t m_snmpPort;
    uint16_t m_nUseIfXTable;
    SNMP_SecurityContext *m_snmpSecurity;
+   SNMP_SecurityContext *m_snmpTrapSecurity;  // Separate credentials for trap reception (null = use m_snmpSecurity)
+   SNMP_Version m_snmpTrapVersion;            // Only used when m_snmpTrapSecurity != nullptr
    char m_snmpCodepage[16];
    uuid m_agentId;
    TCHAR *m_agentCertSubject;
@@ -4433,6 +4435,7 @@ public:
    shared_ptr<AgentConnectionEx> acquireProxyConnection(ProxyType type, bool validate = false);
    SNMP_Transport *createSnmpTransport(uint16_t port = 0, SNMP_Version version = SNMP_VERSION_DEFAULT, const char *context = nullptr, const char *community = nullptr);
    SNMP_SecurityContext *getSnmpSecurityContext() const;
+   SNMP_SecurityContext *getSnmpTrapSecurityContext() const;
 
    shared_ptr<SSHInteractiveChannel> openInteractiveSSHChannel(const wchar_t *login, const wchar_t *password, uint32_t keyId);
 

@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2022 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@ package org.netxms.nxmc.modules.objects.propertypages;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormLayout;
@@ -63,6 +63,13 @@ public class SNMP extends ObjectPropertyPage
    private PasswordInputField snmpPrivPassword;
    private LabeledText snmpCodepage;
    private Button snmpSettingsLocked;
+   private Button useSeparateTrapCredentials;
+   private Combo trapSnmpVersion;
+   private Combo trapSnmpAuth;
+   private Combo trapSnmpPriv;
+   private PasswordInputField trapSnmpAuthName;
+   private PasswordInputField trapSnmpAuthPassword;
+   private PasswordInputField trapSnmpPrivPassword;
 
    /**
     * Create new page.
@@ -124,13 +131,7 @@ public class SNMP extends ObjectPropertyPage
       snmpVersion.add("2c"); //$NON-NLS-1$
       snmpVersion.add("3"); //$NON-NLS-1$
       snmpVersion.select(snmpVersionToIndex(node.getSnmpVersion()));
-      snmpVersion.addSelectionListener(new SelectionListener() {
-         @Override
-         public void widgetDefaultSelected(SelectionEvent e)
-         {
-            widgetSelected(e);
-         }
-
+      snmpVersion.addSelectionListener(new SelectionAdapter() {
          @Override
          public void widgetSelected(SelectionEvent e)
          {
@@ -231,6 +232,100 @@ public class SNMP extends ObjectPropertyPage
       fd.top = new FormAttachment(snmpCodepage, 0, SWT.BOTTOM);
       snmpSettingsLocked.setLayoutData(fd);
 
+      useSeparateTrapCredentials = new Button(dialogArea, SWT.CHECK);
+      useSeparateTrapCredentials.setText(i18n.tr("Use separate credentials for SNMP trap reception"));
+      useSeparateTrapCredentials.setSelection(node.hasSnmpTrapCredentials());
+      fd = new FormData();
+      fd.left = new FormAttachment(0, 0);
+      fd.right = new FormAttachment(100, 0);
+      fd.top = new FormAttachment(snmpSettingsLocked, 0, SWT.BOTTOM);
+      useSeparateTrapCredentials.setLayoutData(fd);
+      useSeparateTrapCredentials.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e)
+         {
+            onTrapCredentialCheckChange();
+         }
+      });
+
+      fd = new FormData();
+      fd.left = new FormAttachment(0, 0);
+      fd.top = new FormAttachment(useSeparateTrapCredentials, 0, SWT.BOTTOM);
+      trapSnmpVersion = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Trap SNMP version"), fd);
+      trapSnmpVersion.add("1");
+      trapSnmpVersion.add("2c");
+      trapSnmpVersion.add("3");
+      trapSnmpVersion.select(node.hasSnmpTrapCredentials() ? snmpVersionToIndex(node.getSnmpTrapVersion()) : 1);
+      trapSnmpVersion.setEnabled(node.hasSnmpTrapCredentials());
+      trapSnmpVersion.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e)
+         {
+            onTrapSnmpVersionChange();
+         }
+      });
+
+      trapSnmpAuthName = new PasswordInputField(dialogArea, SWT.NONE);
+      boolean trapIsV3 = node.hasSnmpTrapCredentials() && node.getSnmpTrapVersion() == SnmpVersion.V3;
+      trapSnmpAuthName.setLabel(trapIsV3 ? i18n.tr("Trap user name") : i18n.tr("Trap community string"));
+      trapSnmpAuthName.setText(node.hasSnmpTrapCredentials() ? node.getSnmpTrapAuthName() : "");
+      trapSnmpAuthName.setEnabled(node.hasSnmpTrapCredentials());
+      fd = new FormData();
+      fd.left = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
+      fd.top = new FormAttachment(useSeparateTrapCredentials, 0, SWT.BOTTOM);
+      fd.right = new FormAttachment(100, 0);
+      trapSnmpAuthName.setLayoutData(fd);
+
+      fd = new FormData();
+      fd.left = new FormAttachment(0, 0);
+      fd.top = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.BOTTOM);
+      fd.right = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
+      trapSnmpAuth = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Authentication"), fd);
+      trapSnmpAuth.add(i18n.tr("NONE"));
+      trapSnmpAuth.add(i18n.tr("MD5"));
+      trapSnmpAuth.add(i18n.tr("SHA1"));
+      trapSnmpAuth.add("SHA224");
+      trapSnmpAuth.add("SHA256");
+      trapSnmpAuth.add("SHA384");
+      trapSnmpAuth.add("SHA512");
+      trapSnmpAuth.select(node.hasSnmpTrapCredentials() ? node.getSnmpTrapAuthMethod() : 0);
+      trapSnmpAuth.setEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+
+      trapSnmpAuthPassword = new PasswordInputField(dialogArea, SWT.NONE);
+      trapSnmpAuthPassword.setLabel(i18n.tr("Trap authentication password"));
+      trapSnmpAuthPassword.setText(node.hasSnmpTrapCredentials() && node.getSnmpTrapAuthPassword() != null ? node.getSnmpTrapAuthPassword() : "");
+      trapSnmpAuthPassword.setEnabled(node.hasSnmpTrapCredentials());
+      trapSnmpAuthPassword.setInputControlsEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+      fd = new FormData();
+      fd.left = new FormAttachment(trapSnmpAuthName, 0, SWT.LEFT);
+      fd.top = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.BOTTOM);
+      fd.right = new FormAttachment(100, 0);
+      trapSnmpAuthPassword.setLayoutData(fd);
+
+      fd = new FormData();
+      fd.left = new FormAttachment(0, 0);
+      fd.top = new FormAttachment(trapSnmpAuth.getParent(), 0, SWT.BOTTOM);
+      fd.right = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
+      trapSnmpPriv = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Encryption"), fd);
+      trapSnmpPriv.add(i18n.tr("NONE"));
+      trapSnmpPriv.add("DES");
+      trapSnmpPriv.add("AES-128");
+      trapSnmpPriv.add("AES-192");
+      trapSnmpPriv.add("AES-256");
+      trapSnmpPriv.select(node.hasSnmpTrapCredentials() ? node.getSnmpTrapPrivMethod() : 0);
+      trapSnmpPriv.setEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+
+      trapSnmpPrivPassword = new PasswordInputField(dialogArea, SWT.NONE);
+      trapSnmpPrivPassword.setLabel(i18n.tr("Trap encryption password"));
+      trapSnmpPrivPassword.setText(node.hasSnmpTrapCredentials() && node.getSnmpTrapPrivPassword() != null ? node.getSnmpTrapPrivPassword() : "");
+      trapSnmpPrivPassword.setEnabled(node.hasSnmpTrapCredentials());
+      trapSnmpPrivPassword.setInputControlsEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+      fd = new FormData();
+      fd.left = new FormAttachment(trapSnmpPriv.getParent(), 0, SWT.RIGHT);
+      fd.top = new FormAttachment(trapSnmpAuthPassword, 0, SWT.BOTTOM);
+      fd.right = new FormAttachment(100, 0);
+      trapSnmpPrivPassword.setLayoutData(fd);
+
       return dialogArea;
    }
 
@@ -278,6 +373,42 @@ public class SNMP extends ObjectPropertyPage
    }
 
    /**
+    * Handler for trap credential checkbox change
+    */
+   private void onTrapCredentialCheckChange()
+   {
+      boolean enabled = useSeparateTrapCredentials.getSelection();
+      trapSnmpVersion.setEnabled(enabled);
+      trapSnmpAuthName.setEnabled(enabled);
+      trapSnmpAuthPassword.setEnabled(enabled);
+      trapSnmpPrivPassword.setEnabled(enabled);
+      if (enabled)
+      {
+         onTrapSnmpVersionChange();
+      }
+      else
+      {
+         trapSnmpAuth.setEnabled(false);
+         trapSnmpPriv.setEnabled(false);
+         trapSnmpAuthPassword.setInputControlsEnabled(false);
+         trapSnmpPrivPassword.setInputControlsEnabled(false);
+      }
+   }
+
+   /**
+    * Handler for trap SNMP version change
+    */
+   private void onTrapSnmpVersionChange()
+   {
+      boolean isV3 = (trapSnmpVersion.getSelectionIndex() == 2);
+      trapSnmpAuthName.setLabel(isV3 ? i18n.tr("Trap user name") : i18n.tr("Trap community string"));
+      trapSnmpAuth.setEnabled(isV3);
+      trapSnmpPriv.setEnabled(isV3);
+      trapSnmpAuthPassword.setInputControlsEnabled(isV3);
+      trapSnmpPrivPassword.setInputControlsEnabled(isV3);
+   }
+
+   /**
     * @see org.netxms.nxmc.modules.objects.propertypages.ObjectPropertyPage#applyChanges(boolean)
     */
    @Override
@@ -303,6 +434,17 @@ public class SNMP extends ObjectPropertyPage
       md.setSnmpProxy(snmpProxy.getObjectId());
       md.setSnmpAuthentication(snmpAuthName.getText(), snmpAuth.getSelectionIndex(), snmpAuthPassword.getText(), snmpPriv.getSelectionIndex(), snmpPrivPassword.getText());
       md.setSNMPCodepage(snmpCodepage.getText());
+
+      if (useSeparateTrapCredentials.getSelection())
+      {
+         md.setSnmpTrapVersion(snmpIndexToVersion(trapSnmpVersion.getSelectionIndex()));
+         md.setSnmpTrapAuthentication(trapSnmpAuthName.getText(), trapSnmpAuth.getSelectionIndex(),
+               trapSnmpAuthPassword.getText(), trapSnmpPriv.getSelectionIndex(), trapSnmpPrivPassword.getText());
+      }
+      else
+      {
+         md.clearSnmpTrapAuthentication();
+      }
 
       int flags = node.getFlags();
       if (snmpSettingsLocked.getSelection())
@@ -352,5 +494,13 @@ public class SNMP extends ObjectPropertyPage
       snmpProxy.setObjectId(0);
       onSnmpVersionChange();
       snmpCodepage.setText("");
+      useSeparateTrapCredentials.setSelection(false);
+      trapSnmpVersion.select(1);
+      trapSnmpAuth.select(0);
+      trapSnmpPriv.select(0);
+      trapSnmpAuthName.setText("");
+      trapSnmpAuthPassword.setText("");
+      trapSnmpPrivPassword.setText("");
+      onTrapCredentialCheckChange();
    }
 }

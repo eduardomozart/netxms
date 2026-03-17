@@ -24,6 +24,26 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.17 to 61.18
+ */
+static bool H_UpgradeFromV17()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE nodes ADD trap_snmp_version integer\n"
+      L"ALTER TABLE nodes ADD trap_community varchar(127)\n"
+      L"ALTER TABLE nodes ADD trap_usm_auth_password varchar(127)\n"
+      L"ALTER TABLE nodes ADD trap_usm_priv_password varchar(127)\n"
+      L"ALTER TABLE nodes ADD trap_usm_methods integer\n"
+      L"UPDATE nodes SET trap_snmp_version=0,trap_usm_methods=0\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"nodes", L"trap_snmp_version"));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"nodes", L"trap_usm_methods"));
+   CHK_EXEC(SetMinorSchemaVersion(18));
+   return true;
+}
+
+/**
  * Upgrade from 61.16 to 61.17
  */
 static bool H_UpgradeFromV16()
@@ -449,6 +469,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 17, 61, 18, H_UpgradeFromV17 },
    { 16, 61, 17, H_UpgradeFromV16 },
    { 15, 61, 16, H_UpgradeFromV15 },
    { 14, 61, 15, H_UpgradeFromV14 },

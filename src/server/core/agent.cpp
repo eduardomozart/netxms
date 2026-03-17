@@ -473,7 +473,7 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
          // Do not check for node existence here - it will be checked by ProcessTrap
 
          SNMP_PDU *pdu = new SNMP_PDU;
-         SNMP_SecurityContext *sctx = (originNode != nullptr) ? originNode->getSnmpSecurityContext() : nullptr;
+         SNMP_SecurityContext *sctx = (originNode != nullptr) ? originNode->getSnmpTrapSecurityContext() : nullptr;
          if (pdu->parse(pduBytes, pduLenght, sctx, true))
          {
             debugPrintf(6, _T("AgentConnectionEx::onSnmpTrap(): received PDU of type %d"), pdu->getCommand());

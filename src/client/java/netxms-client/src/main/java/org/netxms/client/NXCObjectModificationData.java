@@ -80,6 +80,13 @@ public class NXCObjectModificationData
    private String snmpAuthName;
    private String snmpAuthPassword;
    private String snmpPrivPassword;
+   private SnmpVersion snmpTrapVersion;
+   private Integer snmpTrapAuthMethod;
+   private Integer snmpTrapPrivMethod;
+   private String snmpTrapAuthName;
+   private String snmpTrapAuthPassword;
+   private String snmpTrapPrivPassword;
+   private boolean clearSnmpTrapCredentials;
    private Long snmpProxy;
    private Long mqttProxy;
    private Long icmpProxy;
@@ -528,6 +535,105 @@ public class NXCObjectModificationData
    public void setSnmpAuthentication(String authName)
    {
       setSnmpAuthentication(authName, 0, "", 0, "");
+   }
+
+   /**
+    * Set separate SNMP trap authentication credentials.
+    *
+    * @param authName authentication name (user name for SNMPv3 or community for SNMP v1/2)
+    * @param authMethod SNMPv3 authentication method
+    * @param authPassword SNMPv3 authentication password
+    * @param privMethod SNMPv3 encryption method
+    * @param privPassword SNMPv3 encryption password
+    */
+   public void setSnmpTrapAuthentication(String authName, int authMethod, String authPassword, int privMethod, String privPassword)
+   {
+      this.snmpTrapAuthName = authName;
+      this.snmpTrapAuthMethod = authMethod;
+      this.snmpTrapAuthPassword = authPassword;
+      this.snmpTrapPrivMethod = privMethod;
+      this.snmpTrapPrivPassword = privPassword;
+      this.clearSnmpTrapCredentials = false;
+   }
+
+   /**
+    * Set SNMP trap version.
+    *
+    * @param version SNMP version for trap credentials
+    */
+   public void setSnmpTrapVersion(SnmpVersion version)
+   {
+      this.snmpTrapVersion = version;
+   }
+
+   /**
+    * Clear separate SNMP trap credentials (revert to using polling credentials).
+    */
+   public void clearSnmpTrapAuthentication()
+   {
+      this.clearSnmpTrapCredentials = true;
+      this.snmpTrapAuthName = null;
+      this.snmpTrapAuthPassword = null;
+      this.snmpTrapPrivPassword = null;
+      this.snmpTrapAuthMethod = null;
+      this.snmpTrapPrivMethod = null;
+      this.snmpTrapVersion = null;
+   }
+
+   /**
+    * @return the snmpTrapVersion
+    */
+   public SnmpVersion getSnmpTrapVersion()
+   {
+      return snmpTrapVersion;
+   }
+
+   /**
+    * @return the snmpTrapAuthName
+    */
+   public String getSnmpTrapAuthName()
+   {
+      return snmpTrapAuthName;
+   }
+
+   /**
+    * @return the snmpTrapAuthPassword
+    */
+   public String getSnmpTrapAuthPassword()
+   {
+      return snmpTrapAuthPassword;
+   }
+
+   /**
+    * @return the snmpTrapPrivPassword
+    */
+   public String getSnmpTrapPrivPassword()
+   {
+      return snmpTrapPrivPassword;
+   }
+
+   /**
+    * @return the snmpTrapAuthMethod
+    */
+   public Integer getSnmpTrapAuthMethod()
+   {
+      return snmpTrapAuthMethod;
+   }
+
+   /**
+    * @return the snmpTrapPrivMethod
+    */
+   public Integer getSnmpTrapPrivMethod()
+   {
+      return snmpTrapPrivMethod;
+   }
+
+   /**
+    * @return true if trap credentials should be cleared
+    */
+   public boolean isClearSnmpTrapCredentials()
+   {
+      return clearSnmpTrapCredentials;
    }
 
    /**

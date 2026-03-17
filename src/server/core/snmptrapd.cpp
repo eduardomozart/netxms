@@ -450,7 +450,7 @@ static SNMP_SecurityContext *ContextFinder(struct sockaddr *addr, socklen_t addr
    TCHAR buffer[64];
    nxlog_debug_tag(DEBUG_TAG, 6, _T("SNMPTrapReceiver: looking for SNMP security context for node %s %s"),
       ipAddr.toString(buffer), (node != nullptr) ? node->getName() : _T("<unknown>"));
-   return (node != nullptr) ? node->getSnmpSecurityContext() : nullptr;
+   return (node != nullptr) ? node->getSnmpTrapSecurityContext() : nullptr;
 }
 
 /**

@@ -7253,6 +7253,22 @@ public class NXCSession
          msg.setFieldInt16(NXCPCodes.VID_SNMP_USM_METHODS, methods);
       }
 
+      if (data.isClearSnmpTrapCredentials())
+      {
+         msg.setField(NXCPCodes.VID_SNMP_TRAP_AUTH_OBJECT, "");
+      }
+      else if (data.getSnmpTrapAuthName() != null)
+      {
+         msg.setField(NXCPCodes.VID_SNMP_TRAP_AUTH_OBJECT, data.getSnmpTrapAuthName());
+         msg.setField(NXCPCodes.VID_SNMP_TRAP_AUTH_PASSWORD, data.getSnmpTrapAuthPassword() != null ? data.getSnmpTrapAuthPassword() : "");
+         msg.setField(NXCPCodes.VID_SNMP_TRAP_PRIV_PASSWORD, data.getSnmpTrapPrivPassword() != null ? data.getSnmpTrapPrivPassword() : "");
+         int trapMethods = (data.getSnmpTrapAuthMethod() != null ? data.getSnmpTrapAuthMethod() : 0) |
+               ((data.getSnmpTrapPrivMethod() != null ? data.getSnmpTrapPrivMethod() : 0) << 8);
+         msg.setFieldInt16(NXCPCodes.VID_SNMP_TRAP_USM_METHODS, trapMethods);
+         if (data.getSnmpTrapVersion() != null)
+            msg.setFieldInt16(NXCPCodes.VID_SNMP_TRAP_VERSION, data.getSnmpTrapVersion().getValue());
+      }
+
       if (data.getSnmpProxy() != null)
       {
          msg.setFieldInt32(NXCPCodes.VID_SNMP_PROXY, data.getSnmpProxy().intValue());
