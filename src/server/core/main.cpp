@@ -1682,6 +1682,9 @@ void NXCORE_EXPORTABLE Shutdown()
 
    ThreadPoolDestroy(g_discoveryThreadPool);
 
+   ShutdownAlarmManager();
+   nxlog_debug_tag(DEBUG_TAG_SHUTDOWN, 1, _T("Alarm manager stopped"));
+
    StopDBWriter();
    nxlog_debug_tag(DEBUG_TAG_SHUTDOWN, 1, _T("Database writer stopped"));
 
@@ -1692,7 +1695,6 @@ void NXCORE_EXPORTABLE Shutdown()
 
    CleanupActions();
    ShutdownEventSubsystem();
-   ShutdownAlarmManager();
    ShutdownIncidentManager();
    ShutdownNotificationChannels();
    nxlog_debug_tag(DEBUG_TAG_SHUTDOWN, 1, _T("Event processing stopped"));
@@ -1757,6 +1759,9 @@ void NXCORE_EXPORTABLE FastShutdown(ShutdownReason reason)
 
 	// Remove database lock first, because we have a chance to lose DB connection
 	UnlockDatabase();
+
+	// Stop alarm database writer before general database writer
+	ShutdownAlarmManager();
 
 	// Stop database writers
 	StopDBWriter();

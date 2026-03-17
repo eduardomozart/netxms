@@ -270,6 +270,57 @@ static bool s_rootCauseUpdateNeeded = false;
 static bool s_rootCauseUpdatePossible = false;
 
 /**
+ * Alarm DB write request types
+ */
+enum AlarmDbWriteType
+{
+   ALARM_DB_INSERT = 0,
+   ALARM_DB_UPDATE = 1
+};
+
+/**
+ * Alarm DB write request - snapshot of alarm fields for asynchronous database write
+ */
+struct AlarmDbWriteRequest
+{
+   AlarmDbWriteType type;
+   uint32_t alarmId;
+   uint32_t parentAlarmId;
+   uint64_t sourceEventId;
+   uint32_t sourceObject;
+   int32_t zoneUIN;
+   uint32_t sourceEventCode;
+   uint32_t dciId;
+   BYTE currentSeverity;
+   BYTE originalSeverity;
+   BYTE state;
+   BYTE helpDeskState;
+   uint32_t ackByUser;
+   uint32_t resolvedByUser;
+   uint32_t termByUser;
+   uint32_t repeatCount;
+   uint32_t timeout;
+   uint32_t timeoutEvent;
+   uint32_t commentCount;
+   time_t creationTime;
+   time_t lastChangeTime;
+   time_t lastStateChangeTime;
+   time_t ackTimeout;
+   uuid ruleGuid;
+   TCHAR message[MAX_EVENT_MSG_LENGTH];
+   TCHAR key[MAX_DB_STRING];
+   TCHAR helpDeskRef[MAX_HELPDESK_REF_LEN];
+   TCHAR ruleDescription[MAX_DB_STRING];
+   TCHAR *eventTags;
+   TCHAR *rcaScriptName;
+   TCHAR *impact;
+   TCHAR *categoryList;
+};
+
+static ObjectQueue<AlarmDbWriteRequest> s_alarmDbWriterQueue;
+static THREAD s_alarmDbWriterThread = INVALID_THREAD_HANDLE;
+
+/**
  * Callback for client session enumeration
  */
 static void SendAlarmNotification(ClientSession *session, std::pair<uint32_t, const Alarm*> *data)
@@ -683,63 +734,199 @@ bool Alarm::checkCategoryAccess(GenericClientSession *session) const
 }
 
 /**
+ * Create a snapshot of alarm fields for asynchronous database write
+ */
+AlarmDbWriteRequest *Alarm::createDbWriteSnapshot(int type)
+{
+   AlarmDbWriteRequest *rq = MemAllocStruct<AlarmDbWriteRequest>();
+   rq->type = static_cast<AlarmDbWriteType>(type);
+   rq->alarmId = m_alarmId;
+   rq->parentAlarmId = m_parentAlarmId;
+   rq->sourceEventId = m_sourceEventId;
+   rq->sourceObject = m_sourceObject;
+   rq->zoneUIN = m_zoneUIN;
+   rq->sourceEventCode = m_sourceEventCode;
+   rq->dciId = m_dciId;
+   rq->currentSeverity = m_currentSeverity;
+   rq->originalSeverity = m_originalSeverity;
+   rq->state = m_state;
+   rq->helpDeskState = m_helpDeskState;
+   rq->ackByUser = m_ackByUser;
+   rq->resolvedByUser = m_resolvedByUser;
+   rq->termByUser = m_termByUser;
+   rq->repeatCount = m_repeatCount;
+   rq->timeout = m_timeout;
+   rq->timeoutEvent = m_timeoutEvent;
+   rq->commentCount = m_commentCount;
+   rq->creationTime = m_creationTime;
+   rq->lastChangeTime = m_lastChangeTime;
+   rq->lastStateChangeTime = m_lastStateChangeTime;
+   rq->ackTimeout = m_ackTimeout;
+   rq->ruleGuid = m_ruleGuid;
+   wcslcpy(rq->message, m_message, MAX_EVENT_MSG_LENGTH);
+   wcslcpy(rq->key, m_key, MAX_DB_STRING);
+   wcslcpy(rq->helpDeskRef, m_helpDeskRef, MAX_HELPDESK_REF_LEN);
+   wcslcpy(rq->ruleDescription, m_ruleDescription, MAX_DB_STRING);
+   rq->eventTags = MemCopyString(m_eventTags);
+   rq->rcaScriptName = MemCopyString(m_rcaScriptName);
+   rq->impact = MemCopyString(m_impact);
+   rq->categoryList = MemCopyString(categoryListToString());
+   return rq;
+}
+
+/**
+ * Free alarm DB write request
+ */
+static void FreeAlarmDbWriteRequest(AlarmDbWriteRequest *rq)
+{
+   MemFree(rq->eventTags);
+   MemFree(rq->rcaScriptName);
+   MemFree(rq->impact);
+   MemFree(rq->categoryList);
+   MemFree(rq);
+}
+
+/**
+ * Background thread for writing alarm changes to database
+ */
+static void AlarmDbWriterThread()
+{
+   ThreadSetName("DBWriter/Alarm");
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Alarm database writer thread started");
+
+   while(true)
+   {
+      AlarmDbWriteRequest *rq = s_alarmDbWriterQueue.getOrBlock();
+      if (rq == INVALID_POINTER_VALUE)
+         break;
+
+      DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+
+      bool success = false;
+      if (rq->type == ALARM_DB_INSERT)
+      {
+         DB_STATEMENT hStmt = DBPrepare(hdb,
+                    L"INSERT INTO alarms (alarm_id,parent_alarm_id,creation_time,last_change_time,source_object_id,zone_uin,"
+                    L"source_event_code,message,original_severity,current_severity,alarm_key,alarm_state,ack_by,resolved_by,"
+                    L"hd_state,hd_ref,repeat_count,term_by,timeout,timeout_event,source_event_id,ack_timeout,dci_id,"
+                    L"alarm_category_ids,rule_guid,rule_description,event_tags,rca_script_name,impact,last_state_change_time) "
+                    L"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+         if (hStmt != nullptr)
+         {
+            DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, rq->alarmId);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, rq->parentAlarmId);
+            DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->creationTime));
+            DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->lastChangeTime));
+            DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, rq->sourceObject);
+            DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, rq->zoneUIN);
+            DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, rq->sourceEventCode);
+            DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, rq->message, DB_BIND_STATIC, MAX_EVENT_MSG_LENGTH);
+            DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->originalSeverity));
+            DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->currentSeverity));
+            DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, rq->key, DB_BIND_STATIC, MAX_DB_STRING);
+            DBBind(hStmt, 12, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->state));
+            DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->ackByUser));
+            DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->resolvedByUser));
+            DBBind(hStmt, 15, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->helpDeskState));
+            DBBind(hStmt, 16, DB_SQLTYPE_VARCHAR, rq->helpDeskRef, DB_BIND_STATIC, MAX_HELPDESK_REF_LEN);
+            DBBind(hStmt, 17, DB_SQLTYPE_INTEGER, rq->repeatCount);
+            DBBind(hStmt, 18, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->termByUser));
+            DBBind(hStmt, 19, DB_SQLTYPE_INTEGER, rq->timeout);
+            DBBind(hStmt, 20, DB_SQLTYPE_INTEGER, rq->timeoutEvent);
+            DBBind(hStmt, 21, DB_SQLTYPE_BIGINT, rq->sourceEventId);
+            DBBind(hStmt, 22, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->ackTimeout));
+            DBBind(hStmt, 23, DB_SQLTYPE_INTEGER, rq->dciId);
+            DBBind(hStmt, 24, DB_SQLTYPE_VARCHAR, rq->categoryList, DB_BIND_STATIC);
+            if (!rq->ruleGuid.isNull())
+            {
+               DBBind(hStmt, 25, DB_SQLTYPE_VARCHAR, rq->ruleGuid);
+            }
+            else
+            {
+               DBBind(hStmt, 25, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
+            }
+            DBBind(hStmt, 26, DB_SQLTYPE_VARCHAR, rq->ruleDescription, DB_BIND_STATIC);
+            DBBind(hStmt, 27, DB_SQLTYPE_VARCHAR, rq->eventTags, DB_BIND_STATIC, 2000);
+            DBBind(hStmt, 28, DB_SQLTYPE_VARCHAR, rq->rcaScriptName, DB_BIND_STATIC, MAX_DB_STRING);
+            DBBind(hStmt, 29, DB_SQLTYPE_VARCHAR, rq->impact, DB_BIND_STATIC, 1000);
+            DBBind(hStmt, 30, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->lastStateChangeTime));
+            success = DBExecute(hStmt);
+            DBFreeStatement(hStmt);
+         }
+      }
+      else
+      {
+         DB_STATEMENT hStmt = DBPrepare(hdb,
+                  L"UPDATE alarms SET alarm_state=?,ack_by=?,term_by=?,last_change_time=?,current_severity=?,repeat_count=?,"
+                  L"hd_state=?,hd_ref=?,timeout=?,timeout_event=?,message=?,resolved_by=?,ack_timeout=?,source_object_id=?,"
+                  L"dci_id=?,alarm_category_ids=?,rule_guid=?,rule_description=?,event_tags=?,parent_alarm_id=?,rca_script_name=?,"
+                  L"impact=?,last_state_change_time=? WHERE alarm_id=?");
+         if (hStmt != nullptr)
+         {
+            DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->state));
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->ackByUser));
+            DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->termByUser));
+            DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->lastChangeTime));
+            DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->currentSeverity));
+            DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, rq->repeatCount);
+            DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->helpDeskState));
+            DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, rq->helpDeskRef, DB_BIND_STATIC, MAX_HELPDESK_REF_LEN);
+            DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, rq->timeout);
+            DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, rq->timeoutEvent);
+            DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, rq->message, DB_BIND_STATIC, MAX_EVENT_MSG_LENGTH);
+            DBBind(hStmt, 12, DB_SQLTYPE_INTEGER, static_cast<int32_t>(rq->resolvedByUser));
+            DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->ackTimeout));
+            DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, rq->sourceObject);
+            DBBind(hStmt, 15, DB_SQLTYPE_INTEGER, rq->dciId);
+            DBBind(hStmt, 16, DB_SQLTYPE_VARCHAR, rq->categoryList, DB_BIND_STATIC);
+            if (!rq->ruleGuid.isNull())
+            {
+               DBBind(hStmt, 17, DB_SQLTYPE_VARCHAR, rq->ruleGuid);
+            }
+            else
+            {
+               DBBind(hStmt, 17, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
+            }
+            DBBind(hStmt, 18, DB_SQLTYPE_VARCHAR, rq->ruleDescription, DB_BIND_STATIC);
+            DBBind(hStmt, 19, DB_SQLTYPE_VARCHAR, rq->eventTags, DB_BIND_STATIC, 2000);
+            DBBind(hStmt, 20, DB_SQLTYPE_INTEGER, rq->parentAlarmId);
+            DBBind(hStmt, 21, DB_SQLTYPE_VARCHAR, rq->rcaScriptName, DB_BIND_STATIC, MAX_DB_STRING);
+            DBBind(hStmt, 22, DB_SQLTYPE_VARCHAR, rq->impact, DB_BIND_STATIC, 1000);
+            DBBind(hStmt, 23, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(rq->lastStateChangeTime));
+            DBBind(hStmt, 24, DB_SQLTYPE_INTEGER, rq->alarmId);
+            success = DBExecute(hStmt);
+            DBFreeStatement(hStmt);
+         }
+
+         if (success && (rq->state == ALARM_STATE_TERMINATED))
+         {
+            wchar_t query[256];
+            _sntprintf(query, 256, L"DELETE FROM alarm_events WHERE alarm_id=%u", rq->alarmId);
+            QueueSQLRequest(query);
+         }
+      }
+
+      if (success)
+      {
+         FreeAlarmDbWriteRequest(rq);
+      }
+      else
+      {
+         nxlog_debug_tag(DEBUG_TAG, 6, L"Failed to write alarm %u to database", rq->alarmId);
+         s_alarmDbWriterQueue.insert(rq); // put request back to queue for retry
+      }
+      DBConnectionPoolReleaseConnection(hdb);
+   }
+
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Alarm database writer thread stopped");
+}
+
+/**
  * Create alarm record in database
  */
 void Alarm::createInDatabase()
 {
-   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
-
-   DB_STATEMENT hStmt = DBPrepare(hdb,
-              _T("INSERT INTO alarms (alarm_id,parent_alarm_id,creation_time,last_change_time,source_object_id,zone_uin,")
-              _T("source_event_code,message,original_severity,current_severity,alarm_key,alarm_state,ack_by,resolved_by,")
-              _T("hd_state,hd_ref,repeat_count,term_by,timeout,timeout_event,source_event_id,ack_timeout,dci_id,")
-              _T("alarm_category_ids,rule_guid,rule_description,event_tags,rca_script_name,impact,last_state_change_time) ")
-              _T("VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
-   if (hStmt != nullptr)
-   {
-      DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_alarmId);
-      DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_parentAlarmId);
-      DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_creationTime));
-      DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_lastChangeTime));
-      DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, m_sourceObject);
-      DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_zoneUIN);
-      DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, m_sourceEventCode);
-      DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, m_message, DB_BIND_STATIC, MAX_EVENT_MSG_LENGTH);
-      DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_originalSeverity));
-      DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_currentSeverity));
-      DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, m_key, DB_BIND_STATIC, MAX_DB_STRING);
-      DBBind(hStmt, 12, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_state));
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_ackByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_resolvedByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 15, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_helpDeskState));
-      DBBind(hStmt, 16, DB_SQLTYPE_VARCHAR, m_helpDeskRef, DB_BIND_STATIC, MAX_HELPDESK_REF_LEN);
-      DBBind(hStmt, 17, DB_SQLTYPE_INTEGER, m_repeatCount);
-      DBBind(hStmt, 18, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_termByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 19, DB_SQLTYPE_INTEGER, m_timeout);
-      DBBind(hStmt, 20, DB_SQLTYPE_INTEGER, m_timeoutEvent);
-      DBBind(hStmt, 21, DB_SQLTYPE_BIGINT, m_sourceEventId);
-      DBBind(hStmt, 22, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_ackTimeout));
-      DBBind(hStmt, 23, DB_SQLTYPE_INTEGER, m_dciId);
-      DBBind(hStmt, 24, DB_SQLTYPE_VARCHAR, categoryListToString(), DB_BIND_TRANSIENT);
-      if (!m_ruleGuid.isNull())
-      {
-         DBBind(hStmt, 25, DB_SQLTYPE_VARCHAR, m_ruleGuid);
-      }
-      else
-      {
-         DBBind(hStmt, 25, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
-      }
-      DBBind(hStmt, 26, DB_SQLTYPE_VARCHAR, m_ruleDescription, DB_BIND_STATIC);
-      DBBind(hStmt, 27, DB_SQLTYPE_VARCHAR, m_eventTags, DB_BIND_STATIC, 2000);
-      DBBind(hStmt, 28, DB_SQLTYPE_VARCHAR, m_rcaScriptName, DB_BIND_STATIC, MAX_DB_STRING);
-      DBBind(hStmt, 29, DB_SQLTYPE_VARCHAR, m_impact, DB_BIND_STATIC, 1000);
-      DBBind(hStmt, 30, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_lastStateChangeTime));
-
-      DBExecute(hStmt);
-      DBFreeStatement(hStmt);
-   }
-
-   DBConnectionPoolReleaseConnection(hdb);
+   s_alarmDbWriterQueue.put(createDbWriteSnapshot(ALARM_DB_INSERT));
 }
 
 /**
@@ -747,57 +934,7 @@ void Alarm::createInDatabase()
  */
 void Alarm::updateInDatabase()
 {
-   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
-
-   DB_STATEMENT hStmt = DBPrepare(hdb,
-            _T("UPDATE alarms SET alarm_state=?,ack_by=?,term_by=?,last_change_time=?,current_severity=?,repeat_count=?,")
-            _T("hd_state=?,hd_ref=?,timeout=?,timeout_event=?,message=?,resolved_by=?,ack_timeout=?,source_object_id=?,")
-            _T("dci_id=?,alarm_category_ids=?,rule_guid=?,rule_description=?,event_tags=?,parent_alarm_id=?,rca_script_name=?,")
-            _T("impact=?,last_state_change_time=? WHERE alarm_id=?"));
-   if (hStmt != nullptr)
-   {
-      DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_state));
-      DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_ackByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_termByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_lastChangeTime));
-      DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_currentSeverity));
-      DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_repeatCount);
-      DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_helpDeskState));
-      DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, m_helpDeskRef, DB_BIND_STATIC, MAX_HELPDESK_REF_LEN);
-      DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, m_timeout);
-      DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, m_timeoutEvent);
-      DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, m_message, DB_BIND_STATIC, MAX_EVENT_MSG_LENGTH);
-      DBBind(hStmt, 12, DB_SQLTYPE_INTEGER, static_cast<int32_t>(m_resolvedByUser));  // cast to signed to save -1 for invalid UID
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_ackTimeout));
-      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, m_sourceObject);
-      DBBind(hStmt, 15, DB_SQLTYPE_INTEGER, m_dciId);
-      DBBind(hStmt, 16, DB_SQLTYPE_VARCHAR, categoryListToString(), DB_BIND_TRANSIENT);
-      if (!m_ruleGuid.isNull())
-      {
-         DBBind(hStmt, 17, DB_SQLTYPE_VARCHAR, m_ruleGuid);
-      }
-      else
-      {
-         DBBind(hStmt, 17, DB_SQLTYPE_VARCHAR, _T(""), DB_BIND_STATIC);
-      }
-      DBBind(hStmt, 18, DB_SQLTYPE_VARCHAR, m_ruleDescription, DB_BIND_STATIC);
-      DBBind(hStmt, 19, DB_SQLTYPE_VARCHAR, m_eventTags, DB_BIND_STATIC, 2000);
-      DBBind(hStmt, 20, DB_SQLTYPE_INTEGER, m_parentAlarmId);
-      DBBind(hStmt, 21, DB_SQLTYPE_VARCHAR, m_rcaScriptName, DB_BIND_STATIC, MAX_DB_STRING);
-      DBBind(hStmt, 22, DB_SQLTYPE_VARCHAR, m_impact, DB_BIND_STATIC, 1000);
-      DBBind(hStmt, 23, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_lastStateChangeTime));
-      DBBind(hStmt, 24, DB_SQLTYPE_INTEGER, m_alarmId);
-      DBExecute(hStmt);
-      DBFreeStatement(hStmt);
-   }
-
-	if (m_state == ALARM_STATE_TERMINATED)
-	{
-	   wchar_t query[256];
-		_sntprintf(query, 256, _T("DELETE FROM alarm_events WHERE alarm_id=%u"), m_alarmId);
-		QueueSQLRequest(query);
-	}
-   DBConnectionPoolReleaseConnection(hdb);
+   s_alarmDbWriterQueue.put(createDbWriteSnapshot(ALARM_DB_UPDATE));
 }
 
 /**
@@ -2849,9 +2986,18 @@ bool InitAlarmManager()
          return _CONTINUE;
       });
 
+   s_alarmDbWriterThread = ThreadCreateEx(AlarmDbWriterThread);
    s_watchdogThread = ThreadCreateEx(WatchdogThread);
    s_rootCauseUpdateThread = ThreadCreateEx(RootCauseUpdateThread);
    return true;
+}
+
+/**
+ * Get alarm DB writer queue size
+ */
+int64_t GetAlarmDbWriterQueueSize()
+{
+   return s_alarmDbWriterQueue.size();
 }
 
 /**
@@ -2862,4 +3008,6 @@ void ShutdownAlarmManager()
    s_shutdown.set();
    ThreadJoin(s_watchdogThread);
    ThreadJoin(s_rootCauseUpdateThread);
+   s_alarmDbWriterQueue.put(INVALID_POINTER_VALUE);
+   ThreadJoin(s_alarmDbWriterThread);
 }

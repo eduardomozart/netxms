@@ -46,6 +46,7 @@ extern ThreadPool *g_dataCollectorThreadPool;
 void ShowAgentTunnels(CONSOLE_CTX console);
 uint32_t BindAgentTunnel(uint32_t tunnelId, uint32_t nodeId, uint32_t userId);
 uint32_t UnbindAgentTunnel(uint32_t nodeId, uint32_t userId);
+int64_t GetAlarmDbWriterQueueSize();
 int64_t GetEventLogWriterQueueSize();
 int64_t GetEventProcessorQueueSize();
 void RangeScanCallback(const InetAddress& addr, int32_t zoneUIN, const Node *proxy, uint32_t rtt, const TCHAR *proto, ServerConsole *console, void *context);
@@ -1580,6 +1581,7 @@ int ProcessConsoleCommand(const wchar_t *command, ServerConsole *console)
          ShowQueueStats(console, &g_dciCacheLoaderQueue, _T("DCI cache loader"));
          ShowQueueStats(console, &g_templateUpdateQueue, _T("Template updater"));
          ShowQueueStats(console, &g_dbWriterQueue, _T("Database writer"));
+         ShowQueueStats(console, GetAlarmDbWriterQueueSize(), _T("Database writer (alarms)"));
          ShowQueueStats(console, GetIDataWriterQueueSize(), _T("Database writer (IData)"));
          ShowQueueStats(console, GetRawDataWriterQueueSize(), _T("Database writer (raw DCI values)"));
          ShowQueueStats(console, GetEventProcessorQueueSize(), _T("Event processor"));

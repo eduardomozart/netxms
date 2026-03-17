@@ -72,6 +72,7 @@ private:
    StringBuffer categoryListToString();
    void executeHookScript();
    void updateStateChangeLog(int prevState, uint32_t userId);
+   struct AlarmDbWriteRequest *createDbWriteSnapshot(int type);
 
 public:
    Alarm(Event *event, uint32_t parentAlarmId, const TCHAR *rcaScriptName, const uuid& ruleGuid, const TCHAR *ruleDescription,

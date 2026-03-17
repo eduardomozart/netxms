@@ -57,6 +57,7 @@ extern ThreadPool *g_dataCollectorThreadPool;
 extern ThreadPool *g_pollerThreadPool;
 extern ThreadPool *g_schedulerThreadPool;
 
+int64_t GetAlarmDbWriterQueueSize();
 int64_t GetEventLogWriterQueueSize();
 int64_t GetEventProcessorQueueSize();
 
@@ -112,7 +113,7 @@ inline void AddQueueToCollector(const TCHAR *name, int64_t (*function)())
  */
 static int64_t GetTotalDBWriterQueueSize()
 {
-   return GetIDataWriterQueueSize() + GetRawDataWriterQueueSize() + g_dbWriterQueue.size();
+   return GetIDataWriterQueueSize() + GetRawDataWriterQueueSize() + g_dbWriterQueue.size() + GetAlarmDbWriterQueueSize();
 }
 
 /**
@@ -124,6 +125,7 @@ void ServerStatCollector()
 
    s_queuesLock.lock();
    AddQueueToCollector(_T("DataCollector"), g_dataCollectorThreadPool);
+   AddQueueToCollector(_T("DBWriter.Alarms"), GetAlarmDbWriterQueueSize);
    AddQueueToCollector(_T("DBWriter.IData"), GetIDataWriterQueueSize);
    AddQueueToCollector(_T("DBWriter.Other"), &g_dbWriterQueue);
    AddQueueToCollector(_T("DBWriter.RawData"), GetRawDataWriterQueueSize);
