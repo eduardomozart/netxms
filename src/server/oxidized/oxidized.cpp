@@ -356,16 +356,16 @@ static DeviceBackupApiStatus OxidizedInitializeInterface()
  */
 static DeviceBackupInterface s_interface =
 {
-   .Initialize = OxidizedInitializeInterface,
-   .RegisterDevice = OxidizedRegisterDevice,
-   .DeleteDevice = OxidizedDeleteDevice,
-   .IsDeviceRegistered = OxidizedIsDeviceRegistered,
-   .ValidateDeviceRegistration = OxidizedValidateDeviceRegistration,
-   .StartJob = OxidizedStartJob,
-   .GetLastJobStatus = OxidizedGetLastJobStatus,
-   .GetLatestBackup = OxidizedGetLatestBackup,
-   .GetBackupList = OxidizedGetBackupList,
-   .GetBackupById = OxidizedGetBackupById
+   OxidizedInitializeInterface,
+   OxidizedRegisterDevice,
+   OxidizedDeleteDevice,
+   OxidizedIsDeviceRegistered,
+   OxidizedValidateDeviceRegistration,
+   OxidizedStartJob,
+   OxidizedGetLastJobStatus,
+   OxidizedGetLatestBackup,
+   OxidizedGetBackupList,
+   OxidizedGetBackupById
 };
 
 /**
