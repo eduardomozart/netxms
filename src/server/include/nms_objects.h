@@ -2547,25 +2547,8 @@ public:
    }
    void setPeer(Node *node, Interface *iface, LinkLayerProtocol protocol, bool reflection);
    void setPeer(AccessPoint *ap, LinkLayerProtocol protocol);
-   void clearPeer()
-   {
-      lockProperties();
-      clearPeerData();
-      unlockProperties();
-   }
-   bool clearExpiredPeerData(uint32_t maxAgeSeconds)
-   {
-      bool cleared = false;
-      time_t cutoffTime = time(nullptr) - maxAgeSeconds;
-      lockProperties();
-      if ((m_peerLastUpdated > 0) && (m_peerLastUpdated < cutoffTime))
-      {
-         clearPeerData();
-         cleared = true;
-      }
-      unlockProperties();
-      return cleared;
-   }
+   void clearPeer();
+   bool clearExpiredPeerData(uint32_t maxAgeSeconds);
    void setDescription(const TCHAR *description)
    {
       lockProperties();
@@ -4338,6 +4321,7 @@ public:
    shared_ptr<RoutingTable> getCachedRoutingTable() const { return GetAttributeWithLock(m_routingTable, m_routingTableMutex); }
    shared_ptr<NetworkPath> getLastKnownNetworkPath() const { return GetAttributeWithLock(m_lastKnownNetworkPath, m_mutexProperties); }
    shared_ptr<LinkLayerNeighbors> getLinkLayerNeighbors() const { return GetAttributeWithLock(m_linkLayerNeighbors, m_topologyMutex); }
+   void invalidateLinkLayerNeighbor(uint32_t ifIndex);
    shared_ptr<VlanList> getVlans() const { return GetAttributeWithLock(m_vlans, m_topologyMutex); }
    shared_ptr<ComponentTree> getComponents() const { return GetAttributeWithLock(m_components, m_mutexProperties); }
    shared_ptr<DeviceView> getDeviceView() const { return GetAttributeWithLock(m_deviceView, m_mutexProperties); }

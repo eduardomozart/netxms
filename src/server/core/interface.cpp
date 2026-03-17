@@ -1701,6 +1701,46 @@ void Interface::clearPeerData()
 }
 
 /**
+ * Clear peer information and invalidate cached link layer neighbor entry on parent node
+ */
+void Interface::clearPeer()
+{
+   lockProperties();
+   clearPeerData();
+   unlockProperties();
+
+   // Invalidate stale entry in parent node's cached link layer neighbor list
+   // and trigger topology poll to rebuild it with fresh data
+   shared_ptr<Node> parentNode = getParentNode();
+   if (parentNode != nullptr)
+      parentNode->invalidateLinkLayerNeighbor(m_index);
+}
+
+/**
+ * Clear expired peer information and invalidate cached link layer neighbor entry on parent node
+ */
+bool Interface::clearExpiredPeerData(uint32_t maxAgeSeconds)
+{
+   bool cleared = false;
+   time_t cutoffTime = time(nullptr) - maxAgeSeconds;
+   lockProperties();
+   if ((m_peerLastUpdated > 0) && (m_peerLastUpdated < cutoffTime))
+   {
+      clearPeerData();
+      cleared = true;
+   }
+   unlockProperties();
+
+   if (cleared)
+   {
+      shared_ptr<Node> parentNode = getParentNode();
+      if (parentNode != nullptr)
+         parentNode->invalidateLinkLayerNeighbor(m_index);
+   }
+   return cleared;
+}
+
+/**
  * Set MAC address for interface
  */
 void Interface::setMacAddress(const MacAddress& macAddr, bool updateMacDB)
