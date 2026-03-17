@@ -23,11 +23,9 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FormAttachment;
-import org.eclipse.swt.layout.FormData;
-import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.netxms.client.NXCObjectModificationData;
@@ -37,6 +35,7 @@ import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.snmp.SnmpVersion;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
+import org.netxms.nxmc.base.widgets.LabeledCombo;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.base.widgets.PasswordInputField;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -53,10 +52,10 @@ public class SNMP extends ObjectPropertyPage
    private I18n i18n = LocalizationHelper.getI18n(SNMP.class);
 
    private AbstractNode node;
-   private Combo snmpVersion;
+   private LabeledCombo snmpVersion;
    private LabeledText snmpPort;
-   private Combo snmpAuth;
-   private Combo snmpPriv;
+   private LabeledCombo snmpAuth;
+   private LabeledCombo snmpPriv;
    private ObjectSelector snmpProxy;
    private PasswordInputField snmpAuthName;
    private PasswordInputField snmpAuthPassword;
@@ -64,9 +63,9 @@ public class SNMP extends ObjectPropertyPage
    private LabeledText snmpCodepage;
    private Button snmpSettingsLocked;
    private Button useSeparateTrapCredentials;
-   private Combo trapSnmpVersion;
-   private Combo trapSnmpAuth;
-   private Combo trapSnmpPriv;
+   private LabeledCombo trapSnmpVersion;
+   private LabeledCombo trapSnmpAuth;
+   private LabeledCombo trapSnmpPriv;
    private PasswordInputField trapSnmpAuthName;
    private PasswordInputField trapSnmpAuthPassword;
    private PasswordInputField trapSnmpPrivPassword;
@@ -117,20 +116,21 @@ public class SNMP extends ObjectPropertyPage
       node = (AbstractNode)object;
 
       Composite dialogArea = new Composite(parent, SWT.NONE);
-      FormLayout dialogLayout = new FormLayout();
+      GridLayout dialogLayout = new GridLayout();
       dialogLayout.marginWidth = 0;
       dialogLayout.marginHeight = 0;
-      dialogLayout.spacing = WidgetHelper.DIALOG_SPACING;
+      dialogLayout.horizontalSpacing = WidgetHelper.DIALOG_SPACING;
+      dialogLayout.verticalSpacing = WidgetHelper.DIALOG_SPACING;
+      dialogLayout.numColumns = 4;
       dialogArea.setLayout(dialogLayout);
 
-      FormData fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(0, 0);
-      snmpVersion = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Version"), fd);
-      snmpVersion.add("1"); //$NON-NLS-1$
-      snmpVersion.add("2c"); //$NON-NLS-1$
-      snmpVersion.add("3"); //$NON-NLS-1$
+      snmpVersion = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      snmpVersion.setLabel(i18n.tr("Version"));
+      snmpVersion.add("1");
+      snmpVersion.add("2c");
+      snmpVersion.add("3");
       snmpVersion.select(snmpVersionToIndex(node.getSnmpVersion()));
+      snmpVersion.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
       snmpVersion.addSelectionListener(new SelectionAdapter() {
          @Override
          public void widgetSelected(SelectionEvent e)
@@ -138,15 +138,19 @@ public class SNMP extends ObjectPropertyPage
             onSnmpVersionChange();
          }
       });
-      
+
       snmpPort = new LabeledText(dialogArea, SWT.NONE);
       snmpPort.setLabel(i18n.tr("UDP Port"));
       snmpPort.setText(Integer.toString(node.getSnmpPort()));
+      snmpPort.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(snmpVersion.getParent(), 0, SWT.BOTTOM);
-      snmpAuth = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Authentication"), fd);
+      snmpAuthName = new PasswordInputField(dialogArea, SWT.NONE);
+      snmpAuthName.setLabel((node.getSnmpVersion() == SnmpVersion.V3) ? i18n.tr("User name") : i18n.tr("Community string"));
+      snmpAuthName.setText(node.getSnmpAuthName());
+      snmpAuthName.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
+
+      snmpAuth = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      snmpAuth.setLabel(i18n.tr("Authentication"));
       snmpAuth.add(i18n.tr("NONE"));
       snmpAuth.add(i18n.tr("MD5"));
       snmpAuth.add(i18n.tr("SHA1"));
@@ -156,11 +160,16 @@ public class SNMP extends ObjectPropertyPage
       snmpAuth.add("SHA512");
       snmpAuth.select(node.getSnmpAuthMethod());
       snmpAuth.setEnabled(node.getSnmpVersion() == SnmpVersion.V3);
+      snmpAuth.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
-      fd = new FormData();
-      fd.left = new FormAttachment(snmpAuth.getParent(), 0, SWT.RIGHT);
-      fd.top = new FormAttachment(snmpVersion.getParent(), 0, SWT.BOTTOM);
-      snmpPriv = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Encryption"), fd);
+      snmpAuthPassword = new PasswordInputField(dialogArea, SWT.NONE);
+      snmpAuthPassword.setLabel(i18n.tr("Authentication password"));
+      snmpAuthPassword.setText(node.getSnmpAuthPassword());
+      snmpAuthPassword.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
+      snmpAuthPassword.setInputControlsEnabled(node.getSnmpVersion() == SnmpVersion.V3);
+
+      snmpPriv = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      snmpPriv.setLabel(i18n.tr("Encryption"));
       snmpPriv.add(i18n.tr("NONE"));
       snmpPriv.add("DES");
       snmpPriv.add("AES-128");
@@ -168,78 +177,34 @@ public class SNMP extends ObjectPropertyPage
       snmpPriv.add("AES-256");
       snmpPriv.select(node.getSnmpPrivMethod());
       snmpPriv.setEnabled(node.getSnmpVersion() == SnmpVersion.V3);
-      
-      snmpProxy = new ObjectSelector(dialogArea, SWT.NONE, true);
-      snmpProxy.setLabel(i18n.tr("Proxy"));
-      snmpProxy.setClassFilter(ObjectSelectionFilterFactory.getInstance().createNodeSelectionFilter(false));
-      snmpProxy.setObjectId(node.getSnmpProxyId());
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(snmpAuth.getParent(), 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(snmpPriv.getParent(), 0, SWT.RIGHT);
-      snmpProxy.setLayoutData(fd);
-      
-      snmpAuthName = new PasswordInputField(dialogArea, SWT.NONE);
-      snmpAuthName.setLabel((node.getSnmpVersion() == SnmpVersion.V3) ? i18n.tr("User name") : i18n.tr("Community string"));
-      snmpAuthName.setText(node.getSnmpAuthName());
-      fd = new FormData();
-      fd.left = new FormAttachment(snmpProxy, 0, SWT.RIGHT);
-      fd.top = new FormAttachment(0, 0);
-      fd.right = new FormAttachment(100, 0);
-      snmpAuthName.setLayoutData(fd);
-
-      snmpAuthPassword = new PasswordInputField(dialogArea, SWT.NONE);
-      snmpAuthPassword.setLabel(i18n.tr("Authentication password"));
-      snmpAuthPassword.setText(node.getSnmpAuthPassword());
-      fd = new FormData();
-      fd.left = new FormAttachment(snmpAuthName, 0, SWT.LEFT);
-      fd.top = new FormAttachment(snmpAuth.getParent(), 0, SWT.TOP);
-      fd.right = new FormAttachment(100, 0);
-      snmpAuthPassword.setLayoutData(fd);
-      snmpAuthPassword.setInputControlsEnabled(node.getSnmpVersion() == SnmpVersion.V3);
+      snmpPriv.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
       snmpPrivPassword = new PasswordInputField(dialogArea, SWT.NONE);
       snmpPrivPassword.setLabel(i18n.tr("Encryption password"));
       snmpPrivPassword.setText(node.getSnmpPrivPassword());
-      fd = new FormData();
-      fd.left = new FormAttachment(snmpAuthName, 0, SWT.LEFT);
-      fd.top = new FormAttachment(snmpProxy, 0, SWT.TOP);
-      fd.right = new FormAttachment(100, 0);
-      snmpPrivPassword.setLayoutData(fd);
+      snmpPrivPassword.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
       snmpPrivPassword.setInputControlsEnabled(node.getSnmpVersion() == SnmpVersion.V3);
 
-      fd = new FormData();
-      fd.left = new FormAttachment(snmpVersion.getParent(), 0, SWT.RIGHT);
-      fd.right = new FormAttachment(snmpAuthName, 0, SWT.LEFT);
-      fd.top = new FormAttachment(0, 0);
-      snmpPort.setLayoutData(fd);
+      snmpProxy = new ObjectSelector(dialogArea, SWT.NONE, true);
+      snmpProxy.setLabel(i18n.tr("Proxy"));
+      snmpProxy.setClassFilter(ObjectSelectionFilterFactory.getInstance().createNodeSelectionFilter(false));
+      snmpProxy.setObjectId(node.getSnmpProxyId());
+      snmpProxy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
 
       snmpCodepage = new LabeledText(dialogArea, SWT.NONE);
       snmpCodepage.setLabel(i18n.tr("Codepage"));
       snmpCodepage.setText(node.getSNMPCodepage());
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.right = new FormAttachment(100, 0);
-      fd.top = new FormAttachment(snmpProxy, 0, SWT.BOTTOM);
-      snmpCodepage.setLayoutData(fd);
+      snmpCodepage.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
       snmpSettingsLocked = new Button(dialogArea, SWT.CHECK);
       snmpSettingsLocked.setText(i18n.tr("&Prevent automatic SNMP configuration changes"));
       snmpSettingsLocked.setSelection(node.isSnmpSettingsLocked());
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.right = new FormAttachment(100, 0);
-      fd.top = new FormAttachment(snmpCodepage, 0, SWT.BOTTOM);
-      snmpSettingsLocked.setLayoutData(fd);
+      snmpSettingsLocked.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, dialogLayout.numColumns, 1));
 
       useSeparateTrapCredentials = new Button(dialogArea, SWT.CHECK);
       useSeparateTrapCredentials.setText(i18n.tr("Use separate credentials for SNMP trap reception"));
       useSeparateTrapCredentials.setSelection(node.hasSnmpTrapCredentials());
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.right = new FormAttachment(100, 0);
-      fd.top = new FormAttachment(snmpSettingsLocked, 0, SWT.BOTTOM);
-      useSeparateTrapCredentials.setLayoutData(fd);
+      useSeparateTrapCredentials.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, dialogLayout.numColumns, 1));
       useSeparateTrapCredentials.addSelectionListener(new SelectionAdapter() {
          @Override
          public void widgetSelected(SelectionEvent e)
@@ -248,15 +213,14 @@ public class SNMP extends ObjectPropertyPage
          }
       });
 
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(useSeparateTrapCredentials, 0, SWT.BOTTOM);
-      trapSnmpVersion = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Trap SNMP version"), fd);
+      trapSnmpVersion = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      trapSnmpVersion.setLabel(i18n.tr("Version"));
       trapSnmpVersion.add("1");
       trapSnmpVersion.add("2c");
       trapSnmpVersion.add("3");
       trapSnmpVersion.select(node.hasSnmpTrapCredentials() ? snmpVersionToIndex(node.getSnmpTrapVersion()) : 1);
       trapSnmpVersion.setEnabled(node.hasSnmpTrapCredentials());
+      trapSnmpVersion.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
       trapSnmpVersion.addSelectionListener(new SelectionAdapter() {
          @Override
          public void widgetSelected(SelectionEvent e)
@@ -270,17 +234,10 @@ public class SNMP extends ObjectPropertyPage
       trapSnmpAuthName.setLabel(trapIsV3 ? i18n.tr("Trap user name") : i18n.tr("Trap community string"));
       trapSnmpAuthName.setText(node.hasSnmpTrapCredentials() ? node.getSnmpTrapAuthName() : "");
       trapSnmpAuthName.setEnabled(node.hasSnmpTrapCredentials());
-      fd = new FormData();
-      fd.left = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
-      fd.top = new FormAttachment(useSeparateTrapCredentials, 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(100, 0);
-      trapSnmpAuthName.setLayoutData(fd);
+      trapSnmpAuthName.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
 
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
-      trapSnmpAuth = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Authentication"), fd);
+      trapSnmpAuth = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      trapSnmpAuth.setLabel(i18n.tr("Authentication"));
       trapSnmpAuth.add(i18n.tr("NONE"));
       trapSnmpAuth.add(i18n.tr("MD5"));
       trapSnmpAuth.add(i18n.tr("SHA1"));
@@ -290,23 +247,17 @@ public class SNMP extends ObjectPropertyPage
       trapSnmpAuth.add("SHA512");
       trapSnmpAuth.select(node.hasSnmpTrapCredentials() ? node.getSnmpTrapAuthMethod() : 0);
       trapSnmpAuth.setEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+      trapSnmpAuth.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
       trapSnmpAuthPassword = new PasswordInputField(dialogArea, SWT.NONE);
       trapSnmpAuthPassword.setLabel(i18n.tr("Trap authentication password"));
       trapSnmpAuthPassword.setText(node.hasSnmpTrapCredentials() && node.getSnmpTrapAuthPassword() != null ? node.getSnmpTrapAuthPassword() : "");
       trapSnmpAuthPassword.setEnabled(node.hasSnmpTrapCredentials());
       trapSnmpAuthPassword.setInputControlsEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
-      fd = new FormData();
-      fd.left = new FormAttachment(trapSnmpAuthName, 0, SWT.LEFT);
-      fd.top = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(100, 0);
-      trapSnmpAuthPassword.setLayoutData(fd);
+      trapSnmpAuthPassword.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
 
-      fd = new FormData();
-      fd.left = new FormAttachment(0, 0);
-      fd.top = new FormAttachment(trapSnmpAuth.getParent(), 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(trapSnmpVersion.getParent(), 0, SWT.RIGHT);
-      trapSnmpPriv = WidgetHelper.createLabeledCombo(dialogArea, SWT.BORDER | SWT.READ_ONLY, i18n.tr("Encryption"), fd);
+      trapSnmpPriv = new LabeledCombo(dialogArea, SWT.NONE, SWT.BORDER | SWT.READ_ONLY);
+      trapSnmpPriv.setLabel(i18n.tr("Encryption"));
       trapSnmpPriv.add(i18n.tr("NONE"));
       trapSnmpPriv.add("DES");
       trapSnmpPriv.add("AES-128");
@@ -314,17 +265,14 @@ public class SNMP extends ObjectPropertyPage
       trapSnmpPriv.add("AES-256");
       trapSnmpPriv.select(node.hasSnmpTrapCredentials() ? node.getSnmpTrapPrivMethod() : 0);
       trapSnmpPriv.setEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
+      trapSnmpPriv.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
 
       trapSnmpPrivPassword = new PasswordInputField(dialogArea, SWT.NONE);
       trapSnmpPrivPassword.setLabel(i18n.tr("Trap encryption password"));
       trapSnmpPrivPassword.setText(node.hasSnmpTrapCredentials() && node.getSnmpTrapPrivPassword() != null ? node.getSnmpTrapPrivPassword() : "");
       trapSnmpPrivPassword.setEnabled(node.hasSnmpTrapCredentials());
       trapSnmpPrivPassword.setInputControlsEnabled(node.hasSnmpTrapCredentials() && trapIsV3);
-      fd = new FormData();
-      fd.left = new FormAttachment(trapSnmpPriv.getParent(), 0, SWT.RIGHT);
-      fd.top = new FormAttachment(trapSnmpAuthPassword, 0, SWT.BOTTOM);
-      fd.right = new FormAttachment(100, 0);
-      trapSnmpPrivPassword.setLayoutData(fd);
+      trapSnmpPrivPassword.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
 
       return dialogArea;
    }

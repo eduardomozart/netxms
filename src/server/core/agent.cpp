@@ -1,6 +1,6 @@
 /*
 ** NetXMS - Network Management System
-** Copyright (C) 2003-2025 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
  * Externals
  */
 void EnqueueSNMPTrap(SNMP_PDU *pdu, const InetAddress& srcAddr, int32_t zoneUIN, int srcPort, SNMP_Transport *snmpTransport, SNMP_Engine *localEngine);
+bool ValidateTrapCredentials(SNMP_PDU *pdu, SNMP_SecurityContext *securityContext);
 void QueueProxiedSyslogMessage(const InetAddress &addr, int32_t zoneUIN, uint32_t nodeId, time_t timestamp, const char *msg, int msgLen);
 void QueueWindowsEvent(WindowsEvent *event);
 
@@ -131,14 +132,14 @@ void AgentConnectionEx::onTrap(NXCPMessage *pMsg)
 			   uint32_t eventCode = pMsg->getFieldAsUInt32(VID_EVENT_CODE);
 			   if ((eventCode == 0) && pMsg->isFieldExist(VID_EVENT_NAME))
 			   {
-				   TCHAR eventName[256];
+				   wchar_t eventName[256];
 				   pMsg->getFieldAsString(VID_EVENT_NAME, eventName, 256);
 				   eventCode = EventCodeFromName(eventName, 0);
-               debugPrintf(4, _T("Received event name \"%s\" (resolved to code %u)"), eventName, eventCode);
+               debugPrintf(4, L"Received event name \"%s\" (resolved to code %u)", eventName, eventCode);
 			   }
 			   else
 			   {
-			      debugPrintf(4, _T("Received event code %u"), eventCode);
+			      debugPrintf(4, L"Received event code %u", eventCode);
 			   }
 
 			   EventBuilder eventBuilder(eventCode, node->getId());
@@ -436,21 +437,22 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
 
 	if (m_nodeId != 0)
 		proxyNode = static_pointer_cast<Node>(FindObjectById(m_nodeId, OBJECT_NODE));
+
    if (proxyNode != nullptr)
    {
       // Check for duplicate traps - only accept traps with ID
       // higher than last received
       bool acceptTrap;
-      UINT32 trapId = msg->getId();
+      uint32_t trapId = msg->getId();
       if (trapId != 0)
       {
          acceptTrap = proxyNode->checkSNMPTrapId(trapId);
-         debugPrintf(5, _T("AgentConnectionEx::onSnmpTrap(): SNMP trapID is%s valid"), acceptTrap ? _T("") : _T(" not"));
+         debugPrintf(5, L"AgentConnectionEx::onSnmpTrap(): SNMP trapID is%s valid", acceptTrap ? L"" : L" not");
       }
       else
       {
          acceptTrap = false;
-         debugPrintf(5, _T("AgentConnectionEx::onSnmpTrap(): SNMP trap ID not provided"));
+         debugPrintf(5, L"AgentConnectionEx::onSnmpTrap(): SNMP trap ID not provided");
       }
 
       if (acceptTrap)
@@ -477,7 +479,12 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
          if (pdu->parse(pduBytes, pduLenght, sctx, true))
          {
             debugPrintf(6, _T("AgentConnectionEx::onSnmpTrap(): received PDU of type %d"), pdu->getCommand());
-            if ((pdu->getCommand() == SNMP_TRAP) || (pdu->getCommand() == SNMP_INFORM_REQUEST))
+            if ((sctx != nullptr) && !ValidateTrapCredentials(pdu, sctx))
+            {
+               wchar_t buffer[64];
+               debugPrintf(4, L"AgentConnectionEx::onSnmpTrap(): SNMP credential validation failed, dropping trap from %s", originSenderIP.toString(buffer));
+            }
+            else if ((pdu->getCommand() == SNMP_TRAP) || (pdu->getCommand() == SNMP_INFORM_REQUEST))
             {
                bool isInformRequest = (pdu->getCommand() == SNMP_INFORM_REQUEST);
                SNMP_ProxyTransport *snmpTransport = isInformRequest ? CreateSNMPProxyTransport(self(), originNode.get(), originSenderIP, msg->getFieldAsUInt16(VID_PORT)) : nullptr;
@@ -495,7 +502,7 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
             else if ((pdu->getVersion() == SNMP_VERSION_3) && (pdu->getCommand() == SNMP_GET_REQUEST) && (pdu->getAuthoritativeEngine().getIdLen() == 0))
             {
                // Engine ID discovery
-               debugPrintf(6, _T("AgentConnectionEx::onSnmpTrap(): EngineId discovery"));
+               debugPrintf(6, L"AgentConnectionEx::onSnmpTrap(): EngineId discovery");
 
                SNMP_ProxyTransport *snmpTransport = CreateSNMPProxyTransport(self(), originNode.get(), originSenderIP, msg->getFieldAsUInt16(VID_PORT));
 
@@ -505,7 +512,7 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
                response.setContextEngineId(localEngine.getId(), localEngine.getIdLen());
 
                SNMP_Variable *var = new SNMP_Variable({ 1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0 });
-               var->setValueFromString(ASN_INTEGER, _T("2"));
+               var->setValueFromString(ASN_INTEGER, L"2");
                response.bindVariable(var);
 
                SNMP_SecurityContext *context = new SNMP_SecurityContext();
@@ -522,12 +529,12 @@ void AgentConnectionEx::onSnmpTrap(NXCPMessage *msg)
             }
             else if (pdu->getCommand() == SNMP_REPORT)
             {
-               debugPrintf(6, _T("AgentConnectionEx::onSnmpTrap(): REPORT PDU with error %s"), pdu->getVariable(0)->getName().toString().cstr());
+               debugPrintf(6, L"AgentConnectionEx::onSnmpTrap(): REPORT PDU with error %s", pdu->getVariable(0)->getName().toString().cstr());
             }
          }
          else
          {
-            debugPrintf(6, _T("AgentConnectionEx::onSnmpTrap(): error parsing PDU"));
+            debugPrintf(6, L"AgentConnectionEx::onSnmpTrap(): error parsing PDU");
          }
          delete pdu;
          delete sctx;
@@ -547,7 +554,7 @@ void AgentConnectionEx::onNotify(NXCPMessage *msg)
    TCHAR notificationCode[32];
    msg->getFieldAsString(VID_NOTIFICATION_CODE, notificationCode, 32);
 
-   if (!_tcscmp(notificationCode, _T("AgentRestart")))
+   if (!wcscmp(notificationCode, L"AgentRestart"))
    {
       // Set restart grace timestamp
       shared_ptr<Node> node;

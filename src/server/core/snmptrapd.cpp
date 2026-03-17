@@ -1,6 +1,6 @@
 /*
 ** NetXMS - Network Management System
-** Copyright (C) 2003-2025 Raden Solutions
+** Copyright (C) 2003-2026 Raden Solutions
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -454,6 +454,46 @@ static SNMP_SecurityContext *ContextFinder(struct sockaddr *addr, socklen_t addr
 }
 
 /**
+ * Validate SNMP trap credentials against expected security context.
+ * For v1/v2c: checks community string match.
+ * For v3: checks that PDU security level is not lower than expected and username matches.
+ * Returns true if credentials are valid or no validation is needed (no context).
+ */
+bool ValidateTrapCredentials(SNMP_PDU *pdu, SNMP_SecurityContext *securityContext)
+{
+   if (securityContext == nullptr)
+      return true;
+
+   if (pdu->getVersion() == SNMP_VERSION_3)
+   {
+      if (securityContext->getSecurityModel() != SNMP_SECURITY_MODEL_USM)
+         return false;  // Community string expected, but PDU is v3 with USM security model
+
+      // Verify username matches
+      if (strcmp(pdu->getUser(), securityContext->getUserName()) != 0)
+         return false;
+
+      // Verify security level is not lower than expected
+      int pduFlags = pdu->getFlags();
+      if ((securityContext->getAuthMethod() != SNMP_AUTH_NONE) && !(pduFlags & SNMP_AUTH_FLAG))
+         return false;
+      if ((securityContext->getPrivMethod() != SNMP_ENCRYPT_NONE) && !(pduFlags & SNMP_PRIV_FLAG))
+         return false;
+
+      return true;
+   }
+
+   if (securityContext->getSecurityModel() == SNMP_SECURITY_MODEL_USM)
+      return false;  // USM credentials expected, but PDU is v1/v2c
+
+   // v1/v2c community string check
+   const char *expected = securityContext->getCommunity();
+   if (expected[0] == 0)
+      return true;
+   return strcmp(pdu->getCommunity(), expected) == 0;
+}
+
+/**
  * Create SNMP transport for receiver
  */
 static SNMP_Transport *CreateTransport(SOCKET hSocket)
@@ -622,7 +662,7 @@ static void ReceiverThread()
    if (hSocket6 != INVALID_SOCKET)
    {
       TCHAR ipAddrText[64];
-      nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("Listening for SNMP traps on UDP socket %s:%u"), InetAddress(servAddr6.sin6_addr.s6_addr).toString(ipAddrText), listenerPort);
+      nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, L"Listening for SNMP traps on UDP socket %s:%u", InetAddress(servAddr6.sin6_addr.s6_addr).toString(ipAddrText), listenerPort);
    }
 #endif
 
@@ -631,7 +671,7 @@ static void ReceiverThread()
    SNMP_Transport *snmp6 = CreateTransport(hSocket6);
 #endif
 
-   nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("SNMP trap receiver started on port %u"), listenerPort);
+   nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, L"SNMP trap receiver started on port %u", listenerPort);
 
    // Wait for packets
    SocketPoller sp;
@@ -661,7 +701,11 @@ static void ReceiverThread()
          {
             InetAddress sourceAddr = InetAddress::createFromSockaddr((struct sockaddr *)&addr);
             nxlog_debug_tag(DEBUG_TAG, 6, _T("SNMPTrapReceiver: received PDU of type %d from %s"), pdu->getCommand(), (const TCHAR *)sourceAddr.toString());
-            if ((pdu->getCommand() == SNMP_TRAP) || (pdu->getCommand() == SNMP_INFORM_REQUEST))
+            if (!ValidateTrapCredentials(pdu, transport->getSecurityContext()))
+            {
+               nxlog_debug_tag(DEBUG_TAG, 4, _T("SNMPTrapReceiver: SNMP credential validation failed for trap from %s, dropping"), (const TCHAR *)sourceAddr.toString());
+            }
+            else if ((pdu->getCommand() == SNMP_TRAP) || (pdu->getCommand() == SNMP_INFORM_REQUEST))
             {
                if ((pdu->getVersion() == SNMP_VERSION_3) && (pdu->getCommand() == SNMP_INFORM_REQUEST))
                {
@@ -704,7 +748,7 @@ static void ReceiverThread()
          }
          else
          {
-            nxlog_debug_tag(DEBUG_TAG, 8, _T("SNMPTrapReceiver: error reading PDU from socket (rc=%d, errno=%d, errtext=\"%s\")"), bytes, errno, _tcserror(errno));
+            nxlog_debug_tag(DEBUG_TAG, 8, L"SNMPTrapReceiver: error reading PDU from socket (rc=%d, errno=%d, errtext=\"%s\")", bytes, errno, _wcserror(errno));
             // Sleep on error
             ThreadSleepMs(100);
          }
