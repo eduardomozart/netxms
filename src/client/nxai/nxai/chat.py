@@ -55,7 +55,7 @@ class SlashCommandCompleter(Completer):
 
 
 class ChatSession:
-    """Interactive chat session with Iris."""
+    """Interactive chat session with NetXMS AI assistant."""
 
     def __init__(
         self,

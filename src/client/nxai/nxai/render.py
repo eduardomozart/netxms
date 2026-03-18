@@ -49,7 +49,7 @@ class Renderer:
             self.console.print()
             self.console.print(
                 Panel(
-                    "[bold blue]Iris[/bold blue] - NetXMS AI Assistant\n\n"
+                    "[bold blue]NetXMS AI Assistant[/bold blue]\n\n"
                     "Type your questions or commands. Use [bold]/help[/bold] for available commands.",
                     title="Welcome",
                     border_style="blue",
@@ -57,7 +57,7 @@ class Renderer:
             )
             self.console.print()
         else:
-            print("Iris - NetXMS AI Assistant")
+            print("NetXMS AI Assistant")
             print("Type your questions or commands. Use /help for available commands.")
             print()
 
@@ -70,15 +70,14 @@ class Renderer:
         """
         if self.is_interactive():
             self.console.print()
-            # Add "Iris>" prefix
-            self.console.print(Text("Iris> ", style=Style(color="blue", bold=True)), end="")
+            self.console.print(Text(">> ", style=Style(color="blue", bold=True)), end="")
             # Render markdown
             md = Markdown(text)
             self.console.print(md)
             self.console.print()
         else:
             print()
-            print(f"Iris> {text}")
+            print(f">> {text}")
             print()
 
     def render_user_prompt(self) -> str:
@@ -173,13 +172,13 @@ class Renderer:
             self.console.print(
                 Panel(
                     content,
-                    title="[bold blue]Iris is asking[/bold blue]",
+                    title="[bold blue]AI assistant is asking[/bold blue]",
                     border_style="blue",
                 )
             )
         else:
             print()
-            print(f"Iris is asking: {question.text}")
+            print(f"AI assistant is asking: {question.text}")
             if question.context:
                 print(f"Context: {question.context}")
             if question.type == "multipleChoice" and question.options:

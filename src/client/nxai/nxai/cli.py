@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         prog="nxai",
-        description="NetXMS AI Assistant CLI - Interactive chat with Iris",
+        description="NetXMS AI Assistant CLI",
         epilog="Environment variables: NETXMS_SERVER, NETXMS_USER, NETXMS_PASSWORD",
     )
 

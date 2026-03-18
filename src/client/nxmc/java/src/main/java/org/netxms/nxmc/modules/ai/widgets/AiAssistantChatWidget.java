@@ -284,7 +284,7 @@ public class AiAssistantChatWidget extends Composite implements SessionListener
       };
 
       // Initialize with welcome message
-      addAssistantMessage(i18n.tr("Hello! I'm Iris, your AI assistant. I can help you with setting up your monitoring environment, day-to-day operations, and analyzing problems. Feel free to ask any questions!"));
+      addAssistantMessage(i18n.tr("Hello! I can help you with setting up your monitoring environment, day-to-day operations, and analyzing problems. Feel free to ask any questions!"));
       updateBrowserContent();
 
       Label separator = new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL);
@@ -707,7 +707,7 @@ public class AiAssistantChatWidget extends Composite implements SessionListener
       chatContent.setLength(0);
       messages.clear();
       initializeHtmlTemplate();
-      addAssistantMessage("Hello! I'm Iris, your AI assistant. I can help you with setting up your monitoring environment, day-to-day operations, and analyzing problems. Feel free to ask any questions!");
+      addAssistantMessage("Hello! I can help you with setting up your monitoring environment, day-to-day operations, and analyzing problems. Feel free to ask any questions!");
       contextChanged = true; // Force context resend on next query
    }
 
@@ -750,7 +750,7 @@ public class AiAssistantChatWidget extends Composite implements SessionListener
 
       StringBuilder html = new StringBuilder();
       html.append("<div class='question-card' id='question_").append(question.getId()).append("'>");
-      html.append("<div class='question-header'>Iris is asking:</div>");
+      html.append("<div class='question-header'>AI assistant is asking:</div>");
       html.append("<div class='question-text'>").append(escapeHtml(question.getText())).append("</div>");
 
       String context = question.getContext();

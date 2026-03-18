@@ -115,7 +115,6 @@ int H_GetConnectionHistory(Context *context)
    if (hResult != nullptr)
    {
       int count = std::min(DBGetNumRows(hResult), limit);
-      TCHAR buffer[256];
       for (int i = 0; i < count; i++)
       {
          json_t *record = json_object();

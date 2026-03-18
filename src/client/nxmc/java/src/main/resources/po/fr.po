@@ -2503,10 +2503,12 @@ msgstr "En cours d'execution..."
 
 #: main/java/org/netxms/nxmc/modules/ai/widgets/AiAssistantChatWidget.java:287
 msgid ""
-"Hello! I'm Iris, your AI assistant. I can help you with setting up your "
-"monitoring environment, day-to-day operations, and analyzing problems. Feel "
-"free to ask any questions!"
+"Hello! I can help you with setting up your monitoring environment, day-to-"
+"day operations, and analyzing problems. Feel free to ask any questions!"
 msgstr ""
+"Bonjour ! Je peux vous aider à configurer votre environnement de "
+"surveillance, les opérations quotidiennes et l'analyse des problèmes. "
+"N'hésitez pas à poser vos questions !"
 
 #: main/java/org/netxms/nxmc/modules/ai/widgets/AiAssistantChatWidget.java:301
 #, fuzzy

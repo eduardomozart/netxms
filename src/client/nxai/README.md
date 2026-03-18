@@ -1,6 +1,6 @@
 # nxai - NetXMS AI Assistant CLI
 
-Interactive terminal chat client for Iris, the NetXMS AI assistant.
+Interactive terminal chat client for NetXMS AI assistant.
 
 ## Installation
 
@@ -38,7 +38,7 @@ usage: nxai [-h] [-s HOST] [-u USER] [-p PASS] [-n NAME | -o ID | -i ID]
             [--plain] [--no-verify-ssl] [--no-save-session] [--clear-session]
             [-V]
 
-NetXMS AI Assistant CLI - Interactive chat with Iris
+NetXMS AI Assistant CLI
 
 options:
   -h, --help            show this help message and exit
@@ -61,7 +61,7 @@ Environment variables: NETXMS_SERVER, NETXMS_USER, NETXMS_PASSWORD
 
 ## Interactive Session
 
-Once connected, you can chat with Iris:
+Once connected, you can chat with the AI assistant:
 
 ```
 $ nxai --server netxms.local --node web-server-01
@@ -70,7 +70,7 @@ Found: web-server-01 (ID: 123)
 Starting chat session...
 
 ╭───────────────────────── Welcome ──────────────────────────╮
-│ Iris - NetXMS AI Assistant                                 │
+│ NetXMS AI Assistant                                        │
 │                                                            │
 │ Type your questions or commands. Use /help for available   │
 │ commands.                                                  │
@@ -78,7 +78,7 @@ Starting chat session...
 
 You> Why is CPU high on this node?
 
-Iris> Looking at web-server-01, I can see CPU utilization has been
+>> Looking at web-server-01, I can see CPU utilization has been
       above 90% for the last 15 minutes. The top processes are:
 
       | Process    | CPU % |
@@ -90,7 +90,7 @@ Iris> Looking at web-server-01, I can see CPU utilization has been
 
 You> yes
 
-Iris> ...
+>> ...
 ```
 
 ## Slash Commands
@@ -171,7 +171,7 @@ nxai --server netxms.local --no-verify-ssl
 
 - Python 3.9+
 - NetXMS server with WebAPI enabled
-- AI assistant (Iris) configured on the server
+- AI assistant configured on the server
 
 ## License
 
