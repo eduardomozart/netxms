@@ -174,15 +174,15 @@ static void ShowNodeOSPFData(ServerConsole *console, const Node& node)
  */
 static void PrintArpCache(CONSOLE_CTX console, const Node& node, const ArpCache& arpCache)
 {
-   ConsolePrintf(console, _T("\x1b[1mIP address\x1b[0m      | \x1b[1mMAC address\x1b[0m       | \x1b[1mIfIndex\x1b[0m | \x1b[1mInterface\x1b[0m\n"));
-   ConsolePrintf(console, _T("----------------+-------------------+---------+----------------------\n"));
+   ConsolePrintf(console, _T("\x1b[1mIP address\x1b[0m               | \x1b[1mMAC address\x1b[0m       | \x1b[1mIfIndex\x1b[0m | \x1b[1mInterface\x1b[0m\n"));
+   ConsolePrintf(console, _T("-------------------------+-------------------+---------+----------------------\n"));
 
    wchar_t ipAddrStr[64], macAddrStr[64];
    for(int i = 0; i < arpCache.size(); i++)
    {
       const ArpEntry *e = arpCache.get(i);
       shared_ptr<Interface> iface = node.findInterfaceByIndex(e->ifIndex);
-      ConsolePrintf(console, _T("%-15s | %s | %7d | %-20s\n"), e->ipAddr.toString(ipAddrStr), e->macAddr.toString(macAddrStr),
+      ConsolePrintf(console, _T("%-24s | %s | %7d | %-20s\n"), e->ipAddr.toString(ipAddrStr), e->macAddr.toString(macAddrStr),
          e->ifIndex, (iface != nullptr) ? iface->getName() : _T("\x1b[31;1mUNKNOWN\x1b[0m"));
    }
    ConsolePrintf(console, _T("\n%d entries\n\n"), arpCache.size());

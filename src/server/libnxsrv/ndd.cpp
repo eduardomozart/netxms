@@ -1529,10 +1529,10 @@ DataCollectionError NetworkDeviceDriver::getHostMibMetric(SNMP_Transport *snmp, 
 }
 
 /**
- * Handler for ARP enumeration.
- * ipNetToMediaTable indexed by ipNetToMediaIfIndex followed by ipNetToMediaNetAddress
+ * Handler for ARP enumeration via ipNetToMediaTable (RFC 1213).
+ * OID index: ipNetToMediaIfIndex.ipNetToMediaNetAddress (ifIndex followed by 4-octet IPv4 address)
  */
-static uint32_t HandlerArp(SNMP_Variable *var, SNMP_Transport *transport, ArpCache *arpCache)
+static uint32_t HandlerArpIpNetToMedia(SNMP_Variable *var, SNMP_Transport *transport, ArpCache *arpCache)
 {
    MacAddress macAddr = var->getValueAsMACAddr();
    if (macAddr.isValid())
@@ -1546,6 +1546,44 @@ static uint32_t HandlerArp(SNMP_Variable *var, SNMP_Transport *transport, ArpCac
 }
 
 /**
+ * Handler for ARP enumeration via ipNetToPhysicalTable (RFC 4293).
+ * OID index: ipNetToPhysicalIfIndex.ipNetToPhysicalNetAddressType.ipNetToPhysicalNetAddress
+ * where ipNetToPhysicalNetAddress is a length-prefixed octet string (4 octets for IPv4, 16 for IPv6)
+ */
+static uint32_t HandlerArpIpNetToPhysical(SNMP_Variable *var, SNMP_Transport *transport, ArpCache *arpCache)
+{
+   MacAddress macAddr = var->getValueAsMACAddr();
+   if (!macAddr.isValid())
+      return SNMP_ERR_SUCCESS;
+
+   const SNMP_ObjectId& oid = var->getName();
+   size_t oidLen = oid.length();
+
+   // Minimum OID length: base(10) + ifIndex(1) + addrType(1) + addrLen(1) + addr(4) = 17
+   if (oidLen < 17)
+      return SNMP_ERR_SUCCESS;
+
+   uint32_t ifIndex = oid.getElement(10);
+   uint32_t addrType = oid.getElement(11);
+   uint32_t addrLen = oid.getElement(12);
+
+   if (addrType == 1 && addrLen == 4 && oidLen >= 17)  // IPv4
+   {
+      uint32_t ipAddr = (oid.getElement(13) << 24) | (oid.getElement(14) << 16) | (oid.getElement(15) << 8) | oid.getElement(16);
+      arpCache->addEntry(InetAddress(ipAddr), macAddr, ifIndex);
+   }
+   else if (addrType == 2 && addrLen == 16 && oidLen >= 29)  // IPv6
+   {
+      BYTE addr[16];
+      for (int i = 0; i < 16; i++)
+         addr[i] = static_cast<BYTE>(oid.getElement(13 + i));
+      arpCache->addEntry(InetAddress(addr), macAddr, ifIndex);
+   }
+
+   return SNMP_ERR_SUCCESS;
+}
+
+/**
  * Get ARP cache
  *
  * @param snmp SNMP transport
@@ -1555,7 +1593,15 @@ static uint32_t HandlerArp(SNMP_Variable *var, SNMP_Transport *transport, ArpCac
 shared_ptr<ArpCache> NetworkDeviceDriver::getArpCache(SNMP_Transport *snmp, DriverData *driverData)
 {
    shared_ptr<ArpCache> arpCache = make_shared<ArpCache>();
-   if (SnmpWalk(snmp, { 1, 3, 6, 1, 2, 1, 4, 22, 1, 2 }, HandlerArp, arpCache.get()) != SNMP_ERR_SUCCESS)
+
+   // Try ipNetToPhysicalTable (RFC 4293) first - supports both IPv4 and IPv6
+   SnmpWalk(snmp, { 1, 3, 6, 1, 2, 1, 4, 35, 1, 4 }, HandlerArpIpNetToPhysical, arpCache.get());
+
+   // Fall back to legacy ipNetToMediaTable (RFC 1213) if newer table returned no results
+   if (arpCache->size() == 0)
+      SnmpWalk(snmp, { 1, 3, 6, 1, 2, 1, 4, 22, 1, 2 }, HandlerArpIpNetToMedia, arpCache.get());
+
+   if (arpCache->size() == 0)
       arpCache.reset();
    return arpCache;
 }
