@@ -86,7 +86,7 @@ EPRule::EPRule(const ConfigEntry& config, ImportContext *context, bool nxslV5) :
       unique_ptr<ObjectArray<ConfigEntry>> events = eventsRoot->getSubEntries(_T("event#*"));
       for(int i = 0; i < events->size(); i++)
       {
-         shared_ptr<EventTemplate> e = FindEventTemplateByName(events->get(i)->getSubEntryValue(_T("name"), 0, _T("<unknown>")));
+         shared_ptr<EventTemplate> e = FindEventTemplate(events->get(i)->getSubEntryValue(_T("name"), 0, _T("<unknown>")));
          if (e != nullptr && !m_events.contains(e->getCode()))
          {
             m_events.add(e->getCode());
@@ -305,12 +305,12 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
             // First try to match by name
             String eventName = json_object_get_string(eventItem, "name", nullptr);
             uint32_t eventCode = 0;
-            
+
             if (!eventName.isEmpty())
             {
                eventCode = EventCodeFromName(eventName, 0);
             }
-            
+
             if (eventCode != 0 && !m_events.contains(eventCode))
             {
                m_events.add(eventCode);
@@ -325,8 +325,8 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
       }
    }
 
-   //TODO: Import sources 
-   //TODO: Import source exclusions 
+   //TODO: Import sources
+   //TODO: Import source exclusions
 
    // Import time frames
    json_t *timeFramesArray = json_object_get(json, "timeFrames");
@@ -362,7 +362,7 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
             String snoozeTime = json_object_get_string(action, "snoozeTime", _T(""));
             bool active = json_object_get_boolean(action, "active", true);
             if (IsValidActionId(actionId))
-               m_actions.add(new ActionExecutionConfiguration(actionId, 
+               m_actions.add(new ActionExecutionConfiguration(actionId,
                   timerDelay.isEmpty() ? nullptr : MemCopyString(timerDelay),
                   snoozeTime.isEmpty() ? nullptr : MemCopyString(snoozeTime),
                   timerKey.isEmpty() ? nullptr : MemCopyString(timerKey),
@@ -401,24 +401,24 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
    m_comments = MemCopyString(json_object_get_string(json, "comments", _T("")));
    m_alarmSeverity = json_object_get_int32(json, "alarmSeverity");
    m_alarmTimeout = json_object_get_uint32(json, "alarmTimeout");
-   
+
    // Import alarm timeout event - JSON format uses event name
    String alarmTimeoutEventName = json_object_get_string(json, "alarmTimeoutEvent", _T("SYS_ALARM_TIMEOUT"));
    m_alarmTimeoutEvent = EventCodeFromName(alarmTimeoutEventName, EVENT_ALARM_TIMEOUT);
-   
+
    m_alarmKey = MemCopyString(json_object_get_string(json, "alarmKey", _T("")));
    m_alarmMessage = MemCopyString(json_object_get_string(json, "alarmMessage", _T("")));
    m_alarmImpact = MemCopyString(json_object_get_string(json, "alarmImpact", _T("")));
-   
+
    const char *rcaScript = json_object_get_string_utf8(json, "rootCauseAnalysisScript", "");
 #ifdef UNICODE
    m_rcaScriptName = WideStringFromUTF8String(rcaScript);
 #else
    m_rcaScriptName = MemCopyStringA(rcaScript);
 #endif
-   
+
    m_aiAgentInstructions = MemCopyString(json_object_get_string(json, "aiAgentInstructions", _T("")));
-   
+
    String downtimeTag = json_object_get_string(json, "downtimeTag", _T(""));
    wcslcpy(m_downtimeTag, downtimeTag, MAX_DOWNTIME_TAG_LENGTH);
 
@@ -1852,9 +1852,9 @@ json_t *EPRule::createExportRecord() const
    json_t *root = json_object();
    json_object_set_new(root, "id", json_integer(m_id + 1));
    json_object_set_new(root, "guid", m_guid.toJson());
-   
+
    json_object_set_new(root, "flags", json_integer(m_flags));
-   
+
    // Export sources with full object information
    json_t *sources = json_array();
    for(int i = 0; i < m_sources.size(); i++)
@@ -1871,8 +1871,8 @@ json_t *EPRule::createExportRecord() const
       }
    }
    json_object_set_new(root, "sources", sources);
-   
-   // Export source exclusions with full object information  
+
+   // Export source exclusions with full object information
    json_t *sourceExclusions = json_array();
    for(int i = 0; i < m_sourceExclusions.size(); i++)
    {
@@ -1888,14 +1888,14 @@ json_t *EPRule::createExportRecord() const
       }
    }
    json_object_set_new(root, "sourceExclusions", sourceExclusions);
-   
+
    // Export events with names (XML-compatible structure)
    json_t *events = json_array();
    for(int i = 0; i < m_events.size(); i++)
    {
       uint32_t eventCode = m_events.get(i);
       json_t *event = json_object();
-      
+
       TCHAR eventName[MAX_EVENT_NAME];
       if (EventNameFromCode(eventCode, eventName))
       {
@@ -1905,12 +1905,12 @@ json_t *EPRule::createExportRecord() const
       {
          json_object_set_new(event, "name", json_string("UNKNOWN_EVENT"));
       }
-      
+
       json_object_set_new(event, "id", json_integer(eventCode));
       json_array_append_new(events, event);
    }
    json_object_set_new(root, "events", events);
-   
+
    json_t *timeFrames = json_array();
    for(TimeFrame *frame : m_timeFrames)
    {
@@ -1950,7 +1950,7 @@ json_t *EPRule::createExportRecord() const
    json_object_set_new(root, "alarmSeverity", json_integer(m_alarmSeverity));
    json_object_set_new(root, "alarmKey", json_string_t(m_alarmKey));
    json_object_set_new(root, "alarmTimeout", json_integer(m_alarmTimeout));
-   
+
    // Export alarm timeout event by name
    TCHAR alarmTimeoutEventName[MAX_EVENT_NAME];
    if (EventNameFromCode(m_alarmTimeoutEvent, alarmTimeoutEventName))
@@ -1961,7 +1961,7 @@ json_t *EPRule::createExportRecord() const
    {
       json_object_set_new(root, "alarmTimeoutEvent", json_string("UNKNOWN_EVENT"));
    }
-   
+
    json_object_set_new(root, "rootCauseAnalysisScript", json_string_t(m_rcaScriptName));
    json_object_set_new(root, "alarmCategories", m_alarmCategoryList.toJson());
    json_object_set_new(root, "pstorageSetActions", m_pstorageSetActions.toJson());

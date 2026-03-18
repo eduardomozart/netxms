@@ -124,7 +124,7 @@ public class LogParserRuleEditor extends DashboardComposite
       gd.horizontalAlignment = SWT.RIGHT;
       controlBar.setLayoutData(gd);
       fillControlBar(controlBar);
-      
+
       name = new LabeledText(this, SWT.NONE);
       name.setLabel("Name");
       name.setBackground(parent.getBackground());
@@ -177,7 +177,7 @@ public class LogParserRuleEditor extends DashboardComposite
 
    /**
     * Fill control bar
-    * 
+    *
     * @param parent
     */
    private void fillControlBar(Composite parent)
@@ -440,7 +440,7 @@ public class LogParserRuleEditor extends DashboardComposite
          }
          catch(NumberFormatException e)
          {
-            EventTemplate tmpl = Registry.getSession().findEventTemplateByName(rule.getEvent().getEvent());
+            EventTemplate tmpl = Registry.getSession().findEventTemplate(rule.getEvent().getEvent());
             if (tmpl != null)
                eventCode = tmpl.getCode();
          }
@@ -618,7 +618,7 @@ public class LogParserRuleEditor extends DashboardComposite
             public void linkActivated(HyperlinkEvent e)
             {
                addMetric();
-            }            
+            }
          });
       }
 
@@ -657,7 +657,7 @@ public class LogParserRuleEditor extends DashboardComposite
 
    /**
     * Create metric editor
-    * 
+    *
     * @param metric metric to create editor for
     */
    private LogParserMetricEditor createMetricEditor(LogParserMetric metric)
@@ -680,21 +680,21 @@ public class LogParserRuleEditor extends DashboardComposite
       LogParserMetricEditor metricEditor = createMetricEditor(metric);
       metricEditor.moveAbove(addMetric);
       rule.getMetrics().add(metric);
-      editor.updateScroller(); 
+      editor.updateScroller();
       fireModifyListeners();
-      
+
    }
 
    /**
     * Delete metric link action implementation
-    * 
+    *
     * @param metric to delete
     */
    public void deleteMetric(LogParserMetric metric)
    {
       rule.getMetrics().remove(metric);
       metric.getEditor().dispose();
-      editor.updateScroller(); 
+      editor.updateScroller();
       getParent().layout(true, true);
       fireModifyListeners();
    }
@@ -713,7 +713,7 @@ public class LogParserRuleEditor extends DashboardComposite
       }
       else
       {
-         rule.setMatch(new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), null, 0, false));         
+         rule.setMatch(new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), null, 0, false));
       }
       rule.setEventId(facility.getText());
       rule.setSeverityOrLevel(intOrNull(severity.getText()));
@@ -736,8 +736,14 @@ public class LogParserRuleEditor extends DashboardComposite
       rule.setDescription(description.getText());
       if (event.getEventCode() != 0)
       {
-         rule.setEvent(new LogParserEvent(event.getEventName() != null ? event.getEventName() : Long.toString(event.getEventCode()),
-               null, eventTag.getText().isEmpty() ? null : eventTag.getText()));
+         String eventReference;
+         if (event.getEventGuid() != null)
+            eventReference = event.getEventGuid().toString();
+         else if (event.getEventName() != null)
+            eventReference = event.getEventName();
+         else
+            eventReference = Long.toString(event.getEventCode());
+         rule.setEvent(new LogParserEvent(eventReference, null, eventTag.getText().isEmpty() ? null : eventTag.getText()));
       }
       else
       {
@@ -763,11 +769,11 @@ public class LogParserRuleEditor extends DashboardComposite
       }
       else
          rule.setAgentAction("");
-      
+
       if (editor.getParserType() == LogParserType.POLICY)
       {
          for(LogParserMetric metric : rule.getMetrics())
-            metric.getEditor().save();   
+            metric.getEditor().save();
       }
       else
          rule.setMetrics(null);
@@ -780,7 +786,7 @@ public class LogParserRuleEditor extends DashboardComposite
 
    /**
     * Return integer object created from input string or null if input text string is empty or cannot be parsed
-    * 
+    *
     * @param text
     * @return
     */
@@ -819,9 +825,9 @@ public class LogParserRuleEditor extends DashboardComposite
    {
       if (rule.getMetrics() != null)
          for(LogParserMetric metric : rule.getMetrics())
-            metric.getEditor().dispose(); 
+            metric.getEditor().dispose();
       super.dispose();
    }
-   
-   
+
+
 }

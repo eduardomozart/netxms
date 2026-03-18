@@ -9772,22 +9772,30 @@ public class NXCSession
    }
 
    /**
-    * Find event template by name in event template database internally
-    * maintained by session object. You must call
-    * NXCSession.syncEventObjects() first to make local copy of event template
-    * database.
+    * Find event template by GUID or name in event template database internally
+    * maintained by session object. Tries to parse the string as UUID first,
+    * falls back to name lookup. You must call NXCSession.syncEventObjects()
+    * first to make local copy of event template database.
     *
-    * @param name Event name
+    * @param name Event GUID or name
     * @return Event template object or null if not found
     */
-   public EventTemplate findEventTemplateByName(String name)
+   public EventTemplate findEventTemplate(String name)
    {
       EventTemplate result = null;
+      UUID guid = null;
+      try
+      {
+         guid = UUID.fromString(name);
+      }
+      catch(IllegalArgumentException e)
+      {
+      }
       synchronized(eventTemplates)
       {
          for(EventTemplate t : eventTemplates.values())
          {
-            if (t.getName().equalsIgnoreCase(name))
+            if ((guid != null && t.getGuid().equals(guid)) || t.getName().equalsIgnoreCase(name))
             {
                result = t;
                break;
@@ -16209,7 +16217,7 @@ public class NXCSession
 
    /**
     * Get names of available cloud connectors.
-    * 
+    *
     * @return names of available cloud connectors
     * @throws IOException if socket I/O error occurs
     * @throws NXCException if NetXMS server returns an error or operation was timed out

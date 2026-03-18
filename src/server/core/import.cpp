@@ -41,7 +41,7 @@ static bool IsEventExist(const TCHAR *name, json_t *root)
       return false;
 
    // Check if event exists in server configuration
-   shared_ptr<EventTemplate> e = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> e = FindEventTemplate(name);
    if (e != nullptr)
       return true;
 
@@ -180,7 +180,7 @@ static bool ValidateConfig(json_t *root, uint32_t flags, ImportContext *context)
 
          context->log(NXLOG_INFO, _T("ValidateConfig()"), _T("Validating event \"%s\""), json_object_get_string(event, "name", _T("<unnamed>")).cstr());
 
-         uint32_t code = json_object_get_uint32(event, "code");         
+         uint32_t code = json_object_get_uint32(event, "code");
          if ((code >= FIRST_USER_EVENT_ID) || (code == 0))
          {
             json_t *nameObj = json_object_get(event, "name");
@@ -261,15 +261,15 @@ static ConfigurationFormat DetectConfigurationFormat(const char* content)
 {
    if (content == nullptr || *content == 0)
       return CONFIG_FORMAT_UNKNOWN;
-      
+
    // Skip leading whitespace
    const char* ptr = content;
    while (isspace(*ptr))
       ptr++;
-      
+
    if (*ptr == 0)
       return CONFIG_FORMAT_UNKNOWN;
-      
+
    // Check first non-whitespace character
    switch (*ptr)
    {
@@ -293,9 +293,9 @@ static uint32_t ImportEvent(json_t *event, bool overwrite, ImportContext *contex
 
    UINT32 code = 0;
    bool checkByName = false;
-   
+
    uuid guid = json_object_get_uuid(event, "guid");
-   
+
    if (!guid.isNull())
    {
       DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT event_code FROM event_cfg WHERE guid=?"));
@@ -326,7 +326,7 @@ static uint32_t ImportEvent(json_t *event, bool overwrite, ImportContext *contex
    {
       checkByName = true;
          code = json_object_get_uint32(event, "code");
-         
+
       if (code >= FIRST_USER_EVENT_ID)
       {
          context->log(NXLOG_WARNING, _T("ImportEvent()"), _T("Event template without GUID and code %d is not in system range"), code);
@@ -394,7 +394,7 @@ static uint32_t ImportEvent(json_t *event, bool overwrite, ImportContext *contex
                  (const TCHAR *)DBPrepareString(hdb, tags));
       context->log(NXLOG_INFO, _T("ImportEvent()"), _T("Added new event: code=%d, name=%s, guid=%s"), code, name.cstr(), guid.toString().cstr());
    }
-   
+
    uint32_t rcc = (query[0] != 0) ? (DBQuery(hdb, query) ? RCC_SUCCESS : RCC_DB_FAILURE) : RCC_SUCCESS;
 
    DBConnectionPoolReleaseConnection(hdb);
@@ -408,19 +408,19 @@ static uint32_t ImportJsonEvents(json_t *events, uint32_t flags, ImportContext *
 {
    size_t count = json_array_size(events);
    context->log(NXLOG_INFO, _T("ImportJsonEvents()"), _T("%d event templates to import"), count);
-   
+
    size_t index;
    json_t *event;
    json_array_foreach(events, index, event)
    {
       if (!json_is_object(event))
          continue;
-         
+
       uint32_t rcc = ImportEvent(event, (flags & CFG_IMPORT_REPLACE_EVENTS) != 0, context);
       if (rcc != RCC_SUCCESS)
          return rcc;
    }
-   
+
    if (count > 0)
    {
       ReloadEvents();
@@ -435,13 +435,13 @@ static uint32_t ImportJsonEvents(json_t *events, uint32_t flags, ImportContext *
  */
 static uint32_t ImportTrap(json_t *trap, bool overwrite, ImportContext *context)
 {
-   shared_ptr<EventTemplate> eventTemplate = FindEventTemplateByName(json_object_get_string(trap, "event", _T("")));
+   shared_ptr<EventTemplate> eventTemplate = FindEventTemplate(json_object_get_string(trap, "event", _T("")));
    if (eventTemplate == nullptr)
       return RCC_INTERNAL_ERROR;
 
    // Get GUID
    uuid guid = json_object_get_uuid(trap, "guid");
-   
+
    if (guid.isNull())
    {
       guid = uuid::generate();
@@ -507,7 +507,7 @@ static uint32_t ImportTrap(json_t *trap, bool overwrite, ImportContext *context)
 	   rcc = RCC_DB_FAILURE;
 	}
    DBConnectionPoolReleaseConnection(hdb);
-   
+
    return rcc;
 }
 
@@ -525,11 +525,11 @@ static shared_ptr<NetObj> FindTemplateRootJson(json_t *templateJson)
    for (size_t i = 0; i < pathSize; i++)
    {
       json_t *pathElement = json_array_get(pathArray, i);
-      
+
       // Path elements
       if (!json_is_string(pathElement))
          continue;
-         
+
       TCHAR *name = TStringFromUTF8String(json_string_value(pathElement));
       if (name == nullptr)
          continue;
@@ -554,48 +554,48 @@ static uint32_t ImportJsonTemplates(json_t *templates, uint32_t flags, ImportCon
 {
    size_t count = json_array_size(templates);
    context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("%d templates to import"), (int)count);
-   
+
    size_t index;
    json_t *templateJson;
    json_array_foreach(templates, index, templateJson)
    {
       if (!json_is_object(templateJson))
          continue;
-         
+
       // Get template GUID and name
       uuid guid = json_object_get_uuid(templateJson, "guid");
       String name = json_object_get_string(templateJson, "name", _T("<unnamed>"));
-      
+
       shared_ptr<Template> templateObj;
       if (guid.isNull())
          guid = uuid::generate();
       else
          templateObj = static_pointer_cast<Template>(FindObjectByGUID(guid, OBJECT_TEMPLATE));
-         
+
       if (templateObj != nullptr)
       {
          if (flags & CFG_IMPORT_REPLACE_TEMPLATES)
          {
-            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Updating existing template %s [%u] with GUID %s"), 
+            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Updating existing template %s [%u] with GUID %s"),
                         templateObj->getName(), templateObj->getId(), guid.toString().cstr());
             templateObj->updateFromImport(templateJson, context);
          }
          else
          {
-            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s skipped"), 
+            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s skipped"),
                         templateObj->getName(), templateObj->getId(), guid.toString().cstr());
          }
 
          if (flags & CFG_IMPORT_REPLACE_TEMPLATE_NAMES_LOCATIONS)
          {
-            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s renamed to %s"), 
+            context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s renamed to %s"),
                         templateObj->getName(), templateObj->getId(), guid.toString().cstr(), name.cstr());
 
             templateObj->setName(name);
             shared_ptr<NetObj> newParent = FindTemplateRootJson(templateJson);
             if (!newParent->isChild(templateObj->getId()))
             {
-               context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s moved to template group \"%s\""), 
+               context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Existing template %s [%u] with GUID %s moved to template group \"%s\""),
                            templateObj->getName(), templateObj->getId(), guid.toString().cstr(), newParent->getName());
                unique_ptr<SharedObjectArray<NetObj>> parents = templateObj->getParents(OBJECT_TEMPLATEGROUP);
                if (parents->size() > 0)
@@ -623,7 +623,7 @@ static uint32_t ImportJsonTemplates(json_t *templates, uint32_t flags, ImportCon
          context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("New template \"%s\" added"), templateObj->getName());
       }
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonTemplates()"), _T("Templates import completed"));
    return RCC_SUCCESS;
 }
@@ -666,16 +666,16 @@ static uint32_t ImportJsonRules(json_t *rules, json_t *root, uint32_t flags, Imp
 {
    size_t count = json_array_size(rules);
    context->log(NXLOG_INFO, _T("ImportJsonRules()"), _T("%d event processing rules to import"), (int)count);
-   
+
    if (count == 0)
    {
       context->log(NXLOG_INFO, _T("ImportJsonRules()"), _T("Event processing rules import completed"));
       return RCC_SUCCESS;
    }
-   
+
    // Get rule ordering from the root JSON object
    ObjectArray<uuid> *ruleOrdering = GetRuleOrderingFromJson(root);
-   
+
    size_t index;
    json_t *rule;
    json_array_foreach(rules, index, rule)
@@ -696,14 +696,14 @@ static uint32_t ImportJsonRules(json_t *rules, json_t *root, uint32_t flags, Imp
 
    // Clean up rule ordering
    delete ruleOrdering;
-   
+
    // Save policy to database
    if (!GetEventProcessingPolicy()->saveToDB())
    {
       context->log(NXLOG_ERROR, _T("ImportJsonRules()"), _T("Unable to save event processing policy rules to database"));
       return RCC_DB_FAILURE;
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonRules()"), _T("Event processing rules import completed"));
    return RCC_SUCCESS;
 }
@@ -715,17 +715,17 @@ static uint32_t ImportJsonScripts(json_t *scripts, uint32_t flags, ImportContext
 {
    size_t count = json_array_size(scripts);
    context->log(NXLOG_INFO, _T("ImportJsonScripts()"), _T("%d scripts to import"), (int)count);
-   
+
    size_t index;
    json_t *script;
    json_array_foreach(scripts, index, script)
    {
       if (!json_is_object(script))
          continue;
-         
+
       ImportScript(script, (flags & CFG_IMPORT_REPLACE_SCRIPTS) != 0, context);
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonScripts()"), _T("Scripts import completed"));
    return RCC_SUCCESS;
 }
@@ -737,18 +737,18 @@ static uint32_t ImportJsonActions(json_t *actions, uint32_t flags, ImportContext
 {
    size_t count = json_array_size(actions);
    context->log(NXLOG_INFO, _T("ImportJsonActions()"), _T("%d actions to import"), (int)count);
-   
+
    size_t index;
    json_t *action;
    json_array_foreach(actions, index, action)
    {
       if (!json_is_object(action))
          continue;
-         
+
       if (!ImportAction(action, (flags & CFG_IMPORT_REPLACE_ACTIONS) != 0, context))
          return RCC_INTERNAL_ERROR;
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonActions()"), _T("Actions import completed"));
    return RCC_SUCCESS;
 }
@@ -760,18 +760,18 @@ static uint32_t ImportJsonObjectTools(json_t *tools, uint32_t flags, ImportConte
 {
    size_t count = json_array_size(tools);
    context->log(NXLOG_INFO, _T("ImportJsonObjectTools()"), _T("%d object tools to import"), (int)count);
-   
+
    size_t index;
    json_t *tool;
    json_array_foreach(tools, index, tool)
    {
       if (!json_is_object(tool))
          continue;
-         
+
       if (!ImportObjectTool(tool, (flags & CFG_IMPORT_REPLACE_OBJECT_TOOLS) != 0, context))
          return RCC_INTERNAL_ERROR;
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonObjectTools()"), _T("Object tools import completed"));
    return RCC_SUCCESS;
 }
@@ -783,19 +783,19 @@ static uint32_t ImportJsonTraps(json_t *traps, uint32_t flags, ImportContext *co
 {
    size_t count = json_array_size(traps);
    context->log(NXLOG_INFO, _T("ImportJsonTraps()"), _T("%d SNMP traps to import"), (int)count);
-   
+
    size_t index;
    json_t *trap;
    json_array_foreach(traps, index, trap)
    {
       if (!json_is_object(trap))
          continue;
-         
+
       uint32_t rcc = ImportTrap(trap, (flags & CFG_IMPORT_REPLACE_TRAPS) != 0, context);
       if (rcc != RCC_SUCCESS)
          return rcc;
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportJsonTraps()"), _T("SNMP traps import completed"));
    return RCC_SUCCESS;
 }
@@ -872,7 +872,7 @@ static bool InsertLogParserRuleAtPosition(pugi::xml_node rulesNode, const char *
 /**
  * Import log parser rules from JSON object (unified for syslog and winlog)
  */
-static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *context, 
+static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *context,
                            const TCHAR *parserName, const TCHAR *configKey)
 {
    if (!json_is_object(parserObj))
@@ -923,21 +923,21 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
             // Find existing macro or create new one
             pugi::xml_node macroNode = macrosNode.find_child_by_attribute("macro", "name", macroName);
             bool isNew = !macroNode;
-            
+
             if (macroNode && !(flags & CFG_IMPORT_REPLACE_LOGPARSER_MACROS))
             {
                context->log(NXLOG_INFO, _T("ImportLogParser()"), _T("Existing %s parser macro '%hs' skipped"), parserName, macroName);
                continue;
             }
-            
+
             if (!macroNode)
             {
                macroNode = macrosNode.append_child("macro");
                macroNode.append_attribute("name") = macroName;
             }
-            
+
             macroNode.text().set(json_string_value(macroValue));
-            
+
             if (isNew)
                context->log(NXLOG_INFO, _T("ImportLogParser()"), _T("Adding new %s parser macro '%hs'"), parserName, macroName);
             else
@@ -952,12 +952,12 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
    {
       if (!json_is_object(ruleObj))
          continue;
-         
+
       const char *guidUtf8 = json_object_get_string_utf8(ruleObj, "guid", nullptr);
       const char *ruleXmlUtf8 = json_object_get_string_utf8(ruleObj, "content", nullptr);
       if (guidUtf8 == nullptr || ruleXmlUtf8 == nullptr)
          continue;
-      
+
       pugi::xml_node existingRule = rulesNode.find_child_by_attribute("rule", "guid", guidUtf8);
       if (existingRule)
       {
@@ -985,7 +985,7 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
                      existingRule.remove_attribute(attr);
                      attr = next;
                   }
-                  
+
                   // Copy attributes and children from new rule
                   for (pugi::xml_attribute attr = newRuleContent.first_attribute(); attr; attr = attr.next_attribute())
                   {
@@ -1009,8 +1009,8 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
       {
          context->log(NXLOG_INFO, _T("ImportLogParser()"), _T("Adding new %s parser rule with GUID %hs"), parserName, guidUtf8);
       }
-      
-      int insertPosition = -1; 
+
+      int insertPosition = -1;
       if (json_is_array(orderArray))
       {
          // Find this rule's position in the ordering array
@@ -1025,7 +1025,7 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
                break;
             }
          }
-         
+
          if (newRuleOrderIndex != -1)
          {
             // Try to find rule immediately before this position that exists
@@ -1037,7 +1037,7 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
                   insertPosition = FindLogParserRuleIndexByGuid(rulesNode, json_string_value(prevGuidValue), 1);
                }
             }
-            
+
             // If rule before not found, try rule after this position
             if (insertPosition == -1 && (newRuleOrderIndex + 1) < (int)json_array_size(orderArray))
             {
@@ -1047,7 +1047,7 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
                   insertPosition = FindLogParserRuleIndexByGuid(rulesNode, json_string_value(nextGuidValue));
                }
             }
-            
+
             // Check if any rule before this position exists (scan backwards)
             for (int j = newRuleOrderIndex - 2; insertPosition == -1 && j >= 0; j--)
             {
@@ -1057,7 +1057,7 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
                   insertPosition = FindLogParserRuleIndexByGuid(rulesNode, json_string_value(searchGuidValue), 1);
                }
             }
-            
+
             // Check if any rule after this position exists (scan forwards)
             for (int j = newRuleOrderIndex + 2; insertPosition == -1 && j < (int)json_array_size(orderArray); j++)
             {
@@ -1069,29 +1069,29 @@ static bool ImportLogParser(json_t *parserObj, uint32_t flags, ImportContext *co
             }
          }
       }
-      
+
       // Insert the rule at the determined position
       if (!InsertLogParserRuleAtPosition(rulesNode, ruleXmlUtf8, insertPosition))
       {
          context->log(NXLOG_ERROR, _T("ImportLogParser()"), _T("Failed to parse/insert %s parser rule with GUID %hs"), parserName, guidUtf8);
       }
    }
-   
+
    // Clean up
    MemFree(existingConfigUtf8);
-   
+
    // Convert XML document to string
    xml_string_writer writer;
    xml.print(writer);
-   ConfigWriteCLOB(configKey, writer.result, true);   
+   ConfigWriteCLOB(configKey, writer.result, true);
    context->log(NXLOG_INFO, _T("ImportLogParser()"), _T("%s parser rules import completed"), parserName);
    return true;
 }
 
 /**
- * Import configuration from JSON content  
+ * Import configuration from JSON content
  * @param content JSON configuration content
- * @param flags Import flags  
+ * @param flags Import flags
  * @param log Import log buffer
  * @return RCC status code
  */
@@ -1104,7 +1104,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
    json_t* root = json_loads(content, 0, &error);
    if (root == nullptr)
    {
-      context->log(NXLOG_ERROR, _T("ImportConfigFromJson()"), 
+      context->log(NXLOG_ERROR, _T("ImportConfigFromJson()"),
          _T("JSON parse error: %hs at line %d column %d"), error.text, error.line, error.column);
       return RCC_CONFIG_PARSE_ERROR;
    }
@@ -1129,7 +1129,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
 
    uint32_t rcc = RCC_SUCCESS;
    json_t *events, *traps, *templates, *actions, *rules, *scripts, *objectTools, *summaryTables, *mappingTables, *webServices, *assets, *syslog, *winlog;
-   
+
    // Import events
    events = json_object_get(root, "events");
    if (json_is_array(events))
@@ -1139,7 +1139,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
          goto cleanup;
    }
 
-   // Import traps  
+   // Import traps
    traps = json_object_get(root, "traps");
    if (json_is_array(traps))
    {
@@ -1199,7 +1199,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
    {
       size_t count = json_array_size(summaryTables);
       context->log(NXLOG_INFO, _T("ImportConfigFromJson()"), _T("%d DCI summary tables to import"), (int)count);
-      
+
       size_t index;
       json_t *table;
       json_array_foreach(summaryTables, index, table)
@@ -1243,7 +1243,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
    {
       size_t count = json_array_size(webServices);
       context->log(NXLOG_INFO, _T("ImportConfigFromJson()"), _T("%d web service definitions to import"), (int)count);
-      
+
       size_t index;
       json_t *webService;
       json_array_foreach(webServices, index, webService)
@@ -1287,7 +1287,7 @@ uint32_t ImportConfigFromJson(const char* content, uint32_t flags, StringBuffer 
          context->log(NXLOG_ERROR, _T("ImportConfigFromJson()"), _T("Failed to import winlog parser rules"));
       }
    }
-   
+
    context->log(NXLOG_INFO, _T("ImportConfigFromJson()"), _T("JSON configuration import completed"));
 
 cleanup:
@@ -1299,7 +1299,7 @@ cleanup:
  * Import configuration from raw content (auto-detect format)
  * @param content Configuration content
  * @param flags Import flags
- * @param log Import log buffer  
+ * @param log Import log buffer
  * @return RCC status code
  */
 uint32_t ImportConfigFromContent(const char* content, uint32_t flags, StringBuffer **log)

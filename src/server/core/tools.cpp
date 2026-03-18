@@ -400,18 +400,17 @@ InetAddress NXCORE_EXPORTABLE ResolveHostName(int32_t zoneUIN, const wchar_t *ho
 }
 
 /**
- * Event name resolver
+ * Event name resolver - handles both event names and event GUIDs
  */
 bool EventNameResolver(const wchar_t *name, uint32_t *code)
 {
-   bool success = false;
-   shared_ptr<EventTemplate> event = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> event = FindEventTemplate(name);
    if (event != nullptr)
    {
       *code = event->getCode();
-      success = true;
+      return true;
    }
-   return success;
+   return false;
 }
 
 /**

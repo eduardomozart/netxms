@@ -18,6 +18,7 @@
  */
 package org.netxms.nxmc.modules.events.widgets;
 
+import java.util.UUID;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.constants.ObjectStatus;
@@ -40,6 +41,7 @@ public class EventSelector extends AbstractSelector
 
    private int eventCode = 0;
    private String eventName = null;
+   private UUID eventGuid = null;
    private EventTemplate defaultNewTemplate = null;
 
 	/**
@@ -79,6 +81,7 @@ public class EventSelector extends AbstractSelector
 			{
 				eventCode = events[0].getCode();
 				eventName = events[0].getName();
+				eventGuid = events[0].getGuid();
 				setText(events[0].getName());
             setImage(StatusDisplayInfo.getStatusImage(events[0].getSeverity()));
             getTextControl().setToolTipText(generateToolTipText(events[0]));
@@ -87,6 +90,7 @@ public class EventSelector extends AbstractSelector
 			{
 				eventCode = 0;
 				eventName = null;
+				eventGuid = null;
             setText(i18n.tr("None"));
 				setImage(null);
 				getTextControl().setToolTipText(null);
@@ -107,6 +111,7 @@ public class EventSelector extends AbstractSelector
 
 		eventCode = 0;
 		eventName = null;
+		eventGuid = null;
       setText(i18n.tr("None"));
 		setImage(null);
 		getTextControl().setToolTipText(null);
@@ -133,6 +138,16 @@ public class EventSelector extends AbstractSelector
       return eventName;
    }
 
+   /**
+    * Get GUID of selected event
+    *
+    * @return Selected event's GUID or null if not set
+    */
+   public UUID getEventGuid()
+   {
+      return eventGuid;
+   }
+
 	/**
 	 * Set event code
 	 * @param eventCode
@@ -149,12 +164,14 @@ public class EventSelector extends AbstractSelector
 			if (evt != null)
 			{
 			   eventName = evt.getName();
+			   eventGuid = evt.getGuid();
 				setText(eventName);
 			   setImage(StatusDisplayInfo.getStatusImage(((EventTemplate)evt).getSeverity()));
 				getTextControl().setToolTipText(generateToolTipText(evt));
 			}
 			else
 			{
+			   eventGuid = null;
             setText("[" + eventCode + "]");
             setImage(StatusDisplayInfo.getStatusImage(ObjectStatus.UNKNOWN));
 				getTextControl().setToolTipText(null);
@@ -163,6 +180,7 @@ public class EventSelector extends AbstractSelector
 		else
 		{
          eventName = null;
+         eventGuid = null;
          setText(i18n.tr("None"));
 			setImage(null);
 			getTextControl().setToolTipText(null);

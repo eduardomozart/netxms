@@ -1,4 +1,4 @@
-/* 
+/*
 ** NetXMS - Network Management System
 ** Copyright (C) 2003-2023 Victor Kirhenshtein
 **
@@ -54,7 +54,7 @@ bool EF_ProcessMessage(ISCSession *session, NXCPMessage *request, NXCPMessage *r
 			object = FindObjectById(id);  // Object is specified explicitly
 		else
 			object = FindNodeByIP(0, request->getFieldAsInetAddress(VID_IP_ADDRESS));	// Object is specified by IP address
-		
+
 		if (object != nullptr)
 		{
          uint32_t code;
@@ -63,7 +63,7 @@ bool EF_ProcessMessage(ISCSession *session, NXCPMessage *request, NXCPMessage *r
 			if (name[0] != 0)
 			{
 				nxlog_debug_tag(DEBUG_TAG, 5, _T("Event specified by name (%s)"), name);
-				shared_ptr<EventTemplate> pt = FindEventTemplateByName(name);
+				shared_ptr<EventTemplate> pt = FindEventTemplate(name);
 				if (pt != nullptr)
 				{
 					code = pt->getCode();

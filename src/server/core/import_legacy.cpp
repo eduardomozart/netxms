@@ -34,7 +34,7 @@ static bool IsEventExist(const TCHAR *name, const Config& config)
    if (name == nullptr)
       return false;
 
-   shared_ptr<EventTemplate> e = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> e = FindEventTemplate(name);
 	if (e != nullptr)
 		return true;
 
@@ -302,7 +302,7 @@ static uint32_t ImportEvent(const ConfigEntry *event, bool overwrite, ImportCont
 static uint32_t ImportTrapMapping(const ConfigEntry& trap, bool overwrite, ImportContext *context, bool nxslV5) // TODO transactions needed?
 {
    uint32_t rcc = RCC_INTERNAL_ERROR;
-   shared_ptr<EventTemplate> eventTemplate = FindEventTemplateByName(trap.getSubEntryValue(_T("event"), 0, _T("")));
+   shared_ptr<EventTemplate> eventTemplate = FindEventTemplate(trap.getSubEntryValue(_T("event"), 0, _T("")));
 	if (eventTemplate == nullptr)
 		return rcc;
 

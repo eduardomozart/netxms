@@ -2217,7 +2217,7 @@ public class ExportFileBuilder extends ConfigurationView
          }
          for(String eventName : eventNames)
          {
-            EventTemplate t = session.findEventTemplateByName(eventName);
+            EventTemplate t = session.findEventTemplate(eventName);
             if (t != null)
             {
                events.put(t.getCode(), t);

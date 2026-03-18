@@ -600,7 +600,7 @@ public:
 
    bool match(struct tm *localTime, int currentTimeBCD)
    {
-      return 
+      return
          (m_startTime <= currentTimeBCD && currentTimeBCD <= m_endTime) && // Time is within range
          ((m_dateFilter & (_ULL(1) << localTime->tm_mday)) || ((m_dateFilter & _ULL(1)) && IsLastDayOfMonth(localTime))) && // Day of month is allowed
          (m_dateFilter & (_ULL(1) << (localTime->tm_wday + 31))) && // Day of week is allowed
@@ -712,7 +712,7 @@ public:
    bool saveToDB(DB_HANDLE hdb, const uuid& modifiedByGuid, const TCHAR* modifiedByName, time_t modificationTime) const;
    bool processEvent(Event *event) const;
    void fillMessage(NXCPMessage *msg) const;
-   
+
    json_t *createExportRecord() const;
    json_t *toJson(bool assistantMode = false) const;
 
@@ -927,7 +927,7 @@ StructArray<EventProcessingThreadStats> *GetEventProcessingThreadStats();
 bool NXCORE_EXPORTABLE EventNameFromCode(uint32_t eventCode, TCHAR *buffer);
 uint32_t NXCORE_EXPORTABLE EventCodeFromName(const TCHAR *name, uint32_t defaultValue = 0);
 shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplateByCode(uint32_t code);
-shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplateByName(const wchar_t *name);
+shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplate(const wchar_t *name);
 
 void NXCORE_EXPORTABLE ResendEvents(ObjectQueue<Event> *queue);
 

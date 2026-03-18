@@ -1,4 +1,4 @@
-/* 
+/*
 ** NetXMS - Network Management System
 ** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
@@ -80,6 +80,7 @@ EventProcessingPolicy NXCORE_EXPORTABLE *GetEventProcessingPolicy()
  */
 static SharedHashMap<uint32_t, EventTemplate> s_eventTemplates;
 static SharedStringObjectMap<EventTemplate> s_eventNameIndex;
+static std::unordered_map<uuid, shared_ptr<EventTemplate>, uuid_hash, uuid_equal> s_eventGuidIndex;
 static RWLock s_eventTemplatesLock;
 
 /**
@@ -778,6 +779,7 @@ static bool LoadEventConfiguration()
          auto t = make_shared<EventTemplate>(hResult, i);
          s_eventTemplates.set(t->getCode(), t);
          s_eventNameIndex.set(t->getName(), t);
+         s_eventGuidIndex.emplace(t->getGuid(), t);
       }
       DBFreeResult(hResult);
       success = true;
@@ -831,6 +833,7 @@ void ReloadEvents()
    s_eventTemplatesLock.writeLock();
    s_eventTemplates.clear();
    s_eventNameIndex.clear();
+   s_eventGuidIndex.clear();
    LoadEventConfiguration();
    s_eventTemplatesLock.unlock();
 }
@@ -962,7 +965,7 @@ void CreateEventTemplateExportRecord(json_t *array, uint32_t eventCode)
    if (e != nullptr)
    {
       json_t *eventObj = json_object();
-      
+
       json_object_set_new(eventObj, "guid", json_string_t(e->getGuid().toString()));
       json_object_set_new(eventObj, "name", json_string_t(e->getName()));
       json_object_set_new(eventObj, "code", json_integer(e->getCode()));
@@ -971,7 +974,7 @@ void CreateEventTemplateExportRecord(json_t *array, uint32_t eventCode)
       json_object_set_new(eventObj, "flags", json_integer(e->getFlags()));
       json_object_set_new(eventObj, "message", json_string_t(e->getMessageTemplate()));
       json_object_set_new(eventObj, "tags", json_string_t(e->getTags()));
-      
+
       json_array_append_new(array, eventObj);
    }
 
@@ -1014,12 +1017,22 @@ shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplateByCode(uint32_t cod
 }
 
 /**
- * Find event template by name - suitable for external call
+ * Find event template by GUID or name. Tries to parse the string as GUID first,
+ * falls back to name lookup for backward compatibility.
  */
-shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplateByName(const wchar_t *name)
+shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplate(const wchar_t *name)
 {
    s_eventTemplatesLock.readLock();
-   shared_ptr<EventTemplate> e = s_eventNameIndex.getShared(name);
+   shared_ptr<EventTemplate> e;
+   uuid guid = uuid::parse(name);
+   if (!guid.isNull())
+   {
+      auto it = s_eventGuidIndex.find(guid);
+      if (it != s_eventGuidIndex.end())
+         e = it->second;
+   }
+   if (e == nullptr)
+      e = s_eventNameIndex.getShared(name);
    s_eventTemplatesLock.unlock();
    return e;
 }
@@ -1030,7 +1043,7 @@ shared_ptr<EventTemplate> NXCORE_EXPORTABLE FindEventTemplateByName(const wchar_
  */
 uint32_t NXCORE_EXPORTABLE EventCodeFromName(const TCHAR *name, uint32_t defaultValue)
 {
-   shared_ptr<EventTemplate> e = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> e = FindEventTemplate(name);
 	return (e != nullptr) ? e->getCode() : defaultValue;
 }
 
@@ -1084,7 +1097,7 @@ uint32_t UpdateEventTemplate(const NXCPMessage& request, NXCPMessage *response, 
       return RCC_INVALID_OBJECT_NAME;
 
    uint32_t eventCode = request.getFieldAsUInt32(VID_EVENT_CODE);
-   shared_ptr<EventTemplate> et = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> et = FindEventTemplate(name);
    if ((et != nullptr) && (et->getCode() != eventCode))
       return RCC_NAME_ALEARDY_EXISTS;
 
@@ -1096,6 +1109,7 @@ uint32_t UpdateEventTemplate(const NXCPMessage& request, NXCPMessage *response, 
       e = make_shared<EventTemplate>(request);
       s_eventTemplates.set(e->getCode(), e);
       s_eventNameIndex.set(e->getName(), e);
+      s_eventGuidIndex.emplace(e->getGuid(), e);
       *oldValue = nullptr;
    }
    else
@@ -1153,7 +1167,7 @@ uint32_t NXCORE_EXPORTABLE CreateEventTemplateFromJson(const json_t *json, json_
    if (!IsValidObjectName(name, TRUE))
       return RCC_INVALID_OBJECT_NAME;
 
-   shared_ptr<EventTemplate> et = FindEventTemplateByName(name);
+   shared_ptr<EventTemplate> et = FindEventTemplate(name);
    if (et != nullptr)
       return RCC_NAME_ALEARDY_EXISTS;
 
@@ -1162,6 +1176,7 @@ uint32_t NXCORE_EXPORTABLE CreateEventTemplateFromJson(const json_t *json, json_
    auto e = make_shared<EventTemplate>(json);
    s_eventTemplates.set(e->getCode(), e);
    s_eventNameIndex.set(e->getName(), e);
+   s_eventGuidIndex.emplace(e->getGuid(), e);
 
    *newValue = e->toJson();
    bool success = e->saveToDatabase();
@@ -1200,7 +1215,7 @@ uint32_t NXCORE_EXPORTABLE ModifyEventTemplateFromJson(uint32_t eventCode, const
       if (!IsValidObjectName(name, TRUE))
          return RCC_INVALID_OBJECT_NAME;
 
-      shared_ptr<EventTemplate> et = FindEventTemplateByName(name);
+      shared_ptr<EventTemplate> et = FindEventTemplate(name);
       if ((et != nullptr) && (et->getCode() != eventCode))
          return RCC_NAME_ALEARDY_EXISTS;
    }
@@ -1266,6 +1281,7 @@ uint32_t NXCORE_EXPORTABLE DeleteEventTemplate(uint32_t eventCode)
    if (rcc == RCC_SUCCESS)
    {
       s_eventNameIndex.remove(e->getName());
+      s_eventGuidIndex.erase(e->getGuid());
       s_eventTemplates.remove(eventCode);
       NXCPMessage nmsg;
       nmsg.setCode(CMD_EVENT_DB_UPDATE);

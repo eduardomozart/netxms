@@ -54,7 +54,7 @@ std::string F_GetEventTemplate(json_t *arguments, uint32_t userId)
 
       wchar_t eventNameW[64];
       utf8_to_wchar(eventName, -1, eventNameW, 64);
-      eventTemplate = FindEventTemplateByName(eventNameW);
+      eventTemplate = FindEventTemplate(eventNameW);
       if (eventTemplate == nullptr)
       {
          char buffer[256];
@@ -231,7 +231,7 @@ std::string F_ModifyEventTemplate(json_t *arguments, uint32_t userId)
 
       wchar_t eventNameW[MAX_EVENT_NAME];
       utf8_to_wchar(eventName, -1, eventNameW, MAX_EVENT_NAME);
-      eventTemplate = FindEventTemplateByName(eventNameW);
+      eventTemplate = FindEventTemplate(eventNameW);
       if (eventTemplate == nullptr)
       {
          char buffer[256];
@@ -344,7 +344,7 @@ std::string F_DeleteEventTemplate(json_t *arguments, uint32_t userId)
 
       wchar_t eventNameW[MAX_EVENT_NAME];
       utf8_to_wchar(eventName, -1, eventNameW, MAX_EVENT_NAME);
-      eventTemplate = FindEventTemplateByName(eventNameW);
+      eventTemplate = FindEventTemplate(eventNameW);
       if (eventTemplate == nullptr)
       {
          char buffer[256];

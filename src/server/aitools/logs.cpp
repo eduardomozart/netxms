@@ -1530,7 +1530,7 @@ std::string F_SearchEvents(json_t *arguments, uint32_t userId)
          const char *eventName = json_string_value(eventCodeArg);
          WCHAR eventNameW[256];
          utf8_to_wchar(eventName, -1, eventNameW, 256);
-         shared_ptr<EventTemplate> tmpl = FindEventTemplateByName(eventNameW);
+         shared_ptr<EventTemplate> tmpl = FindEventTemplate(eventNameW);
          if (tmpl != nullptr)
             eventCode = tmpl->getCode();
       }
