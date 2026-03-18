@@ -441,6 +441,8 @@ static void HouseKeeper()
          break;
       if (!DeleteExpiredLogRecords(_T("package deployment log"), _T("package_deployment_log"), _T("execution_time"), _T("PackageDeployment.LogRetentionTime"), hdb, cycleStartTime))
          break;
+      if (!DeleteExpiredLogRecords(_T("connection history"), _T("connection_history"), _T("event_timestamp"), _T("ConnectionHistory.RetentionTime"), hdb, cycleStartTime))
+         break;
 
 		// Remove outdated audit log records
 		int32_t retentionTime = ConfigReadULong(_T("AuditLog.RetentionTime"), 90);

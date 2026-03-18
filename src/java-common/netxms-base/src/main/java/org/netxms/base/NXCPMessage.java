@@ -757,11 +757,11 @@ public class NXCPMessage
 	}
 
 	/**
-	 * Get field as date
-	 * 
-	 * @param fieldId field ID
-	 * @return field value as Date object
-	 */
+    * Get field as date, assuming received value is in seconds since epoch
+    * 
+    * @param fieldId field ID
+    * @return field value as Date object
+    */
 	public Date getFieldAsDate(final long fieldId)
 	{
 		final NXCPMessageField var = findField(fieldId);
@@ -769,7 +769,7 @@ public class NXCPMessage
 	}
 
    /**
-    * Get field as date, assuming received value is in milliseconds
+    * Get field as date, assuming received value is in milliseconds since epoch
     * 
     * @param fieldId field ID
     * @return field value as Date object

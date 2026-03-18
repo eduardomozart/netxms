@@ -2036,6 +2036,46 @@ INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,descrip
 		'   3) objectClassName - Object class name' CONCAT CRLF CONCAT
 		'   4) primaryIpAddress - Primary IP address'
 	);
+INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES
+	(
+		EVENT_MAC_CONNECTED, 'SYS_MAC_CONNECTED', '620b7117-608f-46ad-8172-d235ff4c10e8',
+		EVENT_SEVERITY_NORMAL, 1,
+		'MAC address %<macAddress> connected to port %<portName> on switch %<switchName>',
+		'Generated when a MAC address is detected on a switch port.' CONCAT CRLF CONCAT
+		'Parameters:' CONCAT CRLF CONCAT
+		'   1) macAddress - MAC address' CONCAT CRLF CONCAT
+		'   2) switchName - Switch name' CONCAT CRLF CONCAT
+		'   3) portName - Port name' CONCAT CRLF CONCAT
+		'   4) ipAddress - IP address (if known)' CONCAT CRLF CONCAT
+		'   5) vlanId - VLAN ID'
+	);
+INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES
+	(
+		EVENT_MAC_DISCONNECTED, 'SYS_MAC_DISCONNECTED', '231ed7da-00ae-4616-bb16-bc367ef161b7',
+		EVENT_SEVERITY_NORMAL, 1,
+		'MAC address %<macAddress> disconnected from port %<portName> on switch %<switchName>',
+		'Generated when a MAC address disappears from a switch port.' CONCAT CRLF CONCAT
+		'Parameters:' CONCAT CRLF CONCAT
+		'   1) macAddress - MAC address' CONCAT CRLF CONCAT
+		'   2) switchName - Switch name' CONCAT CRLF CONCAT
+		'   3) portName - Port name' CONCAT CRLF CONCAT
+		'   4) ipAddress - IP address (if known)' CONCAT CRLF CONCAT
+		'   5) vlanId - VLAN ID'
+	);
+INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES
+	(
+		EVENT_MAC_MOVED, 'SYS_MAC_MOVED', 'c44e7313-e083-450f-acd8-e0934e230b9f',
+		EVENT_SEVERITY_WARNING, 1,
+		'MAC address %<macAddress> moved from %<oldPortName> to %<newPortName> on switch %<switchName>',
+		'Generated when a MAC address moves between ports on the same switch.' CONCAT CRLF CONCAT
+		'Parameters:' CONCAT CRLF CONCAT
+		'   1) macAddress - MAC address' CONCAT CRLF CONCAT
+		'   2) switchName - Switch name' CONCAT CRLF CONCAT
+		'   3) oldPortName - Previous port name' CONCAT CRLF CONCAT
+		'   4) newPortName - New port name' CONCAT CRLF CONCAT
+		'   5) ipAddress - IP address (if known)' CONCAT CRLF CONCAT
+		'   6) vlanId - VLAN ID'
+	);
 
 /*
 ** SNMP traps

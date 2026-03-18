@@ -2132,6 +2132,9 @@ void ClientSession::processRequest(NXCPMessage *request)
       case CMD_GET_CLOUD_CONNECTOR_NAMES:
          getCloudConnectorNames(*request);
          break;
+      case CMD_GET_CONNECTION_HISTORY:
+         getConnectionHistory(*request);
+         break;
       default:
          if ((code >> 8) == 0x11)
          {
@@ -19633,5 +19636,26 @@ void ClientSession::getCloudConnectorNames(const NXCPMessage& request)
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
    GetCloudConnectorNames().fillMessage(&response, VID_ELEMENT_LIST_BASE, VID_NUM_ELEMENTS);
    response.setField(VID_RCC, RCC_SUCCESS);
+   sendMessage(response);
+}
+
+/**
+ * Get connection history records
+ *
+ * Called by:
+ * CMD_GET_CONNECTION_HISTORY
+ */
+void ClientSession::getConnectionHistory(const NXCPMessage& request)
+{
+   NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (m_systemAccessRights & SYSTEM_ACCESS_SEARCH_NETWORK)
+   {
+      GetConnectionHistory(request, &response);
+   }
+   else
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      writeAuditLog(AUDIT_SECURITY, false, 0, L"Access denied for reading connection history");
+   }
    sendMessage(response);
 }

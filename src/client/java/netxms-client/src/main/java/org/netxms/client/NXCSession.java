@@ -220,6 +220,7 @@ import org.netxms.client.snmp.SnmpUsmCredential;
 import org.netxms.client.snmp.SnmpValue;
 import org.netxms.client.snmp.SnmpWalkListener;
 import org.netxms.client.topology.ArpCacheEntry;
+import org.netxms.client.topology.ConnectionHistoryRecord;
 import org.netxms.client.topology.ConnectionPoint;
 import org.netxms.client.topology.FdbEntry;
 import org.netxms.client.topology.NetworkPath;
@@ -11558,6 +11559,47 @@ public class NXCSession
          nodes.add((AbstractNode)findObjectById(response.getFieldAsInt32(base++)));
       }
       return nodes;
+   }
+
+   /**
+    * Get connection history records matching the given filters.
+    *
+    * @param macAddress MAC address filter (null for any)
+    * @param objectId node or switch object ID (0 for any)
+    * @param interfaceId interface object ID (0 for any)
+    * @param from start time (null for no lower bound)
+    * @param to end time (null for no upper bound)
+    * @param maxRecords maximum number of records to return
+    * @return list of connection history records
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public List<ConnectionHistoryRecord> getConnectionHistory(MacAddress macAddress, long objectId, long interfaceId, Date from, Date to, int maxRecords) throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_GET_CONNECTION_HISTORY);
+      if (macAddress != null)
+         msg.setField(NXCPCodes.VID_MAC_ADDR, macAddress.toString());
+      if (objectId != 0)
+         msg.setFieldUInt32(NXCPCodes.VID_OBJECT_ID, objectId);
+      if (interfaceId != 0)
+         msg.setFieldUInt32(NXCPCodes.VID_INTERFACE_ID, interfaceId);
+      if (from != null)
+         msg.setFieldUInt32(NXCPCodes.VID_TIME_FROM, from.getTime() / 1000);
+      if (to != null)
+         msg.setFieldUInt32(NXCPCodes.VID_TIME_TO, to.getTime() / 1000);
+      msg.setFieldInt32(NXCPCodes.VID_MAX_RECORDS, maxRecords);
+      sendMessage(msg);
+
+      final NXCPMessage response = waitForRCC(msg.getMessageId());
+      int count = response.getFieldAsInt32(NXCPCodes.VID_NUM_ELEMENTS);
+      List<ConnectionHistoryRecord> records = new ArrayList<ConnectionHistoryRecord>(count);
+      long varId = NXCPCodes.VID_ELEMENT_LIST_BASE;
+      for(int i = 0; i < count; i++)
+      {
+         records.add(new ConnectionHistoryRecord(response, varId));
+         varId += 20;
+      }
+      return records;
    }
 
    /**

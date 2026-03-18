@@ -237,6 +237,7 @@ threads.pool	Thread pool related
 topology.*	Topology related
 topology.arp	ARP topology
 topology.cdp	CDP topology
+topology.conn_history	Connection history tracking
 topology.fdb	Forwarding database topology
 topology.ipv4	IPv4 topology
 topology.layer2 Layer 2 topology builder

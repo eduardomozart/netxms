@@ -3201,3 +3201,39 @@ CREATE TABLE ai_message_recipients
 ) TABLE_TYPE;
 
 CREATE INDEX idx_ai_msg_recipients_user ON ai_message_recipients(user_id);
+
+/**
+ * Connection history (MAC address connection/disconnection/move tracking)
+ */
+CREATE TABLE connection_history
+(
+   record_id $SQL:INT64 not null,
+#ifdef DB_TSDB
+   event_timestamp timestamptz not null,
+#else
+   event_timestamp integer not null,
+#endif
+   mac_address varchar(16) not null,
+   ip_address varchar(48) null,
+   node_id integer not null default 0,
+   switch_id integer not null,
+   interface_id integer not null,
+   vlan_id integer not null default 0,
+   event_type integer not null,
+   old_switch_id integer not null default 0,
+   old_interface_id integer not null default 0,
+#ifdef DB_TSDB
+   PRIMARY KEY(record_id,event_timestamp)
+#else
+   PRIMARY KEY(record_id)
+#endif
+) TABLE_TYPE;
+
+CREATE INDEX idx_conn_history_mac ON connection_history(mac_address);
+CREATE INDEX idx_conn_history_timestamp ON connection_history(event_timestamp);
+CREATE INDEX idx_conn_history_switch ON connection_history(switch_id);
+CREATE INDEX idx_conn_history_node ON connection_history(node_id);
+
+#ifdef DB_TSDB
+SELECT create_hypertable('connection_history', 'event_timestamp', chunk_time_interval => interval '86400 seconds');
+#endif

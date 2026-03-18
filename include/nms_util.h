@@ -5090,7 +5090,7 @@ public:
    static MacAddress parse(const char *str, bool partialMac = false);
    static MacAddress parse(const wchar_t *str, bool partialMac = false);
 
-   bool isValid() const { return !isNull(); }
+   bool isValid() const { return (m_length > 0) && !isNull(); }
    bool isBroadcast() const;
    bool isMulticast() const { return (m_length == 6) ? ((m_value[0] & 0x01) != 0) && !isBroadcast() : false; }
    bool equals(const MacAddress &a) const { return GenericId<8>::equals(a); }

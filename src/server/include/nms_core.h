@@ -105,6 +105,7 @@
 #define IDG_INCIDENT_ACTIVITY       34
 #define IDG_SC_MIGRATION_TASK       35
 #define IDG_TRUSTED_DEVICE          36
+#define IDG_CONNECTION_HISTORY      37
 
 /**** ID functions *****/
 bool InitIdTable();
@@ -1018,6 +1019,7 @@ private:
    void getInterfaceTrafficDcis(const NXCPMessage& request);
    void autoConnectNetworkMapNodes(const NXCPMessage& request);
    void getCloudConnectorNames(const NXCPMessage& request);
+   void getConnectionHistory(const NXCPMessage& request);
 
    void alarmUpdateWorker(Alarm *alarm);
    void sendActionDBUpdateMessage(NXCP_MESSAGE *msg);

@@ -11730,9 +11730,13 @@ void Node::topologyPoll(PollerInfo *poller, ClientSession *pSession, uint32_t rq
             delete fdbEntries;
          }
 
+         shared_ptr<ForwardingDatabase> prevFdb;
          m_topologyMutex.lock();
+         prevFdb = m_fdb;
          m_fdb = fdb;
          m_topologyMutex.unlock();
+
+         UpdateConnectionHistory(m_id, fdb, prevFdb);
 
          if (fdb != nullptr)
          {

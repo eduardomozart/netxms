@@ -463,6 +463,9 @@ shared_ptr<NetObj> NXCORE_EXPORTABLE FindInterfaceConnectionPoint(const MacAddre
 
 void NXCORE_EXPORTABLE FindMacAddresses(const BYTE* macPattern, size_t macPatternSize, ObjectArray<MacAddressInfo>* out, int searchLimit);
 
+void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatabase>& newFdb, const shared_ptr<ForwardingDatabase>& prevFdb);
+void GetConnectionHistory(const NXCPMessage& request, NXCPMessage *response);
+
 ObjectArray<LLDP_LOCAL_PORT_INFO> *GetLLDPLocalPortInfo(const Node& node, SNMP_Transport *snmp);
 
 shared_ptr<LinkLayerNeighbors> BuildLinkLayerNeighborList(Node *node);

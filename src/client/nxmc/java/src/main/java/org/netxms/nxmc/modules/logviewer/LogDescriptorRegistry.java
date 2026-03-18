@@ -78,6 +78,13 @@ public final class LogDescriptorRegistry
             return true; // Audit is available for all objects
          }
       });
+      descriptors.add(new LogDescriptor("ConnectionHistory", i18n.tr("Connection History"), i18n.tr("Connection history"), "switch_id") {
+         @Override
+         public boolean isApplicableForObject(AbstractObject object)
+         {
+            return (object instanceof Node) && ((Node)object).isBridge();
+         }
+      });
       descriptors.add(new LogDescriptor("EventLog", i18n.tr("Events"), null, "event_source") {
          @Override
          public boolean isApplicableForObject(AbstractObject object)

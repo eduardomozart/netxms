@@ -24,6 +24,97 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.18 to 61.19
+ */
+static bool H_UpgradeFromV18()
+{
+   if (g_dbSyntax == DB_SYNTAX_TSDB)
+   {
+      CHK_EXEC(CreateTable(
+         L"CREATE TABLE connection_history ("
+         L"  record_id $SQL:INT64 not null,"
+         L"  event_timestamp timestamptz not null,"
+         L"  mac_address varchar(16) not null,"
+         L"  ip_address varchar(48) null,"
+         L"  node_id integer not null default 0,"
+         L"  switch_id integer not null,"
+         L"  interface_id integer not null,"
+         L"  vlan_id integer not null default 0,"
+         L"  event_type integer not null,"
+         L"  old_switch_id integer not null default 0,"
+         L"  old_interface_id integer not null default 0,"
+         L"  PRIMARY KEY(record_id,event_timestamp))"));
+      CHK_EXEC(SQLQuery(L"SELECT create_hypertable('connection_history', 'event_timestamp', chunk_time_interval => interval '86400 seconds')"));
+   }
+   else
+   {
+      CHK_EXEC(CreateTable(
+         L"CREATE TABLE connection_history ("
+         L"  record_id $SQL:INT64 not null,"
+         L"  event_timestamp integer not null,"
+         L"  mac_address varchar(16) not null,"
+         L"  ip_address varchar(48) null,"
+         L"  node_id integer not null default 0,"
+         L"  switch_id integer not null,"
+         L"  interface_id integer not null,"
+         L"  vlan_id integer not null default 0,"
+         L"  event_type integer not null,"
+         L"  old_switch_id integer not null default 0,"
+         L"  old_interface_id integer not null default 0,"
+         L"  PRIMARY KEY(record_id))"));
+   }
+
+   CHK_EXEC(SQLQuery(L"CREATE INDEX idx_conn_history_mac ON connection_history(mac_address)"));
+   CHK_EXEC(SQLQuery(L"CREATE INDEX idx_conn_history_timestamp ON connection_history(event_timestamp)"));
+   CHK_EXEC(SQLQuery(L"CREATE INDEX idx_conn_history_switch ON connection_history(switch_id)"));
+   CHK_EXEC(SQLQuery(L"CREATE INDEX idx_conn_history_node ON connection_history(node_id)"));
+
+   CHK_EXEC(CreateConfigParam(L"ConnectionHistory.RetentionTime", L"90",
+      L"Number of days to keep connection history records.",
+      L"days", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"ConnectionHistory.EnableCollection", L"1",
+      L"Enable or disable collection of MAC address connection history during topology polls.",
+      nullptr, 'B', true, false, false, false));
+
+   CHK_EXEC(CreateEventTemplate(EVENT_MAC_CONNECTED, _T("SYS_MAC_CONNECTED"),
+      EVENT_SEVERITY_NORMAL, EF_LOG, _T("620b7117-608f-46ad-8172-d235ff4c10e8"),
+      _T("MAC address %<macAddress> connected to port %<portName> on switch %<switchName>"),
+      _T("Generated when a MAC address is detected on a switch port.\r\n")
+      _T("Parameters:\r\n")
+      _T("   1) macAddress - MAC address\r\n")
+      _T("   2) switchName - Switch name\r\n")
+      _T("   3) portName - Port name\r\n")
+      _T("   4) ipAddress - IP address (if known)\r\n")
+      _T("   5) vlanId - VLAN ID")));
+
+   CHK_EXEC(CreateEventTemplate(EVENT_MAC_DISCONNECTED, _T("SYS_MAC_DISCONNECTED"),
+      EVENT_SEVERITY_NORMAL, EF_LOG, _T("231ed7da-00ae-4616-bb16-bc367ef161b7"),
+      _T("MAC address %<macAddress> disconnected from port %<portName> on switch %<switchName>"),
+      _T("Generated when a MAC address disappears from a switch port.\r\n")
+      _T("Parameters:\r\n")
+      _T("   1) macAddress - MAC address\r\n")
+      _T("   2) switchName - Switch name\r\n")
+      _T("   3) portName - Port name\r\n")
+      _T("   4) ipAddress - IP address (if known)\r\n")
+      _T("   5) vlanId - VLAN ID")));
+
+   CHK_EXEC(CreateEventTemplate(EVENT_MAC_MOVED, _T("SYS_MAC_MOVED"),
+      EVENT_SEVERITY_WARNING, EF_LOG, _T("c44e7313-e083-450f-acd8-e0934e230b9f"),
+      _T("MAC address %<macAddress> moved from %<oldPortName> to %<newPortName> on switch %<switchName>"),
+      _T("Generated when a MAC address moves between ports on the same switch.\r\n")
+      _T("Parameters:\r\n")
+      _T("   1) macAddress - MAC address\r\n")
+      _T("   2) switchName - Switch name\r\n")
+      _T("   3) oldPortName - Previous port name\r\n")
+      _T("   4) newPortName - New port name\r\n")
+      _T("   5) ipAddress - IP address (if known)\r\n")
+      _T("   6) vlanId - VLAN ID")));
+
+   CHK_EXEC(SetMinorSchemaVersion(19));
+   return true;
+}
+
+/**
  * Upgrade from 61.17 to 61.18
  */
 static bool H_UpgradeFromV17()
@@ -469,6 +560,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 18, 61, 19, H_UpgradeFromV18 },
    { 17, 61, 18, H_UpgradeFromV17 },
    { 16, 61, 17, H_UpgradeFromV16 },
    { 15, 61, 16, H_UpgradeFromV15 },

@@ -59,6 +59,7 @@ int H_AlarmDetails(Context *context);
 int H_AlarmResolve(Context *context);
 int H_AlarmTerminate(Context *context);
 int H_Alarms(Context *context);
+int H_GetConnectionHistory(Context *context);
 int H_DataCollectionCurrentValues(Context *context);
 int H_DataCollectionHistory(Context *context);
 int H_PerformanceViewDCIs(Context *context);
@@ -232,6 +233,9 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/dci-summary-tables/adhoc-query")
       .POST(H_QueryAdHocSummaryTable)
+      .build();
+   RouteBuilder("v1/connection-history")
+      .GET(H_GetConnectionHistory)
       .build();
    RouteBuilder("v1/find/mac-address")
       .GET(H_FindMacAddress)

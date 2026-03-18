@@ -140,6 +140,7 @@ import org.netxms.nxmc.modules.objects.views.ScreenshotView;
 import org.netxms.nxmc.modules.objects.views.ServicesView;
 import org.netxms.nxmc.modules.objects.views.SoftwareInventoryView;
 import org.netxms.nxmc.modules.objects.views.StatusMapView;
+import org.netxms.nxmc.modules.objects.views.ConnectionHistoryView;
 import org.netxms.nxmc.modules.objects.views.SwitchForwardingDatabaseView;
 import org.netxms.nxmc.modules.objects.views.TemplateTargets;
 import org.netxms.nxmc.modules.objects.views.UserSessionsView;
@@ -278,6 +279,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       addMainView(new SoftwareInventoryView());
       addMainView(new StatusMapView());
       addMainView(new SummaryDataCollectionView());
+      addMainView(new ConnectionHistoryView());
       addMainView(new SwitchForwardingDatabaseView());
       addMainView(new TemplateTargets());      
       addMainView(new ThresholdSummaryView());
