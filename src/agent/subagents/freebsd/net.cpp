@@ -37,6 +37,10 @@
 #include <net/route.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+#if __FreeBSD__ >= 13
+#define _WANT_INPCB
+#define _WANT_TCPCB
+#endif
 #include <netinet/in_pcb.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcp_fsm.h>
