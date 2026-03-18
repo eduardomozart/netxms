@@ -83,39 +83,54 @@ public class ConnectionTest extends AbstractSessionTest
 
    @Test
    public void testMultipleConnections() throws Exception
-	{
-	   Thread[] t = new Thread[TestConstants.CONNECTION_POOL];
-	   for(int i = 0; i < t.length; i++)
-	   {
+   {
+      Thread[] t = new Thread[TestConstants.CONNECTION_POOL];
+      for(int i = 0; i < t.length; i++)
+      {
          t[i] = new Thread(() -> {
+            NXCSession session = null;
             try
             {
                Random rand = new Random();
                Thread.sleep(rand.nextInt(60000) + 1000);
-               final NXCSession session = connectAndLogin();
+               session = connectAndLogin();
 
                session.syncObjects();
                session.syncEventTemplates();
                session.syncUserDatabase();
 
                Thread.sleep(rand.nextInt(60000) + 10000);
-               session.disconnect();
             }
             catch(Exception e)
             {
                e.printStackTrace();
             }
+            finally
+            {
+               if (session != null)
+                  session.disconnect();
+            }
          });
-	      t[i].start();
+         t[i].start();
          System.out.println("Thread #" + (i + 1) + " started");
-	   }
+      }
 
+      boolean success = true;
       for(int i = 0; i < t.length; i++)
       {
-         t[i].join();
-         System.out.println("Thread #" + (i + 1) + " stopped");
+         t[i].join(600000);
+         if (t[i].isAlive())
+         {
+            System.out.println("Thread #" + (i + 1) + " timed out");
+            success = false;
+         }
+         else
+         {
+            System.out.println("Thread #" + (i + 1) + " stopped");
+         }
       }
-	}
+      assertTrue(success, "One or more worker threads did not complete within timeout");
+   }
 
    private static class Worker implements Runnable
    {
