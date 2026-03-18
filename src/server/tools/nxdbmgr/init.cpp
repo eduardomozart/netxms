@@ -148,7 +148,8 @@ int InitDatabase(const char *initFile)
    TCHAR query[256];
 
    // Check if database is already initialized
-   DB_RESULT hResult = SQLSelect(_T("SELECT var_value FROM metadata WHERE var_name='SchemaVersion'"));
+   // Use DBSelect instead of SQLSelect to avoid printing error when metadata table doesn't exist
+   DB_RESULT hResult = DBSelect(g_dbHandle, _T("SELECT var_value FROM metadata WHERE var_name='SchemaVersion'"));
    if (hResult != nullptr)
    {
       DBFreeResult(hResult);
