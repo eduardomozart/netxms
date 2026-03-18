@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  */
 package org.netxms.nxmc.modules.datacollection.views;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -93,6 +94,10 @@ public class HistoricalDataView extends ViewWithContext
 	private Action actionExportToCsv;
 	private Action actionExportAllToCsv;
 	private Action actionDeleteDciEntry;
+   private Action actionSkipRepeatedValues;
+   private boolean skipRepeatedValues = false;
+   private DciDataRow allValues[] = null;
+   private DciDataRow changedValues[] = null;
    private Composite infoArea;
    private Label labelDciId;
    private Label labelDciName;
@@ -196,6 +201,7 @@ public class HistoricalDataView extends ViewWithContext
       view.timeFrom = timeFrom;
       view.timeTo = timeTo;
       view.recordLimit = recordLimit;
+      view.skipRepeatedValues = skipRepeatedValues;
       return view;
    }
 
@@ -313,6 +319,18 @@ public class HistoricalDataView extends ViewWithContext
 		   }
 		};
 
+      actionSkipRepeatedValues = new Action(i18n.tr("Show &changed values only"), Action.AS_CHECK_BOX) {
+         @Override
+         public void run()
+         {
+            skipRepeatedValues = actionSkipRepeatedValues.isChecked();
+            if (allValues != null)
+               viewer.setInput(skipRepeatedValues ? changedValues : allValues);
+         }
+      };
+      actionSkipRepeatedValues.setImageDescriptor(ResourceManager.getImageDescriptor("icons/deduplicate.png"));
+      actionSkipRepeatedValues.setChecked(skipRepeatedValues);
+
 		actionExportToCsv = new ExportToCsvAction(this, viewer, true);
 		actionExportAllToCsv = new ExportToCsvAction(this, viewer, false);
 	}
@@ -324,6 +342,7 @@ public class HistoricalDataView extends ViewWithContext
    protected void fillLocalToolBar(IToolBarManager manager)
    {
       manager.add(actionSelectRange);
+      manager.add(actionSkipRepeatedValues);
       manager.add(new Separator());
       manager.add(actionExportAllToCsv);
       super.fillLocalToolBar(manager);
@@ -342,6 +361,7 @@ public class HistoricalDataView extends ViewWithContext
       if (showAllAction != null)
          manager.add(showAllAction);
       manager.add(actionSelectRange);
+      manager.add(actionSkipRepeatedValues);
       manager.add(new Separator());
       manager.add(actionExportAllToCsv);
       super.fillLocalMenu(manager);
@@ -411,7 +431,9 @@ public class HistoricalDataView extends ViewWithContext
                }
 
                ((HistoricalDataLabelProvider)viewer.getLabelProvider()).setDataFormatter(data.getDataFormatter());
-               viewer.setInput(data.getValues());
+               allValues = data.getValues();
+               changedValues = filterRepeatedValues(allValues);
+               viewer.setInput(skipRepeatedValues ? changedValues : allValues);
                updateInProgress = false;
                infoArea.layout();
 				});
@@ -468,7 +490,9 @@ public class HistoricalDataView extends ViewWithContext
                @Override
                public void run()
                {
-                  viewer.setInput(data.getValues());
+                  allValues = data.getValues();
+                  changedValues = filterRepeatedValues(allValues);
+                  viewer.setInput(skipRepeatedValues ? changedValues : allValues);
                   updateInProgress = false;
                }
             });
@@ -481,6 +505,32 @@ public class HistoricalDataView extends ViewWithContext
          }
       }.start();
 	}
+
+   /**
+    * Filter out consecutive rows with the same value, keeping only rows where the value changed.
+    *
+    * @param values original data rows
+    * @return filtered list with only changed values
+    */
+   private static DciDataRow[] filterRepeatedValues(DciDataRow[] values)
+   {
+      if (values.length == 0)
+         return values;
+
+      List<DciDataRow> result = new ArrayList<>();
+      String previousValue = null;
+      for(int i = values.length - 1; i >= 0; i--)
+      {
+         DciDataRow row = values[i];
+         String currentValue = row.getValueAsString();
+         if (!currentValue.equals(previousValue))
+         {
+            result.add(row);
+            previousValue = currentValue;
+         }
+      }
+      return result.toArray(DciDataRow[]::new);
+   }
 
    /**
     * @see org.netxms.nxmc.base.views.ViewWithContext#isValidForContext(java.lang.Object)
@@ -534,6 +584,7 @@ public class HistoricalDataView extends ViewWithContext
          memento.set("timeTo", timeTo.getTime());
 
       memento.set("recordLimit", recordLimit);
+      memento.set("skipRepeatedValues", skipRepeatedValues);
    }
 
 
@@ -567,6 +618,7 @@ public class HistoricalDataView extends ViewWithContext
          timeTo = new Date(timestmap);
 
       recordLimit = memento.getAsInteger("recordLimit", recordLimit);
+      skipRepeatedValues = memento.getAsBoolean("skipRepeatedValues", false);
 
       super.restoreState(memento);
    }
