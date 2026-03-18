@@ -20,6 +20,10 @@
 **
 **/
 
+#define _WANT_SOCKET
+#define _WANT_INPCB
+#define _WANT_TCPCB
+
 #include <nms_common.h>
 #include <nms_agent.h>
 
@@ -27,6 +31,7 @@
 #include <stdlib.h>
 #include <sys/file.h>
 #include <sys/socket.h>
+#include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/sockio.h>
 #include <net/if.h>
@@ -37,10 +42,6 @@
 #include <net/route.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
-#if __FreeBSD__ >= 13
-#define _WANT_INPCB
-#define _WANT_TCPCB
-#endif
 #include <netinet/in_pcb.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcp_fsm.h>

@@ -160,11 +160,7 @@ static void IOStatCollector()
                ds->operations[DEVSTAT_READ],
                ds->operations[DEVSTAT_WRITE],
                BintimeToMs(ds->busy_time),
-#if __FreeBSD__ >= 13
                ds->start_count - ds->end_count);
-#else
-               ds->busy_count);
-#endif
          }
          CalculateTotals();
          s_currSlot++;
