@@ -1118,6 +1118,14 @@ public:
    }
 
    /**
+    * Reset poll counter (used during shutdown to clear orphaned poll states)
+    */
+   void resetPendingCounter()
+   {
+      m_pollerCount = 0;
+   }
+
+   /**
     * Set last completed time (intended only for reading from database)
     */
    void setLastCompleted(time_t lastCompleted)
@@ -1865,6 +1873,7 @@ public:
    virtual bool lockForMapUpdatePoll();
 
    void resetPollTimers();
+   void resetAllPendingPolls();
 
    DataCollectionError getInternalMetric(const TCHAR *name, TCHAR *buffer, size_t size);
    bool saveToDatabase(DB_HANDLE hdb);

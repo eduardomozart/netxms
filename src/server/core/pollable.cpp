@@ -331,6 +331,22 @@ void Pollable::resetPollTimers()
 }
 
 /**
+ * Reset all pending poll states (used during shutdown to clear orphaned poll states after poller thread pool is destroyed)
+ */
+void Pollable::resetAllPendingPolls()
+{
+   m_statusPollState.resetPendingCounter();
+   m_configurationPollState.resetPendingCounter();
+   m_instancePollState.resetPendingCounter();
+   m_discoveryPollState.resetPendingCounter();
+   m_topologyPollState.resetPendingCounter();
+   m_routingPollState.resetPendingCounter();
+   m_icmpPollState.resetPendingCounter();
+   m_autobindPollState.resetPendingCounter();
+   m_mapUpdatePollState.resetPendingCounter();
+}
+
+/**
  * Get poll time for given poller and aggregation type
  */
 static inline DataCollectionError GetPollTime(PollState *state, const TCHAR *type, TCHAR *buffer)
