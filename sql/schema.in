@@ -3207,7 +3207,7 @@ CREATE INDEX idx_ai_msg_recipients_user ON ai_message_recipients(user_id);
  */
 CREATE TABLE connection_history
 (
-   record_id $SQL:INT64 not null,
+   record_id SQL_INT64 not null,
 #ifdef DB_TSDB
    event_timestamp timestamptz not null,
 #else

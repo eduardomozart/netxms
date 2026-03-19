@@ -214,6 +214,17 @@ uuid guid = DBGetFieldGUID(result, row, col);
 
 Database schema is managed in `sql/` directory at repository root.
 
+### SQL Type Macros — Two Different Systems
+
+There are two separate macro systems for database-portable type names. Do NOT mix them up:
+
+| Context | Macro style | Example | Processed by |
+|---------|-------------|---------|--------------|
+| `sql/schema.in` (initial schema) | CPP macros | `SQL_INT64`, `SQL_TEXT`, `SQL_BLOB` | C preprocessor (`cpp`), with definitions from `sql/database.in` |
+| `nxdbmgr` upgrade scripts (C++ code) | `$SQL:` placeholders | `$SQL:INT64`, `$SQL:TEXT`, `$SQL:BLOB` | Runtime string replacement in `nxdbmgr` |
+
+Using `$SQL:INT64` in `schema.in` will **not** be substituted and will cause SQL syntax errors at database initialization.
+
 ### Upgrade Procedures
 
 Located in `src/server/tools/nxdbmgr/`:
