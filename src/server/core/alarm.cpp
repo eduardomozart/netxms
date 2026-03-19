@@ -1873,6 +1873,71 @@ uint32_t NXCORE_EXPORTABLE TerminateAlarmByHDRef(const TCHAR *hdref)
 }
 
 /**
+ * Set helpdesk reference from script (without using helpdesk driver)
+ */
+uint32_t Alarm::setHelpdeskReference(const TCHAR *hdref)
+{
+   if (m_helpDeskState != ALARM_HELPDESK_IGNORED)
+      return RCC_OUT_OF_STATE_REQUEST;
+
+   if ((hdref == nullptr) || (*hdref == 0))
+      return RCC_INVALID_ARGUMENT;
+
+   _tcslcpy(m_helpDeskRef, hdref, MAX_HELPDESK_REF_LEN);
+   m_helpDeskState = ALARM_HELPDESK_OPEN;
+   NotifyClients(NX_NOTIFY_ALARM_CHANGED, this);
+   updateInDatabase();
+   nxlog_debug_tag(DEBUG_TAG, 5, L"Helpdesk reference \"%s\" set for alarm %d from script", m_helpDeskRef, m_alarmId);
+   return RCC_SUCCESS;
+}
+
+/**
+ * Set helpdesk reference on alarm (called from NXSL)
+ */
+uint32_t NXCORE_EXPORTABLE SetHelpdeskReference(uint32_t alarmId, const TCHAR *hdref)
+{
+   uint32_t rcc = RCC_INVALID_ALARM_ID;
+
+   s_alarmList.lock();
+   Alarm *alarm = s_alarmList.find(alarmId);
+   if (alarm != nullptr)
+   {
+      rcc = alarm->setHelpdeskReference(hdref);
+   }
+   s_alarmList.unlock();
+
+   return rcc;
+}
+
+/**
+ * Close helpdesk issue on alarm (called from NXSL)
+ */
+uint32_t NXCORE_EXPORTABLE CloseHelpdeskIssue(uint32_t alarmId)
+{
+   uint32_t rcc = RCC_INVALID_ALARM_ID;
+
+   s_alarmList.lock();
+   Alarm *alarm = s_alarmList.find(alarmId);
+   if (alarm != nullptr)
+   {
+      if (alarm->getHelpDeskState() == ALARM_HELPDESK_OPEN)
+      {
+         alarm->onHelpdeskIssueClose();
+         NotifyClients(NX_NOTIFY_ALARM_CHANGED, alarm);
+         alarm->updateInDatabase();
+         rcc = RCC_SUCCESS;
+      }
+      else
+      {
+         rcc = RCC_OUT_OF_STATE_REQUEST;
+      }
+   }
+   s_alarmList.unlock();
+
+   return rcc;
+}
+
+/**
  * Open issue in helpdesk system
  */
 uint32_t Alarm::openHelpdeskIssue(TCHAR *hdref)

@@ -5834,6 +5834,39 @@ NXSL_METHOD_DEFINITION(Alarm, requestAiAssistantComment)
 }
 
 /**
+ * Alarm::setHelpdeskReference(ref) method
+ */
+NXSL_METHOD_DEFINITION(Alarm, setHelpdeskReference)
+{
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   Alarm *alarm = static_cast<Alarm*>(object->getData());
+   *result = vm->createValue(SetHelpdeskReference(alarm->getAlarmId(), argv[0]->getValueAsCString()));
+   return 0;
+}
+
+/**
+ * Alarm::closeHelpdeskIssue() method
+ */
+NXSL_METHOD_DEFINITION(Alarm, closeHelpdeskIssue)
+{
+   Alarm *alarm = static_cast<Alarm*>(object->getData());
+   *result = vm->createValue(CloseHelpdeskIssue(alarm->getAlarmId()));
+   return 0;
+}
+
+/**
+ * Alarm::unlinkFromHelpdesk() method
+ */
+NXSL_METHOD_DEFINITION(Alarm, unlinkFromHelpdesk)
+{
+   Alarm *alarm = static_cast<Alarm*>(object->getData());
+   *result = vm->createValue(UnlinkHelpdeskIssueById(alarm->getAlarmId(), nullptr));
+   return 0;
+}
+
+/**
  * NXSL class Alarm: constructor
  */
 NXSL_AlarmClass::NXSL_AlarmClass() : NXSL_Class()
@@ -5846,6 +5879,9 @@ NXSL_AlarmClass::NXSL_AlarmClass() : NXSL_Class()
    NXSL_REGISTER_METHOD(Alarm, addComment, -1);
    NXSL_REGISTER_METHOD(Alarm, getComments, 0);
    NXSL_REGISTER_METHOD(Alarm, requestAiAssistantComment, 0);
+   NXSL_REGISTER_METHOD(Alarm, setHelpdeskReference, 1);
+   NXSL_REGISTER_METHOD(Alarm, closeHelpdeskIssue, 0);
+   NXSL_REGISTER_METHOD(Alarm, unlinkFromHelpdesk, 0);
 }
 
 /**
