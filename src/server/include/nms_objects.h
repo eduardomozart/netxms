@@ -2191,6 +2191,7 @@ protected:
    char *m_content;
    uint32_t m_version;
    uint32_t m_flags;
+   time_t m_lastModified;
    Mutex m_contentLock;
 
    virtual bool createDeploymentMessage(NXCPMessage *msg, char *content, bool newTypeFormatSupported);
@@ -2208,6 +2209,7 @@ public:
    const uint32_t getVersion() const { return m_version; }
    const TCHAR *getType() const { return m_type; }
    const uint32_t getFlags() const { return m_flags; }
+   time_t getLastModified() const { return m_lastModified; }
 
    virtual bool saveToDatabase(DB_HANDLE hdb);
    virtual bool deleteFromDatabase(DB_HANDLE hdb);

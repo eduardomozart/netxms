@@ -18,12 +18,14 @@
  */
 package org.netxms.nxmc.modules.datacollection.views.helpers;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Image;
 import org.netxms.client.AgentPolicy;
+import org.netxms.nxmc.localization.DateFormatFactory;
 import org.netxms.nxmc.modules.datacollection.views.PolicyListView;
 
 /**
@@ -70,6 +72,11 @@ public class PolicyLabelProvider extends LabelProvider implements ITableLabelPro
             return getPolicyTypeDisplayName(policy.getPolicyType());
          case PolicyListView.COLUMN_GUID:
             return policy.getGuid().toString();
+         case PolicyListView.COLUMN_LAST_MODIFIED:
+            Date lastModified = policy.getLastModified();
+            if (lastModified == null || lastModified.getTime() == 0)
+               return "";
+            return DateFormatFactory.getDateTimeFormat().format(lastModified);
       }
       return null;
    }

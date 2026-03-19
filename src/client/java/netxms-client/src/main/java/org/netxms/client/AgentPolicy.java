@@ -18,6 +18,7 @@
  */
 package org.netxms.client;
 
+import java.util.Date;
 import java.util.UUID;
 import org.netxms.base.NXCPCodes;
 import org.netxms.base.NXCPMessage;
@@ -39,6 +40,7 @@ public class AgentPolicy
 	private String policyType;
 	private String content;	
 	private int flags;
+	private Date lastModified;
 	
 	/**
 	 * Create from NXCP message.
@@ -52,6 +54,7 @@ public class AgentPolicy
 		policyType = msg.getFieldAsString(NXCPCodes.VID_POLICY_TYPE);
 		content = msg.getFieldAsString(NXCPCodes.VID_CONFIG_FILE_DATA);
 		flags = msg.getFieldAsInt32(NXCPCodes.VID_FLAGS);
+		lastModified = msg.getFieldAsDate(NXCPCodes.VID_LAST_CHANGE_TIME);
 	}
 	
 	/**
@@ -66,6 +69,7 @@ public class AgentPolicy
 	   this.name = name;
 	   this.policyType = type;
 	   this.content = "";
+	   this.lastModified = new Date();
    }
 	
    /**
@@ -81,6 +85,7 @@ public class AgentPolicy
       name = msg.getFieldAsString(baseId + 2);
       content = msg.getFieldAsString(baseId + 3);
       flags = msg.getFieldAsInt32(baseId + 4);
+      lastModified = msg.getFieldAsDate(baseId + 5);
    }
 
    /**
@@ -95,6 +100,7 @@ public class AgentPolicy
       policyType = src.policyType;
       content = src.content;
       flags = src.flags;
+      lastModified = src.lastModified;
    }
 
    /**
@@ -109,6 +115,7 @@ public class AgentPolicy
       policyType = src.policyType;
       content = src.content;
       flags = src.flags;
+      lastModified = src.lastModified;
    }
    
    /**
@@ -196,6 +203,14 @@ public class AgentPolicy
    public void setFlags(int flags)
    {
       this.flags = flags;
+   }
+
+   /**
+    * @return the lastModified
+    */
+   public Date getLastModified()
+   {
+      return lastModified;
    }
 
    /**

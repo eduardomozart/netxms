@@ -2193,6 +2193,7 @@ CREATE TABLE ap_common
   policy_type varchar(31) not null,
   version integer not null,
   flags integer not null,
+  last_modified integer not null,
   file_content SQL_TEXT null,
   PRIMARY KEY(guid)
 ) TABLE_TYPE;

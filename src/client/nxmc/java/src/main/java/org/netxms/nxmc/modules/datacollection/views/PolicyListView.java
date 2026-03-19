@@ -77,6 +77,7 @@ public class PolicyListView extends ObjectView implements SessionListener
    public static final int COLUMN_NAME = 0;
    public static final int COLUMN_TYPE = 1;
    public static final int COLUMN_GUID = 2;
+   public static final int COLUMN_LAST_MODIFIED = 3;
 
    private Display display;
    private NXCSession session;
@@ -110,8 +111,8 @@ public class PolicyListView extends ObjectView implements SessionListener
    {
       display = getWindow().getShell().getDisplay();
 
-      final String[] names = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("GUID") };
-      final int[] widths = { 250, 200, 100 };
+      final String[] names = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("GUID"), i18n.tr("Last Modified") };
+      final int[] widths = { 250, 200, 100, 150 };
 
       policyList = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
       policyList.setContentProvider(new ArrayContentProvider());

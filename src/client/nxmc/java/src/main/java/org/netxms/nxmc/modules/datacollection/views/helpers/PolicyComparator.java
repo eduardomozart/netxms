@@ -18,6 +18,7 @@
  */
 package org.netxms.nxmc.modules.datacollection.views.helpers;
 
+import java.util.Date;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
@@ -52,6 +53,11 @@ public class PolicyComparator extends ViewerComparator
 				break;
 			case PolicyListView.COLUMN_GUID:
 				result = policy1.getGuid().compareTo(policy2.getGuid());
+				break;
+			case PolicyListView.COLUMN_LAST_MODIFIED:
+				Date d1 = policy1.getLastModified();
+				Date d2 = policy2.getLastModified();
+				result = (d1 != null && d2 != null) ? d1.compareTo(d2) : ((d1 != null) ? 1 : ((d2 != null) ? -1 : 0));
 				break;
 			default:
 				result = 0;

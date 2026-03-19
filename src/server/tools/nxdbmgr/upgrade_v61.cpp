@@ -24,6 +24,21 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.19 to 61.20
+ */
+static bool H_UpgradeFromV19()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE ap_common ADD last_modified integer\n"
+      L"UPDATE ap_common SET last_modified=0\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"ap_common", L"last_modified"));
+   CHK_EXEC(SetMinorSchemaVersion(20));
+   return true;
+}
+
+/**
  * Upgrade from 61.18 to 61.19
  */
 static bool H_UpgradeFromV18()
@@ -560,6 +575,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 19, 61, 20, H_UpgradeFromV19 },
    { 18, 61, 19, H_UpgradeFromV18 },
    { 17, 61, 18, H_UpgradeFromV17 },
    { 16, 61, 17, H_UpgradeFromV16 },

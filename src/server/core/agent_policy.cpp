@@ -38,6 +38,7 @@ GenericAgentPolicy::GenericAgentPolicy(const uuid& guid, const TCHAR *type, uint
    m_content = nullptr;
    m_version = 1;
    m_flags = 0;
+   m_lastModified = time(nullptr);
 }
 
 /**
@@ -52,6 +53,7 @@ GenericAgentPolicy::GenericAgentPolicy(const TCHAR *name, const TCHAR *type, uin
    m_content = nullptr;
    m_version = 1;
    m_flags = 0;
+   m_lastModified = time(nullptr);
 }
 
 /**
@@ -69,9 +71,9 @@ bool GenericAgentPolicy::saveToDatabase(DB_HANDLE hdb)
 {
    DB_STATEMENT hStmt;
    if (!IsDatabaseRecordExist(hdb, _T("ap_common"), _T("guid"), m_guid)) //Policy can be only created. Policy type can't be changed.
-      hStmt = DBPrepare(hdb, _T("INSERT INTO ap_common (policy_name,owner_id,policy_type,file_content,version,flags,guid) VALUES (?,?,?,?,?,?,?)"));
+      hStmt = DBPrepare(hdb, _T("INSERT INTO ap_common (policy_name,owner_id,policy_type,file_content,version,flags,last_modified,guid) VALUES (?,?,?,?,?,?,?,?)"));
    else
-      hStmt = DBPrepare(hdb, _T("UPDATE ap_common SET policy_name=?,owner_id=?,policy_type=?,file_content=?,version=?,flags=? WHERE guid=?"));
+      hStmt = DBPrepare(hdb, _T("UPDATE ap_common SET policy_name=?,owner_id=?,policy_type=?,file_content=?,version=?,flags=?,last_modified=? WHERE guid=?"));
 
    if (hStmt == nullptr)
       return false;
@@ -82,7 +84,8 @@ bool GenericAgentPolicy::saveToDatabase(DB_HANDLE hdb)
    DBBind(hStmt, 4, DB_SQLTYPE_TEXT, DB_CTYPE_UTF8_STRING, m_content, DB_BIND_STATIC);
    DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, m_version);
    DBBind(hStmt, 6, DB_SQLTYPE_INTEGER, m_flags);
-   DBBind(hStmt, 7, DB_SQLTYPE_VARCHAR, m_guid);
+   DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(m_lastModified));
+   DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, m_guid);
    bool success = DBExecute(hStmt);
    DBFreeStatement(hStmt);
 
@@ -107,7 +110,7 @@ bool GenericAgentPolicy::loadFromDatabase(DB_HANDLE hdb)
    bool success = false;
 
    TCHAR query[256], guid[64];
-   _sntprintf(query, 256, _T("SELECT policy_name,owner_id,policy_type,file_content,version,flags FROM ap_common WHERE guid='%s'"), m_guid.toString(guid));
+   _sntprintf(query, 256, _T("SELECT policy_name,owner_id,policy_type,file_content,version,flags,last_modified FROM ap_common WHERE guid='%s'"), m_guid.toString(guid));
    DB_RESULT hResult = DBSelect(hdb, query);
    if (hResult != nullptr)
    {
@@ -119,6 +122,7 @@ bool GenericAgentPolicy::loadFromDatabase(DB_HANDLE hdb)
          m_content = DBGetFieldUTF8(hResult, 0, 3, nullptr, 0);
          m_version = DBGetFieldLong(hResult, 0, 4);
          m_flags = DBGetFieldLong(hResult, 0, 5);
+         m_lastModified = static_cast<time_t>(DBGetFieldInt64(hResult, 0, 6));
          success = true;
       }
       DBFreeResult(hResult);
@@ -137,6 +141,7 @@ void GenericAgentPolicy::fillMessage(NXCPMessage *msg, uint32_t baseId) const
    msg->setField(baseId + 2, m_name);
    msg->setFieldFromUtf8String(baseId + 3, CHECK_NULL_EX_A(m_content));
    msg->setField(baseId + 4, m_flags);
+   msg->setFieldFromTime(baseId + 5, m_lastModified);
 }
 
 /**
@@ -149,6 +154,7 @@ void GenericAgentPolicy::fillUpdateMessage(NXCPMessage *msg) const
    msg->setField(VID_POLICY_TYPE, m_type);
    msg->setFieldFromUtf8String(VID_CONFIG_FILE_DATA, CHECK_NULL_EX_A(m_content));
    msg->setField(VID_FLAGS, m_flags);
+   msg->setFieldFromTime(VID_LAST_CHANGE_TIME, m_lastModified);
 }
 
 /**
@@ -168,6 +174,7 @@ uint32_t GenericAgentPolicy::modifyFromMessage(const NXCPMessage& msg)
       m_flags = msg.getFieldAsUInt32(VID_FLAGS);
    }
    m_version++;
+   m_lastModified = time(nullptr);
    m_contentLock.unlock();
    return RCC_SUCCESS;
 }
@@ -295,6 +302,7 @@ json_t *GenericAgentPolicy::toJson() const
    json_object_set_new(root, "name", json_string_t(m_name));
    json_object_set_new(root, "type", json_string_t(m_type));
    json_object_set_new(root, "flags", json_integer(m_flags));
+   json_object_set_new(root, "lastModified", json_integer(static_cast<int64_t>(m_lastModified)));
    json_object_set_new(root, "content", json_string(CHECK_NULL_EX_A(m_content)));
    return root;
 }
@@ -317,6 +325,9 @@ void GenericAgentPolicy::updateFromImport(const ConfigEntry *config, ImportConte
    _tcslcpy(m_name, config->getSubEntryValue(_T("name"), 0, _T("Unnamed")), MAX_OBJECT_NAME);
    _tcslcpy(m_type, config->getSubEntryValue(_T("type"), 0, _T("Unknown")), MAX_POLICY_TYPE_LEN);
    m_flags = config->getSubEntryValueAsUInt(_T("flags"));
+   m_lastModified = static_cast<time_t>(config->getSubEntryValueAsInt64(_T("lastModified"), 0));
+   if (m_lastModified == 0)
+      m_lastModified = time(nullptr);
    const TCHAR *content = config->getSubEntryValue(_T("content"), 0, _T(""));
    MemFree(m_content);
    m_content = UTF8StringFromTString(content);
@@ -333,6 +344,8 @@ void GenericAgentPolicy::updateFromImport(json_t *data, ImportContext *context)
    String type = json_object_get_string(data, "type", _T("Unknown"));
    _tcslcpy(m_type, type, MAX_POLICY_TYPE_LEN);
    m_flags = json_object_get_uint32(data, "flags", 0);
+   int64_t lastMod = json_object_get_int64(data, "lastModified", 0);
+   m_lastModified = (lastMod != 0) ? static_cast<time_t>(lastMod) : time(nullptr);
    MemFree(m_content);
    m_content = MemCopyStringA(json_object_get_string_utf8(data, "content", ""));
    importAdditionalData(data, context);
