@@ -31,6 +31,7 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -57,6 +58,7 @@ import org.netxms.nxmc.modules.objects.views.helpers.SoftwarePackageComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.SoftwarePackageFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.SoftwarePackageLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
@@ -85,6 +87,8 @@ public class SoftwareInventoryView extends ObjectView
 	private Action actionExportToCsv;
 	private Action actionExportAllToCsv;
    private Action actionUninstall;
+   private Action actionCollapseAll;
+   private Action actionExpandAll;
 
    /**
     * @param name
@@ -155,6 +159,22 @@ public class SoftwareInventoryView extends ObjectView
             uninstallPackage();
          }
       };
+
+      actionCollapseAll = new Action(i18n.tr("C&ollapse all"), SharedIcons.COLLAPSE_ALL) {
+         @Override
+         public void run()
+         {
+            ((TreeViewer)viewer).collapseAll();
+         }
+      };
+
+      actionExpandAll = new Action(i18n.tr("&Expand all"), SharedIcons.EXPAND_ALL) {
+         @Override
+         public void run()
+         {
+            ((TreeViewer)viewer).expandAll();
+         }
+      };
 	}
 
    /**
@@ -169,6 +189,12 @@ public class SoftwareInventoryView extends ObjectView
       manager.add(new Separator());
       if ((selection.size() == 1) && (selection.getFirstElement() instanceof SoftwarePackage) && !((SoftwarePackage)selection.getFirstElement()).getUninstallKey().isEmpty())
          manager.add(actionUninstall);
+      if (viewer instanceof SortableTreeViewer)
+      {
+         manager.add(new Separator());
+         manager.add(actionCollapseAll);
+         manager.add(actionExpandAll);
+      }
    }
 
 	/**
@@ -221,6 +247,12 @@ public class SoftwareInventoryView extends ObjectView
    @Override
    protected void fillLocalToolBar(IToolBarManager manager)
    {
+      if (viewer instanceof SortableTreeViewer)
+      {
+         manager.add(actionExpandAll);
+         manager.add(actionCollapseAll);
+         manager.add(new Separator());
+      }
       manager.add(actionExportAllToCsv);
       manager.add(new Separator());
    }
