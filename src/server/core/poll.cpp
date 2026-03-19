@@ -405,5 +405,18 @@ void PollManager(Condition *startCondition)
    nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 2, _T("Waiting for outstanding poll requests"));
    ThreadPoolDestroy(g_pollerThreadPool);
 
+   // Reset orphaned poll states - polls that were queued but never dispatched
+   // before the poller thread pool was destroyed leave m_pollerCount > 0,
+   // which would cause prepareForDeletion() to spin forever during shutdown.
+   g_idxObjectById.forEach(
+      [] (NetObj *object, void *data) -> EnumerationCallbackResult
+      {
+         Pollable *p = object->getAsPollable();
+         if (p != nullptr)
+            p->resetAllPendingPolls();
+         return _CONTINUE;
+      }, nullptr);
+   nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 2, _T("All pending poll states reset"));
+
    nxlog_debug_tag(DEBUG_TAG_POLL_MANAGER, 1, _T("Poll manager main thread terminated"));
 }
