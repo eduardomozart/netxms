@@ -225,6 +225,10 @@ There are two separate macro systems for database-portable type names. Do NOT mi
 
 Using `$SQL:INT64` in `schema.in` will **not** be substituted and will cause SQL syntax errors at database initialization.
 
+### No DEFAULT Values in Schema
+
+Do not use `DEFAULT` clauses in column definitions — neither in `schema.in` nor in `nxdbmgr` upgrade scripts. Oracle handles `DEFAULT` with `NOT NULL` differently from other databases (requires `DEFAULT` before `NOT NULL`), and the server code always provides explicit values on insert. The only exception is the legacy `config` table which predates this rule.
+
 ### Upgrade Procedures
 
 Located in `src/server/tools/nxdbmgr/`:

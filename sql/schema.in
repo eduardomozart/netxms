@@ -3216,13 +3216,13 @@ CREATE TABLE connection_history
 #endif
    mac_address varchar(16) not null,
    ip_address varchar(48) null,
-   node_id integer not null default 0,
+   node_id integer not null,
    switch_id integer not null,
    interface_id integer not null,
-   vlan_id integer not null default 0,
+   vlan_id integer not null,
    event_type integer not null,
-   old_switch_id integer not null default 0,
-   old_interface_id integer not null default 0,
+   old_switch_id integer not null,
+   old_interface_id integer not null,
 #ifdef DB_TSDB
    PRIMARY KEY(record_id,event_timestamp)
 #else

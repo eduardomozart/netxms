@@ -51,13 +51,13 @@ static bool H_UpgradeFromV18()
          L"  event_timestamp timestamptz not null,"
          L"  mac_address varchar(16) not null,"
          L"  ip_address varchar(48) null,"
-         L"  node_id integer not null default 0,"
+         L"  node_id integer not null,"
          L"  switch_id integer not null,"
          L"  interface_id integer not null,"
-         L"  vlan_id integer not null default 0,"
+         L"  vlan_id integer not null,"
          L"  event_type integer not null,"
-         L"  old_switch_id integer not null default 0,"
-         L"  old_interface_id integer not null default 0,"
+         L"  old_switch_id integer not null,"
+         L"  old_interface_id integer not null,"
          L"  PRIMARY KEY(record_id,event_timestamp))"));
       CHK_EXEC(SQLQuery(L"SELECT create_hypertable('connection_history', 'event_timestamp', chunk_time_interval => interval '86400 seconds')"));
    }
@@ -69,13 +69,13 @@ static bool H_UpgradeFromV18()
          L"  event_timestamp integer not null,"
          L"  mac_address varchar(16) not null,"
          L"  ip_address varchar(48) null,"
-         L"  node_id integer not null default 0,"
+         L"  node_id integer not null,"
          L"  switch_id integer not null,"
          L"  interface_id integer not null,"
-         L"  vlan_id integer not null default 0,"
+         L"  vlan_id integer not null,"
          L"  event_type integer not null,"
-         L"  old_switch_id integer not null default 0,"
-         L"  old_interface_id integer not null default 0,"
+         L"  old_switch_id integer not null,"
+         L"  old_interface_id integer not null,"
          L"  PRIMARY KEY(record_id))"));
    }
 
