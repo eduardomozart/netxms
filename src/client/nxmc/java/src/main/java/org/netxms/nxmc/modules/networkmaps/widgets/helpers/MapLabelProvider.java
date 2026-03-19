@@ -132,6 +132,7 @@ public class MapLabelProvider extends LabelProvider implements IFigureProvider, 
    private MapObjectDisplayMode objectFigureType = MapObjectDisplayMode.ICON;
    private ColorCache colors;
    private Color defaultLinkColor = null;
+   private int defaultLinkColorSource = 0;
    private int defaultLinkStyle = SWT.LINE_SOLID;
    private int defaultLinkWidth;
    private ManhattanConnectionRouter manhattanRouter = new ManhattanConnectionRouter();
@@ -644,64 +645,54 @@ public class MapLabelProvider extends LabelProvider implements IFigureProvider, 
       }
       else if (link.getColorSource() == NetworkMapLink.COLOR_SOURCE_INTERFACE_STATUS)
       {
-         ObjectStatus status = ObjectStatus.UNKNOWN;
-         AbstractObject object = session.findObjectById(link.getInterfaceId1(), true);
-         if ((object != null) && (object instanceof Interface))
-            status = object.getStatus();
-         object = session.findObjectById(link.getInterfaceId2(), true);
-         if ((object != null) && (object instanceof Interface) && (object.getStatus() != ObjectStatus.UNKNOWN))
-         {
-            if ((status == ObjectStatus.UNKNOWN) || (object.getStatus().getValue() > status.getValue()))
-                  status = object.getStatus();
-         }
-         connection.setLineColor(StatusDisplayInfo.getStatusColor(status));
+         applyInterfaceStatusColor(connection, link);
       }
       else if (link.getColorSource() == NetworkMapLink.COLOR_SOURCE_LINK_UTILIZATION)
       {
-         int interfaceUtilization = 0;
-         AbstractObject object = session.findObjectById(link.getInterfaceId1(), true);
-         if ((object != null) && (object instanceof Interface))
-            interfaceUtilization = Math.max(interfaceUtilization, ((Interface)object).getOutboundUtilization());
-         object = session.findObjectById(link.getInterfaceId2(), true);
-         if ((object != null) && (object instanceof Interface))
-            interfaceUtilization = Math.max(interfaceUtilization, ((Interface)object).getOutboundUtilization());
-
-         int index = 0;
-         while((interfaceUtilization >= LINK_UTILIZATION_THRESHOLDS[index]) && (++index < LINK_UTILIZATION_THRESHOLDS.length - 1))
-            ;
-         connection.setLineColor(COLOR_LINK_UTILIZATION[index]);
+         applyLinkUtilizationColor(connection, link);
       }
       else if ((link.getColorSource() == NetworkMapLink.COLOR_SOURCE_CUSTOM_COLOR) || (link.getColorSource() == NetworkMapLink.COLOR_SOURCE_SCRIPT))
       {
          connection.setLineColor(colors.create(ColorConverter.rgbFromInt(link.getColor())));
       }
-      else if (link.getType() == NetworkMapLink.AGENT_TUNEL)
+      else // COLOR_SOURCE_DEFAULT - inherit from map
       {
-         connection.setLineColor(COLOR_AGENT_TUNNEL);
-      }
-      else if (link.getType() == NetworkMapLink.AGENT_PROXY)
-      {
-         connection.setLineColor(COLOR_AGENT_PROXY);
-      }
-      else if (link.getType() == NetworkMapLink.ICMP_PROXY)
-      {
-         connection.setLineColor(COLOR_ICMP_PROXY);
-      }
-      else if (link.getType() == NetworkMapLink.SNMP_PROXY)
-      {
-         connection.setLineColor(COLOR_SNMP_PROXY);
-      }
-      else if (link.getType() == NetworkMapLink.SSH_PROXY)
-      {
-         connection.setLineColor(COLOR_SSH_PROXY);
-      }
-      else if (link.getType() == NetworkMapLink.ZONE_PROXY)
-      {
-         connection.setLineColor(COLOR_ZONE_PROXY);
-      }
-      else if (defaultLinkColor != null)
-      {
-         connection.setLineColor(defaultLinkColor);
+         if (defaultLinkColorSource == NetworkMapLink.COLOR_SOURCE_INTERFACE_STATUS)
+         {
+            applyInterfaceStatusColor(connection, link);
+         }
+         else if (defaultLinkColorSource == NetworkMapLink.COLOR_SOURCE_LINK_UTILIZATION)
+         {
+            applyLinkUtilizationColor(connection, link);
+         }
+         else if (link.getType() == NetworkMapLink.AGENT_TUNEL)
+         {
+            connection.setLineColor(COLOR_AGENT_TUNNEL);
+         }
+         else if (link.getType() == NetworkMapLink.AGENT_PROXY)
+         {
+            connection.setLineColor(COLOR_AGENT_PROXY);
+         }
+         else if (link.getType() == NetworkMapLink.ICMP_PROXY)
+         {
+            connection.setLineColor(COLOR_ICMP_PROXY);
+         }
+         else if (link.getType() == NetworkMapLink.SNMP_PROXY)
+         {
+            connection.setLineColor(COLOR_SNMP_PROXY);
+         }
+         else if (link.getType() == NetworkMapLink.SSH_PROXY)
+         {
+            connection.setLineColor(COLOR_SSH_PROXY);
+         }
+         else if (link.getType() == NetworkMapLink.ZONE_PROXY)
+         {
+            connection.setLineColor(COLOR_ZONE_PROXY);
+         }
+         else if (defaultLinkColor != null)
+         {
+            connection.setLineColor(defaultLinkColor);
+         }
       }
 
       if ((hasName || hasDciData) && connectionLabelsVisible)
@@ -777,6 +768,43 @@ public class MapLabelProvider extends LabelProvider implements IFigureProvider, 
 
       long interfaceId = second ? link.getInterfaceId2() : link.getInterfaceId1();
       return (interfaceId > 0) ? session.getObjectName(interfaceId) : null;
+   }
+
+   /**
+    * Apply interface status based color to connection
+    */
+   private void applyInterfaceStatusColor(GraphConnection connection, NetworkMapLink link)
+   {
+      ObjectStatus status = ObjectStatus.UNKNOWN;
+      AbstractObject object = session.findObjectById(link.getInterfaceId1(), true);
+      if ((object != null) && (object instanceof Interface))
+         status = object.getStatus();
+      object = session.findObjectById(link.getInterfaceId2(), true);
+      if ((object != null) && (object instanceof Interface) && (object.getStatus() != ObjectStatus.UNKNOWN))
+      {
+         if ((status == ObjectStatus.UNKNOWN) || (object.getStatus().getValue() > status.getValue()))
+            status = object.getStatus();
+      }
+      connection.setLineColor(StatusDisplayInfo.getStatusColor(status));
+   }
+
+   /**
+    * Apply link utilization based color to connection
+    */
+   private void applyLinkUtilizationColor(GraphConnection connection, NetworkMapLink link)
+   {
+      int interfaceUtilization = 0;
+      AbstractObject object = session.findObjectById(link.getInterfaceId1(), true);
+      if ((object != null) && (object instanceof Interface))
+         interfaceUtilization = Math.max(interfaceUtilization, ((Interface)object).getOutboundUtilization());
+      object = session.findObjectById(link.getInterfaceId2(), true);
+      if ((object != null) && (object instanceof Interface))
+         interfaceUtilization = Math.max(interfaceUtilization, ((Interface)object).getOutboundUtilization());
+
+      int index = 0;
+      while((interfaceUtilization >= LINK_UTILIZATION_THRESHOLDS[index]) && (++index < LINK_UTILIZATION_THRESHOLDS.length - 1))
+         ;
+      connection.setLineColor(COLOR_LINK_UTILIZATION[index]);
    }
 
    /**
@@ -911,6 +939,22 @@ public class MapLabelProvider extends LabelProvider implements IFigureProvider, 
    public final void setDefaultLinkColor(Color defaultLinkColor)
    {
       this.defaultLinkColor = defaultLinkColor;
+   }
+
+   /**
+    * @return the defaultLinkColorSource
+    */
+   public int getDefaultLinkColorSource()
+   {
+      return defaultLinkColorSource;
+   }
+
+   /**
+    * @param defaultLinkColorSource the defaultLinkColorSource to set
+    */
+   public void setDefaultLinkColorSource(int defaultLinkColorSource)
+   {
+      this.defaultLinkColorSource = defaultLinkColorSource;
    }
 
    /**

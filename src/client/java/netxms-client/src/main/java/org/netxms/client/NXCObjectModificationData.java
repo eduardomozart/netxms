@@ -135,6 +135,7 @@ public class NXCObjectModificationData
    private int[] statusThresholds;
    private Integer expectedState;
    private Integer linkColor;
+   private Integer linkColorSource;
    private Integer connectionRouting;
    private Integer networkMapLinkWidth;
    private Integer networkMapLinkStyle;
@@ -1457,6 +1458,22 @@ public class NXCObjectModificationData
    public void setLinkColor(int linkColor)
    {
       this.linkColor = linkColor;
+   }
+
+   /**
+    * @return the linkColorSource
+    */
+   public Integer getLinkColorSource()
+   {
+      return linkColorSource;
+   }
+
+   /**
+    * @param linkColorSource the linkColorSource to set
+    */
+   public void setLinkColorSource(int linkColorSource)
+   {
+      this.linkColorSource = linkColorSource;
    }
 
    /**

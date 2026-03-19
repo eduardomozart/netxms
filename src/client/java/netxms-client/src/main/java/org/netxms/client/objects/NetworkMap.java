@@ -75,6 +75,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
    private int mapHeight;
    private List<Long> seedObjects;
 	private int defaultLinkColor;
+	private int defaultLinkColorSource;
 	private int defaultLinkRouting;
 	private int defaultLinkWidth;
 	private int defaultLinkStyle;
@@ -108,6 +109,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
       mapHeight = msg.getFieldAsInt32(NXCPCodes.VID_HEIGHT);
       seedObjects = Arrays.asList(msg.getFieldAsUInt32ArrayEx(NXCPCodes.VID_SEED_OBJECTS));
 		defaultLinkColor = msg.getFieldAsInt32(NXCPCodes.VID_LINK_COLOR);
+		defaultLinkColorSource = msg.getFieldAsInt32(NXCPCodes.VID_LINK_COLOR_SOURCE);
 		defaultLinkRouting = msg.getFieldAsInt32(NXCPCodes.VID_LINK_ROUTING);
       defaultLinkStyle = msg.getFieldAsInt32(NXCPCodes.VID_LINK_STYLE);
       defaultLinkWidth = msg.getFieldAsInt32(NXCPCodes.VID_LINK_WIDTH);
@@ -253,6 +255,14 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
 	public int getDefaultLinkColor()
 	{
 		return defaultLinkColor;
+	}
+
+	/**
+	 * @return the defaultLinkColorSource
+	 */
+	public int getDefaultLinkColorSource()
+	{
+		return defaultLinkColorSource;
 	}
 
 	/**
@@ -489,6 +499,7 @@ public class NetworkMap extends GenericObject implements AutoBindObject, Polling
       md.setMapObjectDisplayMode(objectDisplayMode);
       md.setConnectionRouting(defaultLinkRouting);
       md.setLinkColor(defaultLinkColor);
+      md.setLinkColorSource(defaultLinkColorSource);
       md.setNetworkMapLinkWidth(defaultLinkWidth);
       md.setNetworkMapLinkStyle(defaultLinkStyle);
       md.setDiscoveryRadius(discoveryRadius);

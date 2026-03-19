@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2024 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ import org.netxms.client.NXCObjectModificationData;
 import org.netxms.client.NXCSession;
 import org.netxms.client.maps.MapObjectDisplayMode;
 import org.netxms.client.maps.MapType;
+import org.netxms.client.maps.NetworkMapLink;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.NetworkMap;
 import org.netxms.nxmc.Registry;
@@ -70,6 +71,8 @@ public class MapOptions extends ObjectPropertyPage
 	private Combo routingAlgorithm;
 	private Button radioColorDefault;
 	private Button radioColorCustom;
+	private Button radioColorInterfaceStatus;
+	private Button radioColorUtilization;
 	private ColorSelector linkColor;
    private LabeledCombo comboLinkStyle;
    private LabeledSpinner spinerLineWidth;
@@ -169,6 +172,7 @@ public class MapOptions extends ObjectPropertyPage
       gd.grabExcessHorizontalSpace = true;
       gd.horizontalAlignment = SWT.FILL;
       gd.verticalAlignment = SWT.FILL;
+      gd.verticalSpan = 2;
       linkGroup.setLayoutData(gd);
       layout = new GridLayout();
       linkGroup.setLayout(layout);
@@ -189,9 +193,11 @@ public class MapOptions extends ObjectPropertyPage
 			}
 		};
 
+		int colorSource = map.getDefaultLinkColorSource();
+
 		radioColorDefault = new Button(linkGroup, SWT.RADIO);
 		radioColorDefault.setText(i18n.tr("&Default color"));
-      radioColorDefault.setSelection(map.getDefaultLinkColor() < 0);
+      radioColorDefault.setSelection(colorSource == 0 && map.getDefaultLinkColor() < 0);
 		radioColorDefault.addSelectionListener(listener);
 		gd = new GridData();
 		gd.verticalIndent = WidgetHelper.OUTER_SPACING * 2;
@@ -199,15 +205,25 @@ public class MapOptions extends ObjectPropertyPage
 
 		radioColorCustom = new Button(linkGroup, SWT.RADIO);
 		radioColorCustom.setText(i18n.tr("&Custom color"));
-      radioColorCustom.setSelection(map.getDefaultLinkColor() >= 0);
+      radioColorCustom.setSelection(colorSource == 0 && map.getDefaultLinkColor() >= 0);
 		radioColorCustom.addSelectionListener(listener);
 
 		linkColor = new ColorSelector(linkGroup);
       linkColor.setColorValue(ColorConverter.rgbFromInt(map.getDefaultLinkColor()));
-      linkColor.setEnabled(map.getDefaultLinkColor() >= 0);
+      linkColor.setEnabled(colorSource == 0 && map.getDefaultLinkColor() >= 0);
 		gd = new GridData();
 		gd.horizontalIndent = 20;
 		linkColor.getButton().setLayoutData(gd);
+
+		radioColorInterfaceStatus = new Button(linkGroup, SWT.RADIO);
+      radioColorInterfaceStatus.setText(i18n.tr("Color based on &interface status"));
+		radioColorInterfaceStatus.setSelection(colorSource == NetworkMapLink.COLOR_SOURCE_INTERFACE_STATUS);
+		radioColorInterfaceStatus.addSelectionListener(listener);
+
+		radioColorUtilization = new Button(linkGroup, SWT.RADIO);
+      radioColorUtilization.setText(i18n.tr("Color based on link &utilization"));
+		radioColorUtilization.setSelection(colorSource == NetworkMapLink.COLOR_SOURCE_LINK_UTILIZATION);
+		radioColorUtilization.addSelectionListener(listener);
 
       comboLinkStyle = new LabeledCombo(linkGroup, SWT.NONE);
       comboLinkStyle.setLabel(i18n.tr("Line style"));
@@ -274,6 +290,7 @@ public class MapOptions extends ObjectPropertyPage
       gd.grabExcessHorizontalSpace = true;
       gd.horizontalAlignment = SWT.FILL;
       gd.verticalAlignment = SWT.FILL;
+      gd.horizontalSpan = (map.getMapType() != MapType.CUSTOM) ? 2 : 1;
       linkDisplayGroup.setLayoutData(gd);
       layout = new GridLayout();
       linkDisplayGroup.setLayout(layout);
@@ -351,10 +368,22 @@ public class MapOptions extends ObjectPropertyPage
 		if (radioColorCustom.getSelection())
 		{
 			md.setLinkColor(ColorConverter.rgbToInt(linkColor.getColorValue()));
+			md.setLinkColorSource(0);
+		}
+		else if (radioColorInterfaceStatus.getSelection())
+		{
+			md.setLinkColor(-1);
+			md.setLinkColorSource(NetworkMapLink.COLOR_SOURCE_INTERFACE_STATUS);
+		}
+		else if (radioColorUtilization.getSelection())
+		{
+			md.setLinkColor(-1);
+			md.setLinkColorSource(NetworkMapLink.COLOR_SOURCE_LINK_UTILIZATION);
 		}
 		else
 		{
 			md.setLinkColor(-1);
+			md.setLinkColorSource(0);
 		}
 
 		if (checkCustomRadius != null)

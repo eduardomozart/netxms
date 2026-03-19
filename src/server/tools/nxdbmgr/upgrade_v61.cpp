@@ -24,6 +24,21 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.20 to 61.21
+ */
+static bool H_UpgradeFromV20()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE network_maps ADD link_color_source integer\n"
+      L"UPDATE network_maps SET link_color_source=0\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"network_maps", L"link_color_source"));
+   CHK_EXEC(SetMinorSchemaVersion(21));
+   return true;
+}
+
+/**
  * Upgrade from 61.19 to 61.20
  */
 static bool H_UpgradeFromV19()
@@ -575,6 +590,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 20, 61, 21, H_UpgradeFromV20 },
    { 19, 61, 20, H_UpgradeFromV19 },
    { 18, 61, 19, H_UpgradeFromV18 },
    { 17, 61, 18, H_UpgradeFromV17 },

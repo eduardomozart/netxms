@@ -5151,6 +5151,7 @@ protected:
    uint16_t m_layout;
    uint32_t m_backgroundColor;
    uint32_t m_defaultLinkColor;
+   uint16_t m_defaultLinkColorSource;
    uint16_t m_defaultLinkRouting;
    uint16_t m_defaultLinkWidth;
    uint16_t m_defaultLinkStyle;

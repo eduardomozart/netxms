@@ -2255,6 +2255,7 @@ CREATE TABLE network_maps
   bg_zoom integer null,
   bg_color integer not null,
   link_color integer not null,
+  link_color_source integer not null,
   link_routing integer not null,
   link_width integer not null,
   link_style integer not null,

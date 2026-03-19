@@ -7557,6 +7557,11 @@ public class NXCSession
          msg.setFieldInt32(NXCPCodes.VID_LINK_COLOR, data.getLinkColor());
       }
 
+      if (data.getLinkColorSource() != null)
+      {
+         msg.setFieldInt16(NXCPCodes.VID_LINK_COLOR_SOURCE, data.getLinkColorSource());
+      }
+
       if (data.getConnectionRouting() != null)
       {
          msg.setFieldInt16(NXCPCodes.VID_LINK_ROUTING, data.getConnectionRouting());

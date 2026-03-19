@@ -1701,6 +1701,7 @@ typedef struct
 #define VID_SNMP_TRAP_PRIV_PASSWORD ((uint32_t)972)
 #define VID_SNMP_TRAP_USM_METHODS  ((uint32_t)973)
 #define VID_SNMP_TRAP_VERSION      ((uint32_t)974)
+#define VID_LINK_COLOR_SOURCE      ((uint32_t)975)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)
