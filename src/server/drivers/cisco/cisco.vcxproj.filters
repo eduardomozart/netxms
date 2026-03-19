@@ -32,6 +32,9 @@
     <ClCompile Include="esw.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="firepower.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="sb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

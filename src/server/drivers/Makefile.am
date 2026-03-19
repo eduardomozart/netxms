@@ -43,7 +43,7 @@ cambium_la_LIBADD = ../../libnetxms/libnetxms.la \
 	../../snmp/libnxsnmp/libnxsnmp.la \
 	../libnxsrv/libnxsrv.la
 
-cisco_la_SOURCES = cisco/cat2900xl.cpp cisco/catalyst.cpp cisco/cisco.cpp cisco/esw.cpp cisco/generic.cpp cisco/nexus.cpp cisco/sb.cpp cisco/wlc.cpp
+cisco_la_SOURCES = cisco/cat2900xl.cpp cisco/catalyst.cpp cisco/cisco.cpp cisco/esw.cpp cisco/firepower.cpp cisco/generic.cpp cisco/nexus.cpp cisco/sb.cpp cisco/wlc.cpp
 cisco_la_CPPFLAGS=-I@top_srcdir@/include -I@top_srcdir@/src/server/include -I@top_srcdir@/build
 cisco_la_LDFLAGS = -module -avoid-version
 cisco_la_LIBADD = ../../libnetxms/libnetxms.la \
