@@ -418,7 +418,7 @@ public abstract class BaseDataCollectionView extends ObjectView implements Viewe
     */
    protected boolean showDCIPropertyPages(final DataCollectionObject object)
    {
-      DataCollectionObjectEditor dce = new DataCollectionObjectEditor(object);
+      DataCollectionObjectEditor dce = new DataCollectionObjectEditor(object, this);
       PreferenceManager pm = new PreferenceManager();
       pm.addToRoot(new PreferenceNode("general", new General(dce)));
       boolean hasClusterParent = getObject().getAllParents(AbstractObject.OBJECT_CLUSTER).size() > 0;

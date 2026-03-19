@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2021 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,12 +24,14 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.constants.DataOrigin;
 import org.netxms.client.constants.DataType;
+import org.netxms.client.constants.UserAccessRights;
 import org.netxms.client.datacollection.DataCollectionItem;
 import org.netxms.client.datacollection.DataCollectionObject;
 import org.netxms.client.datacollection.DataCollectionTable;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
+import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.datacollection.views.DataCollectionView;
 import org.xnap.commons.i18n.I18n;
@@ -42,17 +44,20 @@ public class DataCollectionObjectEditor
    private final I18n i18n = LocalizationHelper.getI18n(DataCollectionObjectEditor.class);
 
 	private DataCollectionObject object;
+   private View view;
 	private long sourceNode;
 	private Runnable timer;
 	private Set<DataCollectionObjectListener> listeners = new HashSet<DataCollectionObjectListener>(); 
    private TableColumnEnumerator tableColumnEnumerator;
 
 	/**
-	 * @param object
-	 */
-	public DataCollectionObjectEditor(DataCollectionObject object)
+    * @param object data collection object to edit
+    * @param view parent view for this editor
+    */
+   public DataCollectionObjectEditor(DataCollectionObject object, View view)
 	{
 		this.object = object;
+      this.view = view;
 		timer = new Runnable() {
 			@Override
 			public void run()
@@ -67,7 +72,7 @@ public class DataCollectionObjectEditor
 	 */
 	private void doObjectModification()
 	{
-      new Job(i18n.tr("Modify data collection object"), null) {
+      new Job(i18n.tr("Modify data collection object"), view) {
 			@Override
          protected void run(IProgressMonitor monitor) throws Exception
 			{
@@ -94,7 +99,7 @@ public class DataCollectionObjectEditor
 					}
 				});
 			}
-			
+
 			@Override
 			protected String getErrorMessage()
 			{
@@ -226,7 +231,12 @@ public class DataCollectionObjectEditor
    {
       I18n i18n = LocalizationHelper.getI18n(DataCollectionObjectEditor.class);
       String message = null;
-      if (dco.getTemplateId() == dco.getNodeId())
+      AbstractObject owner = Registry.getSession().findObjectById(dco.getNodeId());
+      if ((owner != null) && ((owner.getEffectiveRights() & UserAccessRights.OBJECT_ACCESS_MODIFY) == 0))
+      {
+         message = i18n.tr("You do not have permission to modify this DCI\nAll changes will be discarded");
+      }
+      else if (dco.getTemplateId() == dco.getNodeId())
       {
          message = i18n.tr("This DCI was added by instance discovery\nAll local changes can be overwritten at any moment");
       }

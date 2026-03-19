@@ -835,7 +835,7 @@ public class DataCollectionView extends BaseDataCollectionView
       DataCollectionObject dco = getDataCollectionObject(selection.getFirstElement());
 
       DialogData data = null;
-      if (!hideModificationWarnings && dco.getTemplateId() != 0)
+      if (!hideModificationWarnings)
       {
          String message = DataCollectionObjectEditor.createModificationWarningMessage(dco);
          if (message != null)
