@@ -68,7 +68,7 @@ public class PerformanceView extends ObjectView
     */
    public PerformanceView()
    {
-      super(LocalizationHelper.getI18n(PerformanceView.class).tr("Performance"), ResourceManager.getImageDescriptor("icons/object-views/performance.png"), "objects.performance", false);
+      super(LocalizationHelper.getI18n(PerformanceView.class).tr("Performance"), ResourceManager.getImageDescriptor("icons/object-views/performance.png"), "objects.performance", true);
    }
 
    /**
@@ -288,6 +288,30 @@ public class PerformanceView extends ObjectView
       for(PerfTabGraph chart : charts.values())
          chart.start();
 
+      updateChartAreaLayout();
+   }
+
+   /**
+    * @see org.netxms.nxmc.base.views.View#onFilterModify()
+    */
+   @Override
+   protected void onFilterModify()
+   {
+      String filterString = getFilterText();
+      filterString = (filterString != null) ? filterString.trim() : "";
+      for(PerfTabGraph chart : charts.values())
+      {
+         if (filterString.isEmpty() || chart.matchesFilter(filterString))
+         {
+            chart.setVisible(true);
+            ((GridData)chart.getLayoutData()).exclude = false;
+         }
+         else
+         {
+            chart.setVisible(false);
+            ((GridData)chart.getLayoutData()).exclude = true;
+         }
+      }
       updateChartAreaLayout();
    }
 

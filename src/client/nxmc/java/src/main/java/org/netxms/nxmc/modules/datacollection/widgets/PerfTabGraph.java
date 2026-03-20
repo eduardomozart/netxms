@@ -313,6 +313,32 @@ public class PerfTabGraph extends DashboardComposite implements HistoricalChartO
 	}
 
    /**
+    * Check if this graph matches given filter string.
+    *
+    * @param filter filter string
+    * @return true if graph matches filter
+    */
+   public boolean matchesFilter(String filter)
+   {
+      String lcFilter = filter.toLowerCase();
+      if (settings.getRuntimeTitle().toLowerCase().contains(lcFilter))
+         return true;
+      if (settings.getGroupName().toLowerCase().contains(lcFilter))
+         return true;
+      synchronized(items)
+      {
+         for(PerfTabDci item : items)
+         {
+            if (item.getDescription().toLowerCase().contains(lcFilter))
+               return true;
+            if ((item.getInstanceName() != null) && item.getInstanceName().toLowerCase().contains(lcFilter))
+               return true;
+         }
+      }
+      return false;
+   }
+
+   /**
     * @see org.netxms.nxmc.modules.datacollection.views.HistoricalGraphView.HistoricalChartOwner#getChart()
     */
    @Override
