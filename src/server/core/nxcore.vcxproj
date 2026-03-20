@@ -464,6 +464,7 @@
     <ClCompile Include="columnfilter.cpp" />
     <ClCompile Include="condition.cpp" />
     <ClCompile Include="config.cpp" />
+    <ClCompile Include="conn_history.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="container.cpp" />
     <ClCompile Include="correlate.cpp" />

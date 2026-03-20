@@ -123,22 +123,22 @@ int H_ScheduledTaskCreate(Context *context)
       return 400;
    }
 
-   TCHAR taskHandlerId[256];
+   wchar_t taskHandlerId[256];
    utf8_to_wchar(json_string_value(jsonHandlerId), -1, taskHandlerId, 256);
 
-   TCHAR parameters[4096] = L"";
+   wchar_t parameters[4096] = L"";
    json_t *jsonParams = json_object_get(request, "parameters");
    if (json_is_string(jsonParams))
       utf8_to_wchar(json_string_value(jsonParams), -1, parameters, 4096);
 
    uint32_t objectId = json_object_get_uint32(request, "objectId", 0);
 
-   TCHAR comments[256] = L"";
+   wchar_t comments[256] = L"";
    json_t *jsonComments = json_object_get(request, "comments");
    if (json_is_string(jsonComments))
       utf8_to_wchar(json_string_value(jsonComments), -1, comments, 256);
 
-   TCHAR taskKey[256] = L"";
+   wchar_t taskKey[256] = L"";
    json_t *jsonTaskKey = json_object_get(request, "taskKey");
    if (json_is_string(jsonTaskKey))
       utf8_to_wchar(json_string_value(jsonTaskKey), -1, taskKey, 256);

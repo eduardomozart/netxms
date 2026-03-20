@@ -329,6 +329,7 @@
     <ClCompile Include="actions.cpp" />
     <ClCompile Include="ai.cpp" />
     <ClCompile Include="alarms.cpp" />
+    <ClCompile Include="conn_history.cpp" />
     <ClCompile Include="datacoll.cpp" />
     <ClCompile Include="dcst.cpp" />
     <ClCompile Include="events.cpp" />
@@ -344,6 +345,7 @@
     <ClCompile Include="sshkeys.cpp" />
     <ClCompile Include="tcpproxy.cpp" />
     <ClCompile Include="users.cpp" />
+    <ClCompile Include="websvc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\nms_common.h" />

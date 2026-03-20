@@ -147,6 +147,8 @@ public:
    void setNextExecutionTime(time_t t);
 };
 
+#undef ERROR
+
 /**
  * Async request state for WebAPI
  */
