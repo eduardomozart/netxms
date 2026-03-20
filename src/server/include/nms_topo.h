@@ -248,6 +248,19 @@ public:
    {
       return m_multipointInterfaces.contains(ifIndex);
    }
+
+   shared_ptr<LinkLayerNeighbors> copyWithoutLocalInterface(uint32_t ifIndex) const
+   {
+      auto copy = make_shared<LinkLayerNeighbors>();
+      copy->m_multipointInterfaces = m_multipointInterfaces;
+      for(int i = 0; i < m_connections.size(); i++)
+      {
+         LL_NEIGHBOR_INFO *info = m_connections.get(i);
+         if (info->ifLocal != ifIndex)
+            copy->m_connections.add(*info);
+      }
+      return copy;
+   }
 };
 
 #ifdef _WIN32

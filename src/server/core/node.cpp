@@ -12218,6 +12218,21 @@ void Node::addExistingConnections(LinkLayerNeighbors *nbs)
 }
 
 /**
+ * Invalidate cached link layer neighbor entry for given local interface.
+ * Creates a copy of the neighbor list without entries for the specified interface and replaces the cached version.
+ */
+void Node::invalidateLinkLayerNeighbor(uint32_t ifIndex)
+{
+   m_topologyMutex.lock();
+   if (m_linkLayerNeighbors != nullptr)
+   {
+      m_linkLayerNeighbors = m_linkLayerNeighbors->copyWithoutLocalInterface(ifIndex);
+      nxlog_debug_tag(DEBUG_TAG_TOPOLOGY_POLL, 5, _T("Node::invalidateLinkLayerNeighbor(%s [%u]): removed cached entry for ifIndex %u"), m_name, m_id, ifIndex);
+   }
+   m_topologyMutex.unlock();
+}
+
+/**
  * Resolve port indexes in VLAN list
  */
 void Node::resolveVlanPorts(VlanList *vlanList)
