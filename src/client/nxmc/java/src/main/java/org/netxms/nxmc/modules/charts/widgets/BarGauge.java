@@ -28,6 +28,7 @@ import org.netxms.client.datacollection.ChartConfiguration;
 import org.netxms.client.datacollection.ChartDciConfig;
 import org.netxms.client.datacollection.DataFormatter;
 import org.netxms.client.datacollection.DataSeries;
+import org.netxms.client.datacollection.MeasurementUnit;
 import org.netxms.nxmc.modules.charts.api.GaugeColorMode;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
 import org.netxms.nxmc.resources.ThemeEngine;
@@ -198,7 +199,7 @@ public class BarGauge extends GenericGauge
          }
       }
 
-      drawScale(gc, rect, minValue, maxValue, pointValue, config.isTransposed(), config.isGridVisible());
+      drawScale(gc, rect, minValue, maxValue, pointValue, config.isTransposed(), config.isGridVisible(), data.getMeasurementUnit());
    }
 
    /**
@@ -239,14 +240,15 @@ public class BarGauge extends GenericGauge
     * @param rect
     * @param pointValue
     */
-   private void drawScale(GC gc, Rectangle rect, double minValue, double maxValue, double pointValue, boolean isTransposed, boolean gridVisible)
+   private void drawScale(GC gc, Rectangle rect, double minValue, double maxValue, double pointValue, boolean isTransposed, boolean gridVisible, MeasurementUnit unit)
    {
       gc.setForeground(ThemeEngine.getForegroundColor("Chart.DialScale"));
 
       final Font markFont = WidgetHelper.getBestFittingFont(gc, scaleFonts, "900MM", SCALE_TEXT_WIDTH, SCALE_TEXT_HEIGHT);
       gc.setFont(markFont);
 
-      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)));
+      boolean binary = (unit != null) && unit.isBinary();
+      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)), binary);
       double value = minValue;
       float pointsStep = (float)(step / pointValue);
       if (pointsStep < SCALE_TEXT_HEIGHT * 2)
@@ -259,7 +261,7 @@ public class BarGauge extends GenericGauge
       {
          for(float x = 0; x < rect.width; x += pointsStep, value += step)
          {
-            String text = DataFormatter.roundDecimalValue(value, step, 5);
+            String text = DataFormatter.roundDecimalValue(value, step, 5, unit);
             gc.drawText(text, rect.x + (int)x, rect.y + rect.height + 4, SWT.DRAW_TRANSPARENT);
          }
       }
@@ -268,14 +270,26 @@ public class BarGauge extends GenericGauge
          int textHeight = gc.textExtent("999MM").y;
          for(float y = rect.height; y > 0; y -= pointsStep, value += step)
          {
-            String text = DataFormatter.roundDecimalValue(value, step, 5);
+            String text = DataFormatter.roundDecimalValue(value, step, 5, unit);
             gc.drawText(text, rect.x + rect.width + 4, rect.y + (int)y - textHeight * 3 / 4, SWT.DRAW_TRANSPARENT);
          }
       }
    }
 
-   private static double getStepMagnitude(double maxValue)
+   private static double getStepMagnitude(double maxValue, boolean binary)
    {
+      if (binary)
+      {
+         double multiplier = getBinaryMultiplier(maxValue);
+         double units = maxValue / multiplier;
+         double d = 0.1;
+         for(; d < 10000000000000000000.0; d *= 10)
+         {
+            if ((units > d) && (units <= d * 10))
+               break;
+         }
+         return d * multiplier;
+      }
       double d = 0.00001;
       for(; d < 10000000000000000000.0; d *= 10)
       {
@@ -283,5 +297,20 @@ public class BarGauge extends GenericGauge
             break;
       }
       return d;
+   }
+
+   /**
+    * Get binary multiplier bracket for given value (1, 1024, 1048576, etc.)
+    */
+   private static double getBinaryMultiplier(double value)
+   {
+      double absValue = Math.abs(value);
+      double[] multipliers = { 0x4000000000000L, 0x10000000000L, 0x40000000L, 0x100000L, 0x400L, 1 };
+      for(double m : multipliers)
+      {
+         if (absValue >= m)
+            return m;
+      }
+      return 1;
    }
 }

@@ -37,7 +37,6 @@ import org.netxms.client.datacollection.ChartConfiguration;
 import org.netxms.client.datacollection.ChartDciConfig;
 import org.netxms.client.datacollection.DataCollectionObject;
 import org.netxms.client.datacollection.DataSeries;
-import org.netxms.client.datacollection.DciDataRow;
 import org.netxms.client.xml.XMLTools;
 import org.netxms.nxmc.Memento;
 import org.netxms.nxmc.base.actions.RefreshAction;
@@ -486,19 +485,17 @@ public class DataComparisonView extends AdHocObjectView
 			@Override
 			protected void run(IProgressMonitor monitor) throws Exception
 			{
-				final double[] values = new double[items.size()];
+				final DataSeries[] seriesData = new DataSeries[items.size()];
 				for(int i = 0; i < items.size(); i++)
 				{
                ChartDciConfig item = items.get(i);
-               DataSeries data = (item.type == DataCollectionObject.DCO_TYPE_ITEM) ?
+               seriesData[i] = (item.type == DataCollectionObject.DCO_TYPE_ITEM) ?
 							session.getCollectedData(item.getNodeId(), item.getDciId(), null, null, 1, HistoricalDataType.PROCESSED) :
                      session.getCollectedTableData(item.getNodeId(), item.getDciId(), item.instance, item.column, null, null, 1);
-					DciDataRow value = data.getLastValue();
-					values[i] = (value != null) ? value.getValueAsDouble() : 0.0;
 				}
 
             runInUIThread(() -> {
-               setChartData(values);
+               setChartData(seriesData);
                clearMessages();
                updateInProgress = false;
 				});
@@ -516,13 +513,13 @@ public class DataComparisonView extends AdHocObjectView
 
 	/**
 	 * Set new data for chart items
-	 * 
-	 * @param values new values
+	 *
+	 * @param seriesData data series from server
 	 */
-	private void setChartData(double[] values)
+	private void setChartData(DataSeries[] seriesData)
 	{
-		for(int i = 0; i < values.length; i++)
-			chart.updateParameter(i, values[i], false);
+		for(int i = 0; i < seriesData.length; i++)
+			chart.updateParameter(i, seriesData[i], false);
 		chart.refresh();
 	}
 

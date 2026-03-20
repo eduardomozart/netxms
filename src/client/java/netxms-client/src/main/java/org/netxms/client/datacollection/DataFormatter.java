@@ -440,11 +440,27 @@ public class DataFormatter
     */
    public static String roundDecimalValue(double value, double step, int maxPrecision)
    {
+      return roundDecimalValue(value, step, maxPrecision, null);
+   }
+
+   /**
+    * Get rounded value for chart labels
+    *
+    * @param value to round
+    * @param step of label
+    * @param maxPrecision desired precision
+    * @param unit measurement unit (used to select binary or decimal multipliers)
+    * @return rounded value
+    */
+   public static String roundDecimalValue(double value, double step, int maxPrecision, MeasurementUnit unit)
+   {
       if (value == 0)
          return "0";
 
+      boolean useBinary = (unit != null) && unit.isBinary();
       double absValue = Math.abs(value);
-      final double[] multipliers = DECIMAL_MULTIPLIERS;
+      final double[] multipliers = useBinary ? BINARY_MULTIPLIERS : DECIMAL_MULTIPLIERS;
+      final String[] suffix = useBinary ? BINARY_SUFFIX : SUFFIX;
 
       int i;
       for(i = multipliers.length - 1; i >= 0; i--)
@@ -461,7 +477,7 @@ public class DataFormatter
 
       DecimalFormat df = new DecimalFormat();
       df.setMaximumFractionDigits(precision);
-      return df.format((i < 0 ? value : (value / multipliers[i]))) + (i < 0 ? "" : SUFFIX[i]);
+      return df.format((i < 0 ? value : (value / multipliers[i]))) + (i < 0 ? "" : suffix[i]);
    }
 
    /**

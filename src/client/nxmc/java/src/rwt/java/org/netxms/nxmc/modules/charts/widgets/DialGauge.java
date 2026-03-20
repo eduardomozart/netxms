@@ -188,7 +188,7 @@ public class DialGauge extends GenericGauge
 			}
 			
 	      double angle = (225 - i) * angleValue + minValue;
-			String value = DataFormatter.roundDecimalValue(angle, valueStep, 5);
+			String value = DataFormatter.roundDecimalValue(angle, valueStep, 5, data.getMeasurementUnit());
 			Point t = positionOnArc(cx, cy, outerRadius - textOffset, i);
 			Point ext = gc.textExtent(value);
 			gc.drawText(value, t.x - ext.x / 2, t.y - ext.y / 2, SWT.DRAW_TRANSPARENT);

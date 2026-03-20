@@ -53,6 +53,7 @@ import org.netxms.client.datacollection.ChartConfiguration;
 import org.netxms.client.datacollection.ChartDciConfig;
 import org.netxms.client.datacollection.DataFormatter;
 import org.netxms.client.datacollection.DataSeries;
+import org.netxms.client.datacollection.MeasurementUnit;
 import org.netxms.client.datacollection.DciDataRow;
 import org.netxms.client.datacollection.Threshold;
 import org.netxms.client.events.EventTemplate;
@@ -189,9 +190,10 @@ public class LineChart extends org.eclipse.swtchart.Chart implements PlotArea
 				   {
    					Date timestamp = new Date((long)xAxis.getDataCoordinate(e.x));
    					double value = yAxis.getDataCoordinate(e.y);
+   					MeasurementUnit unit = chart.getDataSeries().isEmpty() ? null : chart.getDataSeries().get(0).getMeasurementUnit();
    					getPlotArea().setToolTipText(
                         series.getDescription() + "\n" + DateFormatFactory.getDateTimeFormat().format(timestamp) + "\n" +
-   					      (useMultipliers ? DataFormatter.roundDecimalValue(value, cachedTickStep, 5) : Double.toString(value)));
+   					      (useMultipliers ? DataFormatter.roundDecimalValue(value, cachedTickStep, 5, unit) : Double.toString(value)));
    					tooltipShown = true;
 				   }
 				}
@@ -497,6 +499,10 @@ public class LineChart extends org.eclipse.swtchart.Chart implements PlotArea
       List<ChartDciConfig> items = chart.getItems();
       for(int i = 0; i < items.size(); i++)
          updateSeries(i, items.get(i));
+
+      List<DataSeries> dataSeries = chart.getDataSeries();
+      MeasurementUnit unit = dataSeries.isEmpty() ? null : dataSeries.get(0).getMeasurementUnit();
+      setUseBinaryMultipliers((unit != null) && unit.isBinary());
 
 	   updateLayout();
 	   updateStackAndRiserData();

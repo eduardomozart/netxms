@@ -33,6 +33,7 @@ import org.netxms.client.datacollection.ChartDciConfig;
 import org.netxms.client.datacollection.DataFormatter;
 import org.netxms.client.datacollection.DataSeries;
 import org.netxms.client.datacollection.DciValue;
+import org.netxms.client.datacollection.MeasurementUnit;
 import org.netxms.nxmc.localization.DateFormatFactory;
 import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.ColorConverter;
@@ -126,6 +127,9 @@ public class BarChart extends GenericComparisonChart
       if (series.isEmpty())
          return;
 
+      MeasurementUnit unit = series.get(0).getMeasurementUnit();
+      boolean binary = (unit != null) && unit.isBinary();
+
       // Calculate min and max values
       double minValue, maxValue;
       total = 0;
@@ -143,20 +147,20 @@ public class BarChart extends GenericComparisonChart
          }
          if (minValue >= 0)
          {
-            maxValue = adjustRange(maxValue);
+            maxValue = adjustRange(maxValue, binary);
             minValue = 0;
             if (maxValue == 0) // All data at 0
                maxValue = 1;
          }
          else if (maxValue > 0)
          {
-            maxValue = adjustRange(maxValue);
-            minValue = -adjustRange(Math.abs(minValue));
+            maxValue = adjustRange(maxValue, binary);
+            minValue = -adjustRange(Math.abs(minValue), binary);
          }
          else
          {
             maxValue = 0;
-            minValue = -adjustRange(Math.abs(minValue));
+            minValue = -adjustRange(Math.abs(minValue), binary);
          }
       }
       else
@@ -170,9 +174,9 @@ public class BarChart extends GenericComparisonChart
       }
 
       if (chart.getConfiguration().isTransposed())
-         renderHorizontal(gc, size, items, series, minValue, maxValue);
+         renderHorizontal(gc, size, items, series, minValue, maxValue, unit, binary);
       else
-         renderVertical(gc, size, items, series, minValue, maxValue);
+         renderVertical(gc, size, items, series, minValue, maxValue, unit, binary);
    }
 
    /**
@@ -185,7 +189,7 @@ public class BarChart extends GenericComparisonChart
     * @param minValue adjusted minimal value
     * @param maxValue adjusted maximal value
     */
-   private void renderVertical(GC gc, Point size, List<ChartDciConfig> items, List<DataSeries> series, double minValue, double maxValue)
+   private void renderVertical(GC gc, Point size, List<ChartDciConfig> items, List<DataSeries> series, double minValue, double maxValue, MeasurementUnit unit, boolean binary)
    {
       Color axisColor = ThemeEngine.getForegroundColor("Chart.PlotArea");
       gc.setForeground(axisColor);
@@ -195,7 +199,7 @@ public class BarChart extends GenericComparisonChart
 
       // Value of single pixel
       double pixelValue = (maxValue - minValue) / (size.y - MARGIN_HEIGHT * 2);
-      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)));
+      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)), binary);
       float pointsStep = (float)(step / pixelValue);
 
       int baseLine; // Position of X axis
@@ -213,7 +217,7 @@ public class BarChart extends GenericComparisonChart
       {
          for(double v = minValue; v <= maxValue; v += step)
          {
-            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5, unit) : Double.toString(v));
             if (label.size.x > labelWidth)
                labelWidth = label.size.x;
             labels.add(label);
@@ -223,7 +227,7 @@ public class BarChart extends GenericComparisonChart
       {
          for(double v = maxValue; v >= minValue; v -= step)
          {
-            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5, unit) : Double.toString(v));
             if (label.size.x > labelWidth)
                labelWidth = label.size.x;
             labels.add(label);
@@ -295,7 +299,7 @@ public class BarChart extends GenericComparisonChart
     * @param minValue adjusted minimal value
     * @param maxValue adjusted maximal value
     */
-   private void renderHorizontal(GC gc, Point size, List<ChartDciConfig> items, List<DataSeries> series, double minValue, double maxValue)
+   private void renderHorizontal(GC gc, Point size, List<ChartDciConfig> items, List<DataSeries> series, double minValue, double maxValue, MeasurementUnit unit, boolean binary)
    {
       Color axisColor = ThemeEngine.getForegroundColor("Chart.PlotArea");
       gc.setForeground(axisColor);
@@ -305,7 +309,7 @@ public class BarChart extends GenericComparisonChart
 
       // Value of single pixel
       double pixelValue = (maxValue - minValue) / (size.x - MARGIN_WIDTH * 2);
-      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)));
+      double step = getStepMagnitude(Math.max(Math.abs(minValue), Math.abs(maxValue)), binary);
       float pointsStep = (float)(step / pixelValue);
 
       int baseLine; // Position of Y axis
@@ -323,7 +327,7 @@ public class BarChart extends GenericComparisonChart
       {
          for(double v = maxValue; v >= minValue; v -= step)
          {
-            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5, unit) : Double.toString(v));
             labels.add(label);
          }
       }
@@ -331,7 +335,7 @@ public class BarChart extends GenericComparisonChart
       {
          for(double v = minValue; v <= maxValue; v += step)
          {
-            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5) : Double.toString(v));
+            Label label = new Label(gc, config.isUseMultipliers() ? DataFormatter.roundDecimalValue(v, step, 5, unit) : Double.toString(v));
             labels.add(label);
          }
       }
@@ -396,8 +400,14 @@ public class BarChart extends GenericComparisonChart
     * @param upper
     * @return
     */
-   private static double adjustRange(double upper)
+   private static double adjustRange(double upper, boolean binary)
    {
+      if (binary)
+      {
+         double multiplier = getBinaryMultiplier(upper);
+         double units = upper / multiplier;
+         return Math.ceil(units) * multiplier;
+      }
       double adjustedUpper = upper;
       for(double d = 0.00001; d < 10000000000000000000.0; d *= 10)
       {
@@ -411,8 +421,21 @@ public class BarChart extends GenericComparisonChart
       return adjustedUpper;
    }
 
-   private static double getStepMagnitude(double maxValue)
+   private static double getStepMagnitude(double maxValue, boolean binary)
    {
+      if (binary)
+      {
+         double multiplier = getBinaryMultiplier(maxValue);
+         double units = maxValue / multiplier;
+         // Find decimal step magnitude for the units value
+         double d = 0.1;
+         for(; d < 10000000000000000000.0; d *= 10)
+         {
+            if ((units > d) && (units <= d * 10))
+               break;
+         }
+         return d * multiplier;
+      }
       double d = 0.00001;
       for(; d < 10000000000000000000.0; d *= 10)
       {
@@ -420,6 +443,21 @@ public class BarChart extends GenericComparisonChart
             break;
       }
       return d;
+   }
+
+   /**
+    * Get binary multiplier bracket for given value (1, 1024, 1048576, etc.)
+    */
+   private static double getBinaryMultiplier(double value)
+   {
+      double absValue = Math.abs(value);
+      double[] multipliers = { 0x4000000000000L, 0x10000000000L, 0x40000000L, 0x100000L, 0x400L, 1 };
+      for(double m : multipliers)
+      {
+         if (absValue >= m)
+            return m;
+      }
+      return 1;
    }
 
    private static class Label
