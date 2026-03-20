@@ -1277,21 +1277,13 @@ Default:
 
 SelectStatement:
 	T_SELECT
-{ 
+{
 	compiler->newBreakLevel();
-	compiler->newSelectLevel();
 }
 	T_IDENTIFIER SelectOptions	'{' SelectList '}'
 {
 	builder->addInstruction(lexer->getCurrLine(), OPCODE_SELECT, $3, $6);
 	compiler->closeBreakLevel(builder);
-
-	uint32_t addr = compiler->popSelectJumpAddr();
-	if (addr != INVALID_ADDRESS)
-	{
-		builder->createJumpAt(addr, builder->getCodeSize());
-	}
-	compiler->closeSelectLevel();
 }
 ;
 
@@ -1317,22 +1309,17 @@ SelectList:
 SelectEntry:
 	T_WHEN
 {
-} 
+}
 	Expression
 {
 	builder->addInstruction(lexer->getCurrLine(), OPCODE_PUSHCP, static_cast<int16_t>(2));
 	builder->addInstruction(lexer->getCurrLine(), OPCODE_JMP, INVALID_ADDRESS);
-	uint32_t addr = compiler->popSelectJumpAddr();
-	if (addr != INVALID_ADDRESS)
-	{
-		builder->createJumpAt(addr, builder->getCodeSize());
-	}
-} 
+}
 	':' StatementList
 {
-	compiler->pushSelectJumpAddr(builder->getCodeSize());
-	builder->addInstruction(lexer->getCurrLine(), OPCODE_NOP);
-	builder->resolveLastJump(OPCODE_JMP);
+	builder->resolveLastJump(OPCODE_JMP, 1);
+	builder->addInstruction(lexer->getCurrLine(), OPCODE_JMP, INVALID_ADDRESS);
+	compiler->addBreakAddr(builder->getCodeSize() - 1);
 }
 ;
 

@@ -43,7 +43,6 @@ NXSL_Compiler::NXSL_Compiler()
    m_lexer = nullptr;
    m_addrStack = new NXSL_Stack;
 	m_breakStack = new NXSL_Stack;
-   m_selectStack = new NXSL_Stack;
 	m_idOpCode = 0;
 	m_temporaryStackItems = 0;
 }
@@ -61,9 +60,6 @@ NXSL_Compiler::~NXSL_Compiler()
       delete q;
    delete m_breakStack;
 
-   while((q = static_cast<Queue*>(m_selectStack->pop())) != nullptr)
-      delete q;
-   delete m_selectStack;
 }
 
 /**
@@ -299,34 +295,4 @@ void NXSL_Compiler::closeBreakLevel(NXSL_ProgramBuilder *pScript)
 	}
 }
 
-/**
- * Close select level
- */
-void NXSL_Compiler::closeSelectLevel()
-{
-   delete static_cast<Queue*>(m_selectStack->pop());
-}
 
-/**
- * Push jump address for select
- */
-void NXSL_Compiler::pushSelectJumpAddr(uint32_t addr)
-{
-   Queue *q = static_cast<Queue*>(m_selectStack->peek());
-   if (q != nullptr)
-   {
-      q->put(CAST_TO_POINTER(addr, void *));
-   }
-}
-
-/**
- * Pop jump address for select
- */
-uint32_t NXSL_Compiler::popSelectJumpAddr()
-{
-   Queue *q = static_cast<Queue*>(m_selectStack->peek());
-   if ((q == nullptr) || (q->size() == 0))
-      return INVALID_ADDRESS;
-
-   return CAST_FROM_POINTER(q->get(), UINT32);
-}

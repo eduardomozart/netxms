@@ -375,7 +375,6 @@ protected:
    NXSL_Lexer *m_lexer;
    NXSL_Stack *m_addrStack;
 	NXSL_Stack *m_breakStack;
-	NXSL_Stack *m_selectStack;
 	int m_idOpCode;
 	int m_temporaryStackItems;
 
@@ -400,11 +399,6 @@ public:
 	void closeBreakLevel(NXSL_ProgramBuilder *pScript);
 	bool canUseBreak() { return m_breakStack->getPosition() > 0; }
 	void newBreakLevel() { m_breakStack->push(new Queue); }
-
-	void newSelectLevel() { m_selectStack->push(new Queue); }
-   void closeSelectLevel();
-   void pushSelectJumpAddr(uint32_t addr);
-   uint32_t popSelectJumpAddr();
 
    void incTemporaryStackItems() { m_temporaryStackItems++; }
    void decTemporaryStackItems() { m_temporaryStackItems--; }
