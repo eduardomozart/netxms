@@ -1701,31 +1701,46 @@ void Interface::clearPeerData()
 }
 
 /**
- * Clear peer information and invalidate cached link layer neighbor entry on parent node
+ * Clear peer information and invalidate cached link layer neighbor entry on remote (peer) node
  */
 void Interface::clearPeer()
 {
+   uint32_t oldPeerInterfaceId;
+
    lockProperties();
+   oldPeerInterfaceId = m_peerInterfaceId;
    clearPeerData();
    unlockProperties();
 
-   // Invalidate stale entry in parent node's cached link layer neighbor list
-   // and trigger topology poll to rebuild it with fresh data
-   shared_ptr<Node> parentNode = getParentNode();
-   if (parentNode != nullptr)
-      parentNode->invalidateLinkLayerNeighbor(m_index);
+   // Invalidate stale entry in remote (peer) node's cached link layer neighbor list
+   // and trigger topology poll on the remote node to rebuild it with fresh data.
+   // Local node's cache does not need invalidation because the caller
+   // (topology poll) already rebuilds the neighbor list before clearing old peers.
+   if (oldPeerInterfaceId != 0)
+   {
+      shared_ptr<Interface> peerIface = static_pointer_cast<Interface>(FindObjectById(oldPeerInterfaceId, OBJECT_INTERFACE));
+      if (peerIface != nullptr)
+      {
+         shared_ptr<Node> peerNode = peerIface->getParentNode();
+         if (peerNode != nullptr)
+            peerNode->invalidateLinkLayerNeighbor(peerIface->getIfIndex());
+      }
+   }
 }
 
 /**
- * Clear expired peer information and invalidate cached link layer neighbor entry on parent node
+ * Clear expired peer information and invalidate cached link layer neighbor entries
+ * on both local and remote (peer) nodes
  */
 bool Interface::clearExpiredPeerData(uint32_t maxAgeSeconds)
 {
    bool cleared = false;
+   uint32_t oldPeerInterfaceId = 0;
    time_t cutoffTime = time(nullptr) - maxAgeSeconds;
    lockProperties();
    if ((m_peerLastUpdated > 0) && (m_peerLastUpdated < cutoffTime))
    {
+      oldPeerInterfaceId = m_peerInterfaceId;
       clearPeerData();
       cleared = true;
    }
@@ -1733,9 +1748,23 @@ bool Interface::clearExpiredPeerData(uint32_t maxAgeSeconds)
 
    if (cleared)
    {
+      // Invalidate local node's cache — the neighbor list was already rebuilt
+      // earlier in this topology poll with the stale peer still set
       shared_ptr<Node> parentNode = getParentNode();
       if (parentNode != nullptr)
          parentNode->invalidateLinkLayerNeighbor(m_index);
+
+      // Invalidate remote (peer) node's cache
+      if (oldPeerInterfaceId != 0)
+      {
+         shared_ptr<Interface> peerIface = static_pointer_cast<Interface>(FindObjectById(oldPeerInterfaceId, OBJECT_INTERFACE));
+         if (peerIface != nullptr)
+         {
+            shared_ptr<Node> peerNode = peerIface->getParentNode();
+            if (peerNode != nullptr)
+               peerNode->invalidateLinkLayerNeighbor(peerIface->getIfIndex());
+         }
+      }
    }
    return cleared;
 }
