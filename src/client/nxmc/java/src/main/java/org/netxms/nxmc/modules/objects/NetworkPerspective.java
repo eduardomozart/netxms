@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2024 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ package org.netxms.nxmc.modules.objects;
 
 import java.util.Set;
 import org.netxms.client.objects.AbstractObject;
+import org.netxms.client.objects.Cluster;
 import org.netxms.client.objects.Interface;
 import org.netxms.client.objects.Node;
 import org.netxms.client.objects.VPNConnector;
@@ -47,6 +48,11 @@ public class NetworkPerspective extends ObjectsPerspective
                {
                   if (!((Node)o).getPrimaryIP().isValidUnicastAddress())
                      return false;
+                  if (!o.hasAccessibleParents(classFilterNetwork))
+                     return false;
+               }
+               if (o instanceof Cluster)
+               {
                   if (!o.hasAccessibleParents(classFilterNetwork))
                      return false;
                }
