@@ -7,7 +7,6 @@ Type=simple
 Environment="NETXMSD_CONFIG=/etc/netxmsd.conf"
 EnvironmentFile=-/etc/default/netxmsd
 ExecStart=~BINDIR~/netxmsd -S $NETXMSD_OPTIONS --config $NETXMSD_CONFIG
-PIDFile=/var/run/netxmsd.pid
 Restart=always
 
 [Install]
