@@ -110,6 +110,7 @@ void InitSessionList();
 
 bool RegisterOnServer(const TCHAR *server, int32_t zoneUIN);
 
+void RemoveOrphanPolicyFiles();
 void StartPolicyHousekeeper();
 
 void UpdateUserAgentsEnvironment();
@@ -1230,6 +1231,10 @@ BOOL Initialize()
       if (!OpenLocalDatabase())
       {
          nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG_LOCALDB, _T("Local database unavailable"));
+      }
+      else
+      {
+         RemoveOrphanPolicyFiles();
       }
    }
    else

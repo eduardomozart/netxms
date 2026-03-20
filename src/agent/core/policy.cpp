@@ -547,6 +547,66 @@ uint32_t GetPolicyInventory(NXCPMessage *msg, uint64_t serverId)
 }
 
 /**
+ * Remove orphan policy files that have no corresponding entry in agent database
+ */
+void RemoveOrphanPolicyFiles()
+{
+   DB_HANDLE hdb = GetLocalDatabaseHandle();
+   if (hdb == nullptr)
+      return;
+
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT count(*) FROM agent_policy WHERE guid=?"));
+   if (hStmt == nullptr)
+      return;
+
+   static const TCHAR *directories[] = { g_szConfigPolicyDir, g_szLogParserDirectory, g_userAgentPolicyDirectory };
+   for (int i = 0; i < 3; i++)
+   {
+      if (directories[i][0] == 0)
+         continue;
+
+      _TDIR *dir = _topendir(directories[i]);
+      if (dir == nullptr)
+         continue;
+
+      struct _tdirent *d;
+      while ((d = _treaddir(dir)) != nullptr)
+      {
+         if (!_tcscmp(d->d_name, _T(".")) || !_tcscmp(d->d_name, _T("..")))
+            continue;
+
+         size_t len = _tcslen(d->d_name);
+         if ((len < 5) || _tcsicmp(&d->d_name[len - 4], _T(".xml")))
+            continue;
+
+         TCHAR name[64];
+         _tcslcpy(name, d->d_name, std::min(len - 3, static_cast<size_t>(64)));
+         uuid guid = uuid::parse(name);
+         if (guid.isNull())
+            continue;
+
+         DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, guid);
+         DB_RESULT hResult = DBSelectPrepared(hStmt);
+         if (hResult != nullptr)
+         {
+            if (DBGetFieldLong(hResult, 0, 0) == 0)
+            {
+               TCHAR filePath[MAX_PATH];
+               _sntprintf(filePath, MAX_PATH, _T("%s%s"), directories[i], d->d_name);
+               if (_tremove(filePath) == 0)
+                  nxlog_write_tag(NXLOG_WARNING, DEBUG_TAG, _T("Removed orphan policy file %s (no database entry)"), filePath);
+               else
+                  nxlog_write_tag(NXLOG_WARNING, DEBUG_TAG, _T("Cannot remove orphan policy file %s (%s)"), filePath, _tcserror(errno));
+            }
+            DBFreeResult(hResult);
+         }
+      }
+      _tclosedir(dir);
+   }
+   DBFreeStatement(hStmt);
+}
+
+/**
  * Update policy inventory in database from actual policy files
  */
 static void UpdatePolicyInventory()
@@ -607,6 +667,7 @@ static void UpdatePolicyInventory()
 void StartPolicyHousekeeper()
 {
    UpdatePolicyInventory();
+   RemoveOrphanPolicyFiles();
    ThreadPoolScheduleRelative(g_webSvcThreadPool, 24 * 60 * 60 * 1000, StartPolicyHousekeeper); // Schedule next update in 24 hours
 }
 
