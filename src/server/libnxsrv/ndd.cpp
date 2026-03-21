@@ -475,27 +475,61 @@ static uint32_t HandlerIpAddr(SNMP_Variable *var, SNMP_Transport *transport, Int
  * Build IP address from OID part (encoded as type length value)
  * If "withMask" set to true, OID element following address is interpreted as prefix length
  */
-InetAddress LIBNXSRV_EXPORTABLE InetAddressFromOID(const uint32_t* oid, bool withMask, int *shift)
+InetAddress LIBNXSRV_EXPORTABLE InetAddressFromOID(const uint32_t* oid, size_t oidLen, bool withMask, int *shift)
 {
    InetAddress addr;
+   if (oidLen < 2)
+   {
+      if (shift != nullptr)
+         *shift = 0;
+      return addr;
+   }
+   size_t minLen;
    if (((oid[0] == 1) && (oid[1] == 4)) || ((oid[0] == 3) && (oid[1] == 8))) // ipv4 and ipv4z
    {
-      addr = InetAddress((oid[2] << 24) | (oid[3] << 16) | (oid[4] << 8) | oid[5]);
-      if (withMask)
-         addr.setMaskBits(static_cast<int>(*(oid + oid[1] + 2)));
+      minLen = static_cast<size_t>(oid[1]) + (withMask ? 3 : 2);
+      if (oidLen >= minLen)
+      {
+         addr = InetAddress((oid[2] << 24) | (oid[3] << 16) | (oid[4] << 8) | oid[5]);
+         if (withMask)
+            addr.setMaskBits(static_cast<int>(*(oid + oid[1] + 2)));
+      }
+      if (shift != nullptr)
+         *shift = static_cast<int>(oid[1]) + (withMask ? 3 : 2);
    }
    else if (((oid[0] == 2) && (oid[1] == 16)) || ((oid[0] == 4) && (oid[1] == 20))) // ipv6 and ipv6z
    {
-      BYTE bytes[16];
-      const uint32_t *p = oid + 2;
-      for(int i = 0; i < 16; i++)
-         bytes[i] = static_cast<BYTE>(*p++);
-      addr = InetAddress(bytes);
-      if (withMask)
-         addr.setMaskBits(static_cast<int>(*(oid + oid[1] + 2)));
+      minLen = static_cast<size_t>(oid[1]) + (withMask ? 3 : 2);
+      if (oidLen >= minLen)
+      {
+         BYTE bytes[16];
+         const uint32_t *p = oid + 2;
+         for(int i = 0; i < 16; i++)
+            bytes[i] = static_cast<BYTE>(*p++);
+         addr = InetAddress(bytes);
+         if (withMask)
+            addr.setMaskBits(static_cast<int>(*(oid + oid[1] + 2)));
+      }
+      if (shift != nullptr)
+         *shift = static_cast<int>(oid[1]) + (withMask ? 3 : 2);
    }
-   if (shift != nullptr)
-      *shift = static_cast<int>(oid[1]) + (withMask ? 3 : 2);
+   else if (oid[0] == 1) // IPv4 without length byte (non-standard encoding used by some devices like Cisco ASA)
+   {
+      minLen = withMask ? 6 : 5;
+      if (oidLen >= minLen)
+      {
+         addr = InetAddress((oid[1] << 24) | (oid[2] << 16) | (oid[3] << 8) | oid[4]);
+         if (withMask)
+            addr.setMaskBits(static_cast<int>(oid[5]));
+      }
+      if (shift != nullptr)
+         *shift = withMask ? 6 : 5;
+   }
+   else
+   {
+      if (shift != nullptr)
+         *shift = (oidLen >= 2) ? static_cast<int>(oid[1]) + (withMask ? 3 : 2) : 0;
+   }
    return addr;
 }
 
@@ -510,6 +544,7 @@ static SNMP_ObjectId s_ipAddressPrefixEntry { 1, 3, 6, 1, 2, 1, 4, 32, 1 };
 static uint32_t HandlerIpAddressTable(SNMP_Variable *var, SNMP_Transport *transport, InterfaceList *ifList)
 {
    uint32_t oid[128];
+   memset(oid, 0, sizeof(oid));
    size_t oidLen = var->getName().length();
    memcpy(oid, var->getName().value(), oidLen * sizeof(uint32_t));
 
@@ -519,7 +554,7 @@ static uint32_t HandlerIpAddressTable(SNMP_Variable *var, SNMP_Transport *transp
       return SNMP_ERR_SUCCESS;
 
    // Build IP address from OID
-   InetAddress addr = InetAddressFromOID(&oid[10], false, nullptr);
+   InetAddress addr = InetAddressFromOID(&oid[10], oidLen - 10, false, nullptr);
    if (!addr.isValid())
       return SNMP_ERR_SUCCESS;   // Unknown or unsupported address format
 
@@ -564,9 +599,10 @@ static uint32_t HandlerIpAddressTable(SNMP_Variable *var, SNMP_Transport *transp
 static uint32_t HandlerIpAddressPrefixTable(SNMP_Variable *var, SNMP_Transport *transport, InterfaceList *ifList)
 {
    const uint32_t *oid = var->getName().value();
-   
+   size_t oidLen = var->getName().length();
+
    // Build IP address from OID
-   InetAddress prefix = InetAddressFromOID(&oid[11], true, nullptr);
+   InetAddress prefix = InetAddressFromOID(&oid[11], oidLen - 11, true, nullptr);
    if (!prefix.isValid())
       return SNMP_ERR_SUCCESS;   // Unknown or unsupported address format
 
@@ -605,16 +641,20 @@ static void ProcessInetCidrRouteingTableEntry(SNMP_Variable *var, SNMP_Transport
       return;
 
    // Build IP address and next hop from OID
+   size_t oidLen = var->getName().length();
    int shift;
-   InetAddress prefix = InetAddressFromOID(&oid[11], true, &shift);
+   InetAddress prefix = InetAddressFromOID(&oid[11], oidLen - 11, true, &shift);
    if (!prefix.isValid() || prefix.isAnyLocal() || prefix.isMulticast() || (prefix.getMaskBits() == 0) || (prefix.getHostBits() == 0))
       return;   // Unknown or unsupported address format, or prefix of no interest
 
    uint32_t *policy = &oid[11 + shift]; // Policy follows prefix
-   if (static_cast<size_t>(policy - oid + 3) >= var->getName().length())
+   if (static_cast<size_t>(policy - oid + 3) >= oidLen)
       return;   // Check that length is valid and do not point beyond OID end
 
-   InetAddress nextHop = InetAddressFromOID(policy + policy[0] + 1, false, nullptr);
+   size_t nextHopOffset = static_cast<size_t>(policy - oid) + policy[0] + 1;
+   if (nextHopOffset >= oidLen)
+      return;
+   InetAddress nextHop = InetAddressFromOID(&oid[nextHopOffset], oidLen - nextHopOffset, false, nullptr);
    if (!nextHop.isValid() || !nextHop.isAnyLocal())
       return;   // Unknown or unsupported address format, or next hop is not 0.0.0.0
 

@@ -638,6 +638,6 @@ bool LIBNXSRV_EXPORTABLE CompareRadioInterfaceLists(const StructArray<RadioInter
  * Build IP address from OID part (encoded as type length value)
  * If "withMask" set to true, OID element following address is interpreted as prefix length
  */
-InetAddress LIBNXSRV_EXPORTABLE InetAddressFromOID(const uint32_t* oid, bool withMask, int *shift);
+InetAddress LIBNXSRV_EXPORTABLE InetAddressFromOID(const uint32_t* oid, size_t oidLen, bool withMask, int *shift);
 
 #endif   /* _nddrv_h_ */

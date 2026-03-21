@@ -183,11 +183,16 @@ static EnumerationCallbackResult HandlerIPCidrRouteTable(const SNMP_Variable *va
 static EnumerationCallbackResult HandlerInetCidrRouteTable(const SNMP_Variable *varbind, const SNMP_Snapshot *snapshot, void *routingTable)
 {
    SNMP_ObjectId oid(varbind->getName());
+   if (oid.length() <= 11)
+      return _CONTINUE;
 
    ROUTE route;
    int shift;
-   route.destination = InetAddressFromOID(oid.value() + 11, true, &shift);
-   route.nextHop = InetAddressFromOID(oid.value() + shift + oid.getElement(11 + shift) + 12, false, nullptr); // oid[11 + shift] contains length of policy element
+   route.destination = InetAddressFromOID(oid.value() + 11, oid.length() - 11, true, &shift);
+   size_t nextHopOffset = static_cast<size_t>(shift) + oid.getElement(11 + shift) + 12;
+   if (nextHopOffset >= oid.length())
+      return _CONTINUE;
+   route.nextHop = InetAddressFromOID(oid.value() + nextHopOffset, oid.length() - nextHopOffset, false, nullptr); // oid[11 + shift] contains length of policy element
    route.protocol = static_cast<RoutingProtocol>(varbind->getValueAsInt());
 
    oid.changeElement(10, 7);  // inetCidrRouteIfIndex
