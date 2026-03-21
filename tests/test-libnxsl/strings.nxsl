@@ -90,10 +90,16 @@ assert(s3.lastIndexOf("world", 8) == 7);
 assert("alpha beta gamma beta gamma".lastIndexOf("beta") == 17);
 
 n = 3.1415;
-assert(format(n, 1) == "3");
-assert(format(n, 1, 2) == "3.14");
-assert(format(n, 8) == "       3");
-assert(format(n, 8, 3) == "   3.142");
+assert(FormatNumber(n, 1) == "3");
+assert(FormatNumber(n, 1, 2) == "3.14");
+assert(FormatNumber(n, 1, 2, ",") == "3.14");
+assert(FormatNumber(n, 8) == "       3");
+assert(FormatNumber(n, 8, 3) == "   3.142");
+n = 7826453.56789;
+assert(FormatNumber(n, 1) == "7826454");
+assert(FormatNumber(n, 1, 2) == "7826453.57");
+assert(FormatNumber(n, 1, 2, null) == "7826453.57");
+assert(FormatNumber(n, 1, 2, ",") == "7,826,453.57");
 
 list1 = "alpha,beta,gamma";
 list2 = "ab|cd|ef";

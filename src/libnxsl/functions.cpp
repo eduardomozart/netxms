@@ -630,7 +630,7 @@ int F_sleep(int argc, NXSL_Value **argv, NXSL_Value **result, NXSL_VM *vm)
  */
 int F_FormatNumber(int argc, NXSL_Value **argv, NXSL_Value **ppResult, NXSL_VM *vm)
 {
-	if ((argc < 1) || (argc > 3))
+	if ((argc < 1) || (argc > 4))
 		return NXSL_ERR_INVALID_ARGUMENT_COUNT;
 
 	if (!argv[0]->isNumeric())
@@ -643,11 +643,24 @@ int F_FormatNumber(int argc, NXSL_Value **argv, NXSL_Value **ppResult, NXSL_VM *
 		if (!argv[1]->isInteger())
 			return NXSL_ERR_NOT_INTEGER;
 		width = argv[1]->getValueAsInt32();
-		if (argc == 3)
+		if (argc >= 3)
 		{
 			if (!argv[2]->isInteger())
 				return NXSL_ERR_NOT_INTEGER;
 			precision = argv[2]->getValueAsInt32();
+		}
+	}
+
+	const TCHAR *thousandSeparator = nullptr;
+	if (argc >= 4)
+	{
+		if (!argv[3]->isNull() && !argv[3]->isString())
+			return NXSL_ERR_NOT_STRING;
+		if (argv[3]->isString())
+		{
+			const TCHAR *s = argv[3]->getValueAsCString();
+			if (*s != 0)
+				thousandSeparator = s;
 		}
 	}
 
@@ -664,7 +677,57 @@ int F_FormatNumber(int argc, NXSL_Value **argv, NXSL_Value **ppResult, NXSL_VM *
 	TCHAR format[32], buffer[128];
 	_sntprintf(format, 32, _T("%%%d.%df"), width, precision);
 	_sntprintf(buffer, 128, format, argv[0]->getValueAsReal());
-	*ppResult = vm->createValue(buffer);
+
+	if (thousandSeparator != nullptr)
+	{
+		// Find the start of digits (skip leading spaces and sign)
+		TCHAR *digitStart = buffer;
+		while (*digitStart == _T(' '))
+			digitStart++;
+		if (*digitStart == _T('-') || *digitStart == _T('+'))
+			digitStart++;
+
+		// Find the end of the integer part (before decimal point or end of string)
+		TCHAR *intEnd = digitStart;
+		while (*intEnd >= _T('0') && *intEnd <= _T('9'))
+			intEnd++;
+
+		int intDigits = static_cast<int>(intEnd - digitStart);
+		if (intDigits > 3)
+		{
+			// Build result with separators
+			StringBuffer result;
+
+			// Append leading spaces and sign
+			for (TCHAR *p = buffer; p < digitStart; p++)
+				result.append(*p);
+
+			// Append integer digits with separators
+			int firstGroupSize = intDigits % 3;
+			if (firstGroupSize == 0)
+				firstGroupSize = 3;
+
+			result.append(digitStart, firstGroupSize);
+			for (int i = firstGroupSize; i < intDigits; i += 3)
+			{
+				result.append(thousandSeparator);
+				result.append(digitStart + i, 3);
+			}
+
+			// Append decimal part and everything after
+			result.append(intEnd);
+
+			*ppResult = vm->createValue(result);
+		}
+		else
+		{
+			*ppResult = vm->createValue(buffer);
+		}
+	}
+	else
+	{
+		*ppResult = vm->createValue(buffer);
+	}
 	return 0;
 }
 
