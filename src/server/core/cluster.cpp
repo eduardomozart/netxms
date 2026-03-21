@@ -1,6 +1,6 @@
 /*
 ** NetXMS - Network Management System
-** Copyright (C) 2003-2025 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -644,7 +644,7 @@ void Cluster::statusPoll(PollerInfo *poller, ClientSession *session, uint32_t re
    m_pollRequestId = requestId;
 
    sendPollerMsg(_T("Polling member nodes\r\n"));
-   nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ClusterStatusPoll(%s): Polling member nodes"), m_name);
+   nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): Polling member nodes"), m_name);
 	bool allDown = true;
 	for(i = 0; i < pollList.size(); i++)
 	{
@@ -675,94 +675,124 @@ void Cluster::statusPoll(PollerInfo *poller, ClientSession *session, uint32_t re
 	// Check for cluster resource movement
 	if (!allDown)
 	{
-      BYTE *resourceFound = reinterpret_cast<BYTE*>(MemAllocLocal(m_dwNumResources));
-      memset(resourceFound, 0, m_dwNumResources);
+      // Phase 1: Collect which nodes currently own each resource
+      // For each resource, store the ID of the node that has its IP on an interface.
+      // If multiple nodes report the same resource IP (transient state during failover),
+      // store 0 to indicate ambiguity and avoid generating spurious move events.
+      uint32_t *detectedOwner = reinterpret_cast<uint32_t*>(MemAllocLocal(m_dwNumResources * sizeof(uint32_t)));
+      memset(detectedOwner, 0, m_dwNumResources * sizeof(uint32_t));
+      bool *ambiguousResource = reinterpret_cast<bool*>(MemAllocLocal(m_dwNumResources * sizeof(bool)));
+      memset(ambiguousResource, 0, m_dwNumResources * sizeof(bool));
 
       poller->setStatus(_T("resource poll"));
-	   sendPollerMsg(_T("Polling resources\r\n"));
-	   nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ClusterStatusPoll(%s): polling resources"), m_name);
-		for(i = 0; i < pollList.size(); i++)
-		{
-		   if (pollList.get(i)->getObjectClass() != OBJECT_NODE)
-		      continue;
+      sendPollerMsg(_T("Polling resources\r\n"));
+      nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): polling resources"), m_name);
+      for(i = 0; i < pollList.size(); i++)
+      {
+         if (pollList.get(i)->getObjectClass() != OBJECT_NODE)
+            continue;
 
-		   Node *node = static_cast<Node*>(pollList.get(i));
-		   InterfaceList *ifList = node->getInterfaceList();
-			if (ifList != nullptr)
-			{
-				lockProperties();
-				for(int j = 0; j < ifList->size(); j++)
-				{
-					for(uint32_t k = 0; k < m_dwNumResources; k++)
-					{
+         Node *node = static_cast<Node*>(pollList.get(i));
+         InterfaceList *ifList = node->getInterfaceList();
+         if (ifList != nullptr)
+         {
+            lockProperties();
+            for(int j = 0; j < ifList->size(); j++)
+            {
+               for(uint32_t k = 0; k < m_dwNumResources; k++)
+               {
                   if (ifList->get(j)->hasAddress(m_pResourceList[k].ipAddr))
-						{
-							if (m_pResourceList[k].dwCurrOwner != node->getId())
-							{
-						      sendPollerMsg(_T("Resource %s owner changed\r\n"), m_pResourceList[k].szName);
-						      nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ClusterStatusPoll(%s): Resource %s owner changed"),
-											 m_name, m_pResourceList[k].szName);
+                  {
+                     if (detectedOwner[k] == 0)
+                     {
+                        detectedOwner[k] = node->getId();
+                     }
+                     else if (detectedOwner[k] != node->getId())
+                     {
+                        ambiguousResource[k] = true;
+                     }
+                  }
+               }
+            }
+            unlockProperties();
+            delete ifList;
+         }
+         else
+         {
+            sendPollerMsg(_T("Cannot get interface list from %s\r\n"), node->getName());
+            nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): Cannot get interface list from %s"),
+                     m_name, node->getName());
+         }
+      }
 
-								// Resource moved or go up
-								if (m_pResourceList[k].dwCurrOwner == 0)
-								{
-									// Resource up
-                           EventBuilder(EVENT_CLUSTER_RESOURCE_UP, m_id).
-                              param(_T("resourceId"), m_pResourceList[k].dwId).
-                              param(_T("resourceName"), m_pResourceList[k].szName).
-                              param(_T("newOwnerNodeId"), node->getId()).
-                              param(_T("newOwnerNodeName"), node->getName()).post();
-								}
-								else
-								{
-									// Moved
-									shared_ptr<NetObj> pObject = FindObjectById(m_pResourceList[k].dwCurrOwner);
-                           EventBuilder(EVENT_CLUSTER_RESOURCE_MOVED, m_id).
-                              param(_T("resourceId"), m_pResourceList[k].dwId).
-                              param(_T("resourceName"), m_pResourceList[k].szName).
-                              param(_T("previousOwnerNodeId"), m_pResourceList[k].dwCurrOwner).
-                              param(_T("previousOwnerNodeName"), (pObject != NULL) ? pObject->getName() : _T("<unknown>")).
-                              param(_T("newOwnerNodeId"), node->getId()).
-                              param(_T("newOwnerNodeName"), node->getName()).post();
+      // Phase 2: Process collected results and generate events
+      lockProperties();
+      for(uint32_t k = 0; k < m_dwNumResources; k++)
+      {
+         if (ambiguousResource[k])
+         {
+            // Resource IP found on multiple nodes - transient failover state, keep current owner
+            nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): Resource \"%s\" found on multiple nodes, keeping current owner"),
+                     m_name, m_pResourceList[k].szName);
+            sendPollerMsg(_T("Resource %s found on multiple nodes (possible failover in progress)\r\n"), m_pResourceList[k].szName);
+         }
+         else if (detectedOwner[k] != 0)
+         {
+            // Resource found on exactly one node
+            if (m_pResourceList[k].dwCurrOwner != detectedOwner[k])
+            {
+               sendPollerMsg(_T("Resource %s owner changed\r\n"), m_pResourceList[k].szName);
+               nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): Resource \"%s\" owner changed"), m_name, m_pResourceList[k].szName);
 
-								}
-								m_pResourceList[k].dwCurrOwner = node->getId();
-								modified |= MODIFY_CLUSTER_RESOURCES;
-							}
-							resourceFound[k] = 1;
-						}
-					}
-				}
-				unlockProperties();
-				delete ifList;
-			}
-			else
-			{
-		      sendPollerMsg(_T("Cannot get interface list from %s\r\n"), node->getName());
-		      nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ClusterStatusPoll(%s): Cannot get interface list from %s"),
-							 m_name, node->getName());
-			}
-		}
-
-		// Check for missing virtual addresses
-		lockProperties();
-		for(i = 0; i < (int)m_dwNumResources; i++)
-		{
-			if ((!resourceFound[i]) && (m_pResourceList[i].dwCurrOwner != 0))
-			{
-				shared_ptr<NetObj> pObject = FindObjectById(m_pResourceList[i].dwCurrOwner);
-            EventBuilder(EVENT_CLUSTER_RESOURCE_DOWN, m_id)
-               .param(_T("resourceId"), m_pResourceList[i].dwId)
-               .param(_T("resourceName"), m_pResourceList[i].szName)
-               .param(_T("lastOwnerNodeId"), m_pResourceList[i].dwCurrOwner)
-               .param(_T("lastOwnerNodeName"), (pObject != nullptr) ? pObject->getName() : _T("<unknown>"))
-               .post();
-				m_pResourceList[i].dwCurrOwner = 0;
-            modified |= MODIFY_CLUSTER_RESOURCES;
-			}
-		}
-		unlockProperties();
-		MemFreeLocal(resourceFound);
+               if (m_pResourceList[k].dwCurrOwner == 0)
+               {
+                  // Resource up
+                  shared_ptr<NetObj> newOwner = FindObjectById(detectedOwner[k]);
+                  EventBuilder(EVENT_CLUSTER_RESOURCE_UP, m_id)
+                     .param(_T("resourceId"), m_pResourceList[k].dwId)
+                     .param(_T("resourceName"), m_pResourceList[k].szName)
+                     .param(_T("newOwnerNodeId"), detectedOwner[k])
+                     .param(_T("newOwnerNodeName"), (newOwner != nullptr) ? newOwner->getName() : _T("<unknown>"))
+                     .post();
+               }
+               else
+               {
+                  // Resource moved
+                  shared_ptr<NetObj> prevOwner = FindObjectById(m_pResourceList[k].dwCurrOwner);
+                  shared_ptr<NetObj> newOwner = FindObjectById(detectedOwner[k]);
+                  EventBuilder(EVENT_CLUSTER_RESOURCE_MOVED, m_id)
+                     .param(_T("resourceId"), m_pResourceList[k].dwId)
+                     .param(_T("resourceName"), m_pResourceList[k].szName)
+                     .param(_T("previousOwnerNodeId"), m_pResourceList[k].dwCurrOwner)
+                     .param(_T("previousOwnerNodeName"), (prevOwner != nullptr) ? prevOwner->getName() : _T("<unknown>"))
+                     .param(_T("newOwnerNodeId"), detectedOwner[k])
+                     .param(_T("newOwnerNodeName"), (newOwner != nullptr) ? newOwner->getName() : _T("<unknown>"))
+                     .post();
+               }
+               m_pResourceList[k].dwCurrOwner = detectedOwner[k];
+               modified |= MODIFY_CLUSTER_RESOURCES;
+            }
+         }
+         else
+         {
+            // Resource not found on any node
+            if (m_pResourceList[k].dwCurrOwner != 0)
+            {
+               shared_ptr<NetObj> prevOwner = FindObjectById(m_pResourceList[k].dwCurrOwner);
+               EventBuilder(EVENT_CLUSTER_RESOURCE_DOWN, m_id)
+                  .param(_T("resourceId"), m_pResourceList[k].dwId)
+                  .param(_T("resourceName"), m_pResourceList[k].szName)
+                  .param(_T("lastOwnerNodeId"), m_pResourceList[k].dwCurrOwner)
+                  .param(_T("lastOwnerNodeName"), (prevOwner != nullptr) ? prevOwner->getName() : _T("<unknown>"))
+                  .post();
+               m_pResourceList[k].dwCurrOwner = 0;
+               modified |= MODIFY_CLUSTER_RESOURCES;
+            }
+         }
+      }
+      unlockProperties();
+      MemFreeLocal(detectedOwner);
+      MemFreeLocal(ambiguousResource);
 	}
 
    // Execute hook script
@@ -778,7 +808,7 @@ void Cluster::statusPoll(PollerInfo *poller, ClientSession *session, uint32_t re
 	unlockProperties();
 
    sendPollerMsg(_T("Status poll finished\r\n"));
-   nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ClusterStatusPoll(%s): finished"), m_name);
+   nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("ClusterStatusPoll(%s): finished"), m_name);
 
    pollerUnlock();
 }
