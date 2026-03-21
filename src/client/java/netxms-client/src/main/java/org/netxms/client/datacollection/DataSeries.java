@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import org.netxms.base.NXCPCodes;
 import org.netxms.base.NXCPMessage;
+import org.netxms.client.constants.DataCollectionObjectStatus;
 import org.netxms.client.constants.DataType;
 import org.netxms.client.constants.Severity;
 
@@ -44,6 +45,8 @@ public class DataSeries
    private int pollingInterval;
    private boolean storeChangesOnly;
    private boolean aggregated;
+   private DataCollectionObjectStatus dciStatus = DataCollectionObjectStatus.ACTIVE;
+   private int errorCount = 0;
 
    /**
     * Create empty data series
@@ -101,6 +104,8 @@ public class DataSeries
       this.pollingInterval = src.pollingInterval;
       this.storeChangesOnly = src.storeChangesOnly;
       this.aggregated = src.aggregated;
+      this.dciStatus = src.dciStatus;
+      this.errorCount = src.errorCount;
    }
 
    /**
@@ -117,6 +122,8 @@ public class DataSeries
       useMultiplier = msg.getFieldAsInt32(NXCPCodes.VID_USE_MULTIPLIER);
       pollingInterval = msg.getFieldAsInt32(NXCPCodes.VID_POLLING_INTERVAL);
       storeChangesOnly = msg.getFieldAsBoolean(NXCPCodes.VID_STORE_CHANGES_ONLY);
+      dciStatus = DataCollectionObjectStatus.getByValue(msg.getFieldAsInt32(NXCPCodes.VID_DCI_STATUS));
+      errorCount = msg.getFieldAsInt32(NXCPCodes.VID_ERROR_COUNT);
 
       String units = msg.getFieldAsString(NXCPCodes.VID_UNITS_NAME);
       measurementUnits = ((units != null) && !units.isBlank()) ? new MeasurementUnit(units) : null;
@@ -388,6 +395,36 @@ public class DataSeries
    public void setAggregated(boolean aggregated)
    {
       this.aggregated = aggregated;
+   }
+
+   /**
+    * Get DCI status.
+    *
+    * @return DCI status
+    */
+   public DataCollectionObjectStatus getDciStatus()
+   {
+      return dciStatus;
+   }
+
+   /**
+    * Get DCI error count.
+    *
+    * @return DCI error count
+    */
+   public int getErrorCount()
+   {
+      return errorCount;
+   }
+
+   /**
+    * Check if DCI is in error state (disabled, unsupported, or has polling errors).
+    *
+    * @return true if DCI is in error state
+    */
+   public boolean isDataCollectionError()
+   {
+      return (dciStatus != DataCollectionObjectStatus.ACTIVE) || (errorCount > 0);
    }
 
    /**

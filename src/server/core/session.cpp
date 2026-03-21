@@ -5515,6 +5515,8 @@ bool ClientSession::getCollectedDataFromDB(const NXCPMessage& request, NXCPMessa
       int dataSource = dci->getDataSource();
       response->setField(VID_POLLING_INTERVAL, ((dataSource != DS_PUSH_AGENT) && (dataSource != DS_OTLP)) ? dci->getEffectivePollingInterval() : 0);
       response->setField(VID_STORE_CHANGES_ONLY, dci->isStoreChangesOnly());
+      response->setField(VID_DCI_STATUS, static_cast<uint16_t>(dci->getStatus()));
+      response->setField(VID_ERROR_COUNT, dci->getErrorCount());
       sendMessage(response);
 
       int16_t dataType;
@@ -5640,6 +5642,8 @@ read_from_db:
 	      int dataSource = dci->getDataSource();
 	      response->setField(VID_POLLING_INTERVAL, ((dataSource != DS_PUSH_AGENT) && (dataSource != DS_OTLP)) ? dci->getEffectivePollingInterval() : 0);
 	      response->setField(VID_STORE_CHANGES_ONLY, dci->isStoreChangesOnly());
+	      response->setField(VID_DCI_STATUS, static_cast<uint16_t>(dci->getStatus()));
+	      response->setField(VID_ERROR_COUNT, dci->getErrorCount());
 	      sendMessage(response);
 
 			if (useAggregation)

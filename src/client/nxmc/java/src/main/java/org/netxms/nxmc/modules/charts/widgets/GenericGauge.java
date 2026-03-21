@@ -19,12 +19,17 @@
 package org.netxms.nxmc.modules.charts.widgets;
 
 import java.util.List;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
+import org.netxms.client.constants.DataCollectionObjectStatus;
+import org.netxms.client.constants.Severity;
 import org.netxms.client.datacollection.ChartConfiguration;
 import org.netxms.client.datacollection.ChartDciConfig;
 import org.netxms.client.datacollection.DataSeries;
+import org.netxms.nxmc.resources.StatusDisplayInfo;
 import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.ColorConverter;
 
@@ -91,11 +96,15 @@ public abstract class GenericGauge extends GenericComparisonChart
             if (renderData != null)
             {
                for(int i = 0; i < items.size(); i++)
-                  prepareElementRender(gc, config, renderData, items.get(i), series.get(i), dx, top + i * h + dy, w + wc, h + hc, i);
+                  if (!series.get(i).isDataCollectionError())
+                     prepareElementRender(gc, config, renderData, items.get(i), series.get(i), dx, top + i * h + dy, w + wc, h + hc, i);
             }
             for(int i = 0; i < items.size(); i++)
             {
-               renderElement(gc, config, renderData, items.get(i), series.get(i), dx, top + i * h + dy, w + wc, h + hc, i);
+               if (series.get(i).isDataCollectionError())
+                  renderErrorElement(gc, config, items.get(i), series.get(i), dx, top + i * h + dy, w + wc, h + hc);
+               else
+                  renderElement(gc, config, renderData, items.get(i), series.get(i), dx, top + i * h + dy, w + wc, h + hc, i);
                if (config.isElementBordersVisible())
                {
                   gc.setForeground(ThemeEngine.getForegroundColor("Chart.PlotArea"));
@@ -115,11 +124,15 @@ public abstract class GenericGauge extends GenericComparisonChart
             if (renderData != null)
             {
                for(int i = 0; i < items.size(); i++)
-                  prepareElementRender(gc, config, renderData, items.get(i), series.get(i), i * w + dx, top + dy, w + wc, h + hc, i);
+                  if (!series.get(i).isDataCollectionError())
+                     prepareElementRender(gc, config, renderData, items.get(i), series.get(i), i * w + dx, top + dy, w + wc, h + hc, i);
             }
             for(int i = 0; i < items.size(); i++)
             {
-               renderElement(gc, config, renderData, items.get(i), series.get(i), i * w + dx, top + dy, w + wc, h + hc, i);
+               if (series.get(i).isDataCollectionError())
+                  renderErrorElement(gc, config, items.get(i), series.get(i), i * w + dx, top + dy, w + wc, h + hc);
+               else
+                  renderElement(gc, config, renderData, items.get(i), series.get(i), i * w + dx, top + dy, w + wc, h + hc, i);
                if (config.isElementBordersVisible())
                {
                   gc.setForeground(ThemeEngine.getForegroundColor("Chart.PlotArea"));
@@ -184,6 +197,80 @@ public abstract class GenericGauge extends GenericComparisonChart
     * @param index element index
     */
    protected abstract void renderElement(GC gc, ChartConfiguration configuration, Object renderData, ChartDciConfig dci, DataSeries data, int x, int y, int w, int h, int index);
+
+   /**
+    * Render error indicator for a DCI in error state.
+    *
+    * @param gc graphics context
+    * @param configuration chart configuration
+    * @param dci chart item configuration
+    * @param data chart item data
+    * @param x X position
+    * @param y Y position
+    * @param w width
+    * @param h height
+    */
+   protected void renderErrorElement(GC gc, ChartConfiguration configuration, ChartDciConfig dci, DataSeries data, int x, int y, int w, int h)
+   {
+      String errorText;
+      Severity severity;
+      if (data.getDciStatus() == DataCollectionObjectStatus.DISABLED)
+      {
+         errorText = "Disabled";
+         severity = Severity.UNKNOWN;
+      }
+      else if (data.getDciStatus() == DataCollectionObjectStatus.UNSUPPORTED)
+      {
+         errorText = "Unsupported";
+         severity = Severity.WARNING;
+      }
+      else
+      {
+         errorText = "Error";
+         severity = Severity.MAJOR;
+      }
+
+      int labelHeight = 0;
+      if (configuration.areLabelsVisible() && !configuration.areLabelsInside())
+      {
+         Point labelExt = gc.textExtent(dci.getLabel());
+         labelHeight = labelExt.y + 4;
+      }
+
+      int availableHeight = h - labelHeight;
+      Point textExt = gc.textExtent(errorText);
+
+      // Draw rounded rectangle with severity colors (same style as RoundedLabel)
+      Color accentColor = StatusDisplayInfo.getStatusColor(severity);
+      RGB accent = accentColor.getRGB();
+      RGB white = new RGB(255, 255, 255);
+      int padding = 8;
+      int rw = textExt.x + padding * 2;
+      int rh = textExt.y + 6;
+      int rx = x + (w - rw) / 2;
+      int ry = y + (availableHeight - rh) / 2;
+
+      gc.setAntialias(SWT.ON);
+      gc.setBackground(chart.getColorCache().create(ColorConverter.blend(accent, white, 20)));
+      gc.fillRoundRectangle(rx, ry, rw, rh, 10, 10);
+      gc.setForeground(accentColor);
+      gc.setLineWidth(1);
+      gc.drawRoundRectangle(rx, ry, rw, rh, 10, 10);
+
+      RGB textRgb = ColorConverter.isDarkColor(accent) ? accent : ColorConverter.blend(accent, new RGB(0, 0, 0), 60);
+      gc.setForeground(chart.getColorCache().create(textRgb));
+      gc.drawText(errorText, x + (w - textExt.x) / 2, ry + 3, SWT.DRAW_TRANSPARENT);
+
+      if (configuration.areLabelsVisible())
+      {
+         gc.setForeground(ThemeEngine.getForegroundColor("Chart.PlotArea"));
+         Point labelExt = gc.textExtent(dci.getLabel());
+         if (configuration.areLabelsInside())
+            gc.drawText(dci.getLabel(), x + (w - labelExt.x) / 2, ry + rh + 4, SWT.DRAW_TRANSPARENT);
+         else
+            gc.drawText(dci.getLabel(), x + (w - labelExt.x) / 2, y + availableHeight + 4, true);
+      }
+   }
 
    /**
     * Get color for given data source.

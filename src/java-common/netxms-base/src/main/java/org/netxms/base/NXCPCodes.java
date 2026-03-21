@@ -1484,11 +1484,11 @@ public class NXCPCodes
    public static final long VID_CONNECTOR_NAME = 946;
    public static final long VID_ACCOUNT_ID = 947;
    public static final long VID_CLOUD_CREDENTIALS = 948;
-   // public static final long VID_DISCOVERY_SCHEDULE = 949;  -- removed, ID reserved
+   public static final long VID_ERROR_COUNT = 949;
    public static final long VID_DISCOVERY_FILTER = 950;
    public static final long VID_REMOVAL_POLICY = 951;
    public static final long VID_GRACE_PERIOD = 952;
-   // public static final long VID_DEFAULT_POLL_INTERVAL = 953;  -- removed, ID reserved
+   public static final long VID_LINK_COLOR_SOURCE = 953;
    // public static final long VID_AUTO_DISCOVER_CHILDREN = 954;  -- removed, ID reserved
    // public static final long VID_AUTO_PROVISION_DCI = 955;  -- removed, ID reserved
    public static final long VID_LAST_DISCOVERY_STATUS = 956;
@@ -1510,7 +1510,6 @@ public class NXCPCodes
    public static final long VID_SNMP_TRAP_PRIV_PASSWORD = 972;
    public static final long VID_SNMP_TRAP_USM_METHODS = 973;
    public static final long VID_SNMP_TRAP_VERSION = 974;
-   public static final long VID_LINK_COLOR_SOURCE = 975;
 
    public static final long VID_RESOURCE_TAG_LIST_BASE = 0x7D000000L;
    public static final long VID_DELETED_RULE_LIST_BASE = 0x7A000000L;
@@ -1518,8 +1517,8 @@ public class NXCPCodes
    public static final long VID_RULE_VERSION_LIST_BASE = 0x7C000000L;
    public static final long VID_ACL_USER_BASE = 0x00001000L;
    public static final long VID_ACL_USER_LAST = 0x00001FFFL;
-	public static final long VID_ACL_RIGHTS_BASE = 0x00002000L;
-	public static final long VID_ACL_RIGHTS_LAST = 0x00002FFFL;
+   public static final long VID_ACL_RIGHTS_BASE = 0x00002000L;
+   public static final long VID_ACL_RIGHTS_LAST = 0x00002FFFL;
    public static final long VID_ACTION_LIST_BASE = 0x50000000L;
 	public static final long VID_GROUP_MEMBER_BASE = 0x00004000L;
 	public static final long VID_GROUP_MEMBER_LAST = 0x00004FFFL;
