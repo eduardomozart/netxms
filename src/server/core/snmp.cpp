@@ -424,7 +424,7 @@ static bool SnmpCheckV3CommSettings(SNMP_Transport *pTransport, SNMP_SecurityCon
  * On failure, returns NULL
  */
 SNMP_Transport *SnmpCheckCommSettings(uint32_t snmpProxy, const InetAddress& ipAddr, SNMP_Version *version, uint16_t originalPort,
-         SNMP_SecurityContext *originalContext, const StringList &testOids, int32_t zoneUIN, bool initialDiscovery)
+         SNMP_SecurityContext *originalContext, const StringList &testOids, int32_t zoneUIN, bool initialDiscovery, SNMP_Version minVersion)
 {
    TCHAR ipAddrText[64];
    nxlog_debug_tag(DEBUG_TAG_SNMP_DISCOVERY, 5, _T("SnmpCheckCommSettings(%s): starting check (proxy=%d, originalPort=%d)"), ipAddr.toString(ipAddrText), snmpProxy, (int)originalPort);
@@ -490,13 +490,14 @@ SNMP_Transport *SnmpCheckCommSettings(uint32_t snmpProxy, const InetAddress& ipA
          }
       }
 
-      if (initialDiscovery && ((g_flags & (AF_DISABLE_SNMP_V2_PROBE | AF_DISABLE_SNMP_V1_PROBE)) == (AF_DISABLE_SNMP_V2_PROBE | AF_DISABLE_SNMP_V1_PROBE)))
+      if ((minVersion > SNMP_VERSION_2C) ||
+          (initialDiscovery && ((g_flags & (AF_DISABLE_SNMP_V2_PROBE | AF_DISABLE_SNMP_V1_PROBE)) == (AF_DISABLE_SNMP_V2_PROBE | AF_DISABLE_SNMP_V1_PROBE))))
       {
          delete pTransport;
          goto fail;
       }
 
-      pTransport->setSnmpVersion((initialDiscovery && (g_flags & AF_DISABLE_SNMP_V2_PROBE)) ? SNMP_VERSION_1 : SNMP_VERSION_2C);
+      pTransport->setSnmpVersion(((initialDiscovery && (g_flags & AF_DISABLE_SNMP_V2_PROBE)) && (minVersion <= SNMP_VERSION_1)) ? SNMP_VERSION_1 : SNMP_VERSION_2C);
 restart_check:
       // Check current community first
       if ((originalContext != nullptr) && (originalContext->getSecurityModel() != SNMP_SECURITY_MODEL_USM))
@@ -538,7 +539,7 @@ restart_check:
          }
       }
 
-      if ((pTransport->getSnmpVersion() == SNMP_VERSION_2C) && !IsShutdownInProgress() && !(initialDiscovery && (g_flags & AF_DISABLE_SNMP_V1_PROBE)))
+      if ((pTransport->getSnmpVersion() == SNMP_VERSION_2C) && !IsShutdownInProgress() && !(initialDiscovery && (g_flags & AF_DISABLE_SNMP_V1_PROBE)) && (minVersion <= SNMP_VERSION_1))
       {
          pTransport->setSnmpVersion(SNMP_VERSION_1);
          goto restart_check;

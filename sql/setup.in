@@ -306,6 +306,7 @@ INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_rest
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.Codepage','','',1,0,'S','Default server SNMP codepage.','');
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.Discovery.SeparateProbeRequests','0','0',1,0,'B','Use separate SNMP request for each test OID.','');
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.EngineId','80:00:DF:4B:05:20:10:08:04:02:01:00','80:00:DF:4B:05:20:10:08:04:02:01:00',1,1,'S','Server''s SNMP engine ID.','');
+INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.MinVersion','0','0',1,0,'C','Minimum allowed SNMP version for node communication. Can be overridden per node using SysConfig:SNMP.MinVersion custom attribute.','');
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.RequestTimeout','1500','1500',1,1,'I','Timeout in milliseconds for SNMP requests sent by NetXMS server.','milliseconds');
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.RetryCount','3','3',1,1,'I','Number of retries for SNMP requests sent by NetXMS server.','');
 INSERT INTO config (var_name,var_value,default_value,is_visible,need_server_restart,data_type,description,units) VALUES ('SNMP.Traps.AllowVarbindsConversion','1','1',1,0,'B','Allows/disallows conversion of SNMP trap OCTET STRING varbinds into hex strings if they contain non-printable characters.','');
@@ -450,6 +451,9 @@ INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.Age
 INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.Agent.V3.EncryptionMethod','2','AES-128');
 INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.Agent.V3.EncryptionMethod','3','AES-192');
 INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.Agent.V3.EncryptionMethod','4','AES-256');
+INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','0','SNMPv1');
+INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','1','SNMPv2c');
+INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','3','SNMPv3');
 INSERT INTO config_values (var_name,var_value,var_description) VALUES ('Syslog.NodeMatchingPolicy','0','IP, then hostname');
 INSERT INTO config_values (var_name,var_value,var_description) VALUES ('Syslog.NodeMatchingPolicy','1','Hostname, then IP');
 

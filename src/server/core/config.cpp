@@ -924,6 +924,10 @@ static void OnConfigVariableChange(bool isCLOB, const TCHAR *name, const TCHAR *
    {
       UpdateServerFlag(AF_TRAPS_FROM_UNMANAGED_NODES, value);
    }
+   else if (!wcscmp(name, L"SNMP.MinVersion"))
+   {
+      g_snmpMinVersion = SNMP_VersionFromInt(ConvertToUint32(value, 0));
+   }
    else if (!wcscmp(name, L"SNMP.Traps.RateLimit.Threshold"))
    {
       g_snmpTrapStormCountThreshold = ConvertToUint32(value, 0);

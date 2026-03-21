@@ -1404,7 +1404,7 @@ void PerfDataStorageRequest(DCTable *dci, Timestamp timestamp, Table *value);
 bool SnmpTestRequest(SNMP_Transport *snmp, const StringList &testOids, bool separateRequests);
 SNMP_Transport *SnmpCheckCommSettings(uint32_t snmpProxy, const InetAddress& ipAddr, SNMP_Version *version,
          uint16_t originalPort, SNMP_SecurityContext *originalContext, const StringList &customTestOids,
-         int32_t zoneUIN, bool initialDiscovery);
+         int32_t zoneUIN, bool initialDiscovery, SNMP_Version minVersion = SNMP_VERSION_1);
 unique_ptr<StringList> SnmpGetKnownCommunities(int32_t zoneUIN);
 
 bool LoadMIBTree();
@@ -1790,6 +1790,7 @@ extern uint32_t g_thresholdRepeatInterval;
 extern uint32_t g_requiredPolls;
 extern int64_t g_offlineDataRelevanceTime;
 extern int32_t g_instanceRetentionTime;
+extern SNMP_Version g_snmpMinVersion;
 extern uint32_t g_snmpTrapStormCountThreshold;
 extern uint32_t g_snmpTrapStormDurationThreshold;
 extern uint32_t g_pollsBetweenPrimaryIpUpdate;

@@ -6247,8 +6247,12 @@ bool Node::confPollSnmp()
       }
    }
    if (pTransport == nullptr)
+   {
+      SNMP_Version minVersion = SNMP_VersionFromInt(
+         getCustomAttributeAsUInt32(L"SysConfig:SNMP.MinVersion", static_cast<uint32_t>(g_snmpMinVersion)));
       pTransport = SnmpCheckCommSettings(getEffectiveSnmpProxy(), (getEffectiveSnmpProxy() == m_id) ? InetAddress::LOOPBACK : m_ipAddress,
-               &m_snmpVersion, m_snmpPort, m_snmpSecurity, oids, m_zoneUIN, false);
+               &m_snmpVersion, m_snmpPort, m_snmpSecurity, oids, m_zoneUIN, false, minVersion);
+   }
    if (pTransport == nullptr)
    {
       sendPollerMsg(_T("   No response from SNMP agent\r\n"));
@@ -9679,7 +9683,12 @@ uint32_t Node::modifyFromMessageInternal(const NXCPMessage& msg, ClientSession *
    // Change SNMP protocol version
    if (msg.isFieldExist(VID_SNMP_VERSION))
    {
-      m_snmpVersion = static_cast<SNMP_Version>(msg.getFieldAsUInt16(VID_SNMP_VERSION));
+      SNMP_Version requestedVersion = static_cast<SNMP_Version>(msg.getFieldAsUInt16(VID_SNMP_VERSION));
+      SNMP_Version minVersion = SNMP_VersionFromInt(
+         getCustomAttributeAsUInt32(L"SysConfig:SNMP.MinVersion", static_cast<uint32_t>(g_snmpMinVersion)));
+      if (requestedVersion < minVersion)
+         requestedVersion = minVersion;
+      m_snmpVersion = requestedVersion;
       m_snmpSecurity->setSecurityModel((m_snmpVersion == SNMP_VERSION_3) ? SNMP_SECURITY_MODEL_USM : SNMP_SECURITY_MODEL_V2C);
    }
 
@@ -11295,6 +11304,14 @@ SNMP_Transport *Node::createSnmpTransport(uint16_t port, SNMP_Version version, c
    {
       lockProperties();
       SNMP_Version effectiveVersion = (version != SNMP_VERSION_DEFAULT) ? version : m_snmpVersion;
+      SNMP_Version minVersion = SNMP_VersionFromInt(getCustomAttributeAsInt32(L"SysConfig:SNMP.MinVersion", static_cast<int32_t>(g_snmpMinVersion)));
+      if (effectiveVersion < minVersion)
+      {
+         nxlog_debug_tag(L"snmp", 5, L"Node::createSnmpTransport(%s [%u]): effective SNMP version %d is below minimum %d", m_name, m_id, effectiveVersion, minVersion);
+         unlockProperties();
+         delete transport;
+         return nullptr;
+      }
       transport->setSnmpVersion(effectiveVersion);
       if (m_snmpCodepage[0] != 0)
       {

@@ -24,6 +24,25 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.21 to 61.22
+ */
+static bool H_UpgradeFromV21()
+{
+   CHK_EXEC(CreateConfigParam(L"SNMP.MinVersion", L"0",
+      L"Minimum allowed SNMP version for node communication. Can be overridden per node using SysConfig:SNMP.MinVersion custom attribute.",
+      nullptr, 'C', true, false, false, false));
+
+   static const wchar_t *batch =
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','0','SNMPv1')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','1','SNMPv2c')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('SNMP.MinVersion','3','SNMPv3')\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(SetMinorSchemaVersion(22));
+   return true;
+}
+
+/**
  * Upgrade from 61.20 to 61.21
  */
 static bool H_UpgradeFromV20()
@@ -590,6 +609,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 21, 61, 22, H_UpgradeFromV21 },
    { 20, 61, 21, H_UpgradeFromV20 },
    { 19, 61, 20, H_UpgradeFromV19 },
    { 18, 61, 19, H_UpgradeFromV18 },

@@ -218,6 +218,7 @@ uint32_t g_agentUploadBandwidthLimit = 0;
 uint32_t g_thresholdRepeatInterval = 0;	// Disabled by default
 uint32_t g_requiredPolls = 1;
 int32_t g_instanceRetentionTime = 7; // Default instance retention time (in days)
+SNMP_Version g_snmpMinVersion = SNMP_VERSION_1;
 uint32_t g_snmpTrapStormCountThreshold = 0;
 uint32_t g_snmpTrapStormDurationThreshold = 15;
 DB_DRIVER g_dbDriver = nullptr;
@@ -713,6 +714,7 @@ static void LoadGlobalConfig()
    g_requiredPolls = ConfigReadInt(_T("Objects.PollCountForStatusChange"), 1);
    g_offlineDataRelevanceTime = ConfigReadInt(_T("DataCollection.OfflineDataRelevanceTime"), 86400) * 1000L; // Config value is in seconds
    g_instanceRetentionTime = ConfigReadInt(_T("DataCollection.InstanceRetentionTime"), 7); // Config values are in days
+   g_snmpMinVersion = SNMP_VersionFromInt(ConfigReadInt(_T("SNMP.MinVersion"), 0));
    g_snmpTrapStormCountThreshold = ConfigReadInt(_T("SNMP.Traps.RateLimit.Threshold"), 0);
    g_snmpTrapStormDurationThreshold = ConfigReadInt(_T("SNMP.Traps.RateLimit.Duration"), 15);
    ConfigReadStrUTF8(_T("SNMP.Codepage"), g_snmpCodepage, 16, "");
