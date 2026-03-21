@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,8 +50,8 @@ public class MaintenanceMenuManager extends MenuManager
    private View view;   
    private ISelectionProvider selectionProvider;
 
-   private Action actionEnterMaintenance;
-   private Action actionLeaveMaintenance;
+   private Action actionStartMaintenance;
+   private Action actionEndMaintenance;
    private Action actionScheduleMaintenance;
    private ArrayList<Action> actionMaintenance;
 
@@ -70,13 +70,36 @@ public class MaintenanceMenuManager extends MenuManager
       setMenuText(i18n.tr("M&aintenance"));  
 
       createActions();
-      add(actionEnterMaintenance);
-      add(actionLeaveMaintenance);
-      add(new Separator());
-      for (Action action : actionMaintenance)
+
+      IStructuredSelection selection = (IStructuredSelection)selectionProvider.getSelection();
+      boolean hasInMaintenance = false;
+      boolean hasNotInMaintenance = false;
+      for (Object o : selection.toList())
       {
-         add(action);
+         AbstractObject obj = null;
+         if (o instanceof AbstractObject)
+            obj = (AbstractObject)o;
+         else if (o instanceof ObjectWrapper)
+            obj = ((ObjectWrapper)o).getObject();
+         if (obj != null)
+         {
+            if (obj.isInMaintenanceMode())
+               hasInMaintenance = true;
+            else
+               hasNotInMaintenance = true;
+         }
       }
+
+      if (hasNotInMaintenance)
+      {
+         add(actionStartMaintenance);
+         MenuManager timeMenu = new MenuManager(i18n.tr("Start maintenance for &period"));
+         for(Action action : actionMaintenance)
+            timeMenu.add(action);
+         add(timeMenu);
+      }
+      if (hasInMaintenance)
+         add(actionEndMaintenance);
       add(new Separator());
       add(actionScheduleMaintenance);      
    }
@@ -87,7 +110,7 @@ public class MaintenanceMenuManager extends MenuManager
     */
    protected void createActions()
    {      
-      actionEnterMaintenance = new Action(i18n.tr("&Enter maintenance mode...")) {
+      actionStartMaintenance = new Action(i18n.tr("Start &maintenance...")) {
          @Override
          public void run()
          {
@@ -95,7 +118,7 @@ public class MaintenanceMenuManager extends MenuManager
          }
       };
 
-      actionLeaveMaintenance = new Action(i18n.tr("&Leave maintenance mode")) {
+      actionEndMaintenance = new Action(i18n.tr("&End maintenance")) {
          @Override
          public void run()
          {
@@ -124,7 +147,7 @@ public class MaintenanceMenuManager extends MenuManager
       final String comments;
       if (enter)
       {
-         InputDialog dlg = new InputDialog(null, i18n.tr("Enter Maintenance"), i18n.tr("Additional comments"), "", null);
+         InputDialog dlg = new InputDialog(null, i18n.tr("Start Maintenance"), i18n.tr("Additional comments"), "", null);
          if (dlg.open() != Window.OK)
             return;
          comments = dlg.getValue().trim();
@@ -234,7 +257,7 @@ public class MaintenanceMenuManager extends MenuManager
     */
    private void scheduleMaintenance(int time)
    {
-      InputDialog dlg = new InputDialog(null, i18n.tr("Enter Maintenance"), i18n.tr("Additional comments"), "", null);
+      InputDialog dlg = new InputDialog(null, i18n.tr("Start Maintenance"), i18n.tr("Additional comments"), "", null);
       if (dlg.open() != Window.OK)
          return;
       final String comments = dlg.getValue().trim();
