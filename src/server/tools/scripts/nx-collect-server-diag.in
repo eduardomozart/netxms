@@ -18,7 +18,7 @@ Copyright (c) 2021 Raden Solutions
 
 SYNOPSIS
 
-	$0 [-hps] [-c COUNT] [-i INTERVAL]
+	$0 [-hps] [-c COUNT] [-i INTERVAL] [-u LOGIN] [-P]
 
 DESCRIPTION
 	The following options are available:
@@ -32,11 +32,17 @@ DESCRIPTION
 	-i INTERVAL
 		Set interval in seconds between process state captures
 
+	-P
+		Prompt for password for nxadm authentication
+
 	-p
 		Collect process state
 
 	-s
 		Collect system information
+
+	-u LOGIN
+		User name for nxadm authentication
 
 NOTES
 	At least one of -p or -s options should be given
@@ -179,70 +185,82 @@ collect_server_stats() {
 
    #debug
    print_header "debug"
-   $DIR/nxadm -c "debug"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "debug"  >> $NXADM_LOG
+   NXADM_RC=$?
+   if [ $NXADM_RC -eq 5 ]; then
+      echo "failed"
+      echo "ERROR: nxadm authentication failed. Use -u and -P options to provide credentials."
+      rm -rf $LOG_DIR
+      exit 5
+   elif [ $NXADM_RC -ne 0 ]; then
+      echo "failed"
+      echo "ERROR: cannot connect to server (nxadm exit code $NXADM_RC)"
+      rm -rf $LOG_DIR
+      exit $NXADM_RC
+   fi
    #show dbcp
    print_header "show dbcp:"  
-   $DIR/nxadm -c "show dbcp"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show dbcp"  >> $NXADM_LOG
    #show dbstats
    print_header "show dbstats:" 
-   $DIR/nxadm -c "show dbstats"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show dbstats"  >> $NXADM_LOG
    #show flags
    print_header "show flags:"
-   $DIR/nxadm -c "show flags"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show flags"  >> $NXADM_LOG
    #show heap details
    print_header "show heap details:"
-   $DIR/nxadm -c "show heap details"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show heap details"  >> $NXADM_LOG
    #show heap summary
    print_header "show heap summary:"
-   $DIR/nxadm -c "show heap summary"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show heap summary"  >> $NXADM_LOG
    #show index id
    print_header "show index id:" 
-   $DIR/nxadm -c "show index id"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show index id"  >> $NXADM_LOG
    #show index interface
    print_header "show index interface:" 
-   $DIR/nxadm -c "show index interface"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show index interface"  >> $NXADM_LOG
    #show index nodeaddr
    print_header "show index nodeaddr:" 
-   $DIR/nxadm -c "show index nodeaddr"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show index nodeaddr"  >> $NXADM_LOG
    #show index subnet
    print_header "show index subnet:" 
-   $DIR/nxadm -c "show index subnet"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show index subnet"  >> $NXADM_LOG
    #show index zone
    print_header "show index zone:" 
-   $DIR/nxadm -c "show index zone"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show index zone"  >> $NXADM_LOG
    #show modules
    print_header "show modules:" 
-   $DIR/nxadm -c "show modules"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show modules"  >> $NXADM_LOG
    #show msgwq
    print_header "show msgwq:"
-   $DIR/nxadm -c "show msgwq"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show msgwq"  >> $NXADM_LOG
    #show objects
    print_header "show objects:"
-   $DIR/nxadm -c "show objects"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show objects"  >> $NXADM_LOG
    #show pe
    print_header "show pe:" 
-   $DIR/nxadm -c "show pe"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show pe"  >> $NXADM_LOG
    #show pollers
    print_header "show pollers:" 
-   $DIR/nxadm -c "show pollers"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show pollers"  >> $NXADM_LOG
    #show queues
    print_header "show queues:" 
-   $DIR/nxadm -c "show queues"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show queues"  >> $NXADM_LOG
    #show sessions
    print_header "show sessions:" 
-   $DIR/nxadm -c "show sessions"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show sessions"  >> $NXADM_LOG
    #show stats
    print_header "show stats:"
-   $DIR/nxadm -c "show stats"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show stats"  >> $NXADM_LOG
    #show tunnels
    print_header "show tunnels:"
-   $DIR/nxadm -c "show tunnels"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show tunnels"  >> $NXADM_LOG
    #show users
    print_header "show users:"
-   $DIR/nxadm -c "show users"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show users"  >> $NXADM_LOG
    #show watchdog
    print_header "show watchdog:"
-   $DIR/nxadm -c "show watchdog"  >> $NXADM_LOG
+   $DIR/nxadm $NXADM_OPTS -c "show watchdog"  >> $NXADM_LOG
 
    echo "done"
 }
@@ -282,10 +300,15 @@ COLLECT_PROCESS_STATE="no"
 COLLECT_SYSTEM_INFO="no"
 COUNT=1
 INTERVAL=15
+NXADM_LOGIN=""
+NXADM_PASSWORD_PROMPT="no"
 
 # parse command line
-while getopts 'c:hi:ps' c; do
+while getopts 'Pc:hi:psu:' c; do
 	case $c in
+		P)
+			NXADM_PASSWORD_PROMPT="yes"
+			;;
 		c)
 			COUNT="$OPTARG"
 			;;
@@ -300,6 +323,9 @@ while getopts 'c:hi:ps' c; do
 			;;
 		s)
 			COLLECT_SYSTEM_INFO="yes"
+			;;
+		u)
+			NXADM_LOGIN="$OPTARG"
 			;;
 		*)
 			echo "Invalid option: $OPTARG" 1>&2
@@ -328,6 +354,22 @@ mkdir $LOG_DIR
 
 # Error log
 ERROR_LOG=$LOG_DIR/stderr.txt
+
+# Build nxadm options for authentication
+NXADM_OPTS=""
+if [ -n "$NXADM_LOGIN" ]; then
+	NXADM_OPTS="-u $NXADM_LOGIN"
+	if [ "$NXADM_PASSWORD_PROMPT" = "yes" ]; then
+		stty -echo 2>/dev/null
+		printf "Password: "
+		read NXADM_PASSWORD
+		stty echo 2>/dev/null
+		echo
+		NXADM_OPTS="$NXADM_OPTS -p $NXADM_PASSWORD"
+	fi
+elif [ "$NXADM_PASSWORD_PROMPT" = "yes" ]; then
+	echo "WARNING: -P requires -u option, ignoring"
+fi
 
 collect_server_stats
 

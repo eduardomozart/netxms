@@ -180,14 +180,21 @@ static bool Login(const wchar_t *login, const wchar_t *password)
 /**
  * Execute command
  */
-static bool ExecCommand(const wchar_t *command, const wchar_t *login, const wchar_t *password)
+static bool ExecCommand(const wchar_t *command, const wchar_t *login, const wchar_t *password, bool *loginFailed = nullptr)
 {
    bool connClosed = false;
+
+   if (loginFailed != nullptr)
+      *loginFailed = false;
 
    if (login != nullptr)
    {
       if (!Login(login, password))
+      {
+         if (loginFailed != nullptr)
+            *loginFailed = true;
          return false;
+      }
    }
 
    NXCPMessage msg(CMD_ADM_REQUEST, g_requestId++);
@@ -218,7 +225,14 @@ static bool ExecCommand(const wchar_t *command, const wchar_t *login, const wcha
       {
          uint32_t rcc = response->getFieldAsUInt32(VID_RCC);
          if (rcc != RCC_SUCCESS)
+         {
             WriteToTerminalEx(L"Server error %u (%s)\n", rcc, GetServerErrorText(rcc));
+            if (rcc == RCC_ACCESS_DENIED)
+            {
+               if (loginFailed != nullptr)
+                  *loginFailed = true;
+            }
+         }
          delete response;
          break;
       }
@@ -227,7 +241,6 @@ static bool ExecCommand(const wchar_t *command, const wchar_t *login, const wcha
 
    return connClosed;
 }
-
 
 /**
  * Execute script
@@ -569,9 +582,12 @@ int main(int argc, char *argv[])
             switch(workMode)
             {
                case COMMAND:
-                  ExecCommand(command, loginName, password);
-                  exitCode = 0;
+               {
+                  bool authFailed;
+                  ExecCommand(command, loginName, password, &authFailed);
+                  exitCode = authFailed ? 5 : 0;
                   break;
+               }
                case SCRIPT:
                   exitCode = ExecScript(command, loginName, password, useScriptReturnValue);
                   break;

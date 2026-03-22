@@ -1,5 +1,36 @@
 @echo off
 
+REM Parse command line arguments for nxadm credentials
+set nxadm_opts=
+
+:parse_args
+if "%~1"=="" goto done_args
+if /I "%~1"=="-u" (
+   set nxadm_opts=%nxadm_opts% -u %~2
+   shift
+   shift
+   goto parse_args
+)
+if /I "%~1"=="-p" (
+   set nxadm_opts=%nxadm_opts% -p %~2
+   shift
+   shift
+   goto parse_args
+)
+if /I "%~1"=="-P" (
+   set nxadm_prompt_password=1
+   shift
+   goto parse_args
+)
+shift
+goto parse_args
+:done_args
+
+if defined nxadm_prompt_password (
+   set /p nxadm_pw="Password: "
+   set nxadm_opts=%nxadm_opts% -p %nxadm_pw%
+)
+
 REM Create folder
 FOR /F "delims=" %%a in ('powershell.exe Get-Date -format "yyyyMMdd-HHmmss"') DO SET timeanddate=%%a
 set logdir=%TEMP%\netxms.info.%timeanddate%
@@ -44,70 +75,84 @@ echo. >%nxadmlog%
 
 REM debug
 CALL :print_header "debug"
-%execdir%nxadm -c "debug"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "debug"  >> %nxadmlog%
+if %ERRORLEVEL% EQU 5 (
+   echo ERROR: nxadm authentication failed. Use -u and -P options to provide credentials.
+   DEL /F /Q /S "%logdir%" >NUL:
+   RMDIR "%logdir%" >NUL:
+   PAUSE
+   EXIT /B 5
+)
+if %ERRORLEVEL% NEQ 0 (
+   echo ERROR: cannot connect to server ^(nxadm exit code %ERRORLEVEL%^)
+   DEL /F /Q /S "%logdir%" >NUL:
+   RMDIR "%logdir%" >NUL:
+   PAUSE
+   EXIT /B %ERRORLEVEL%
+)
 REM show dbcp
 CALL :print_header "show dbcp:"  
-%execdir%nxadm -c "show dbcp"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show dbcp"  >> %nxadmlog%
 REM show dbstats
 CALL :print_header "show dbstats:"  
-%execdir%nxadm -c "show dbstats"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show dbstats"  >> %nxadmlog%
 REM show flags
 CALL :print_header "show flags:" 
-%execdir%nxadm -c "show flags"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show flags"  >> %nxadmlog%
 REM show heap details
 CALL :print_header "show heap details:"  
-%execdir%nxadm -c "show heap details"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show heap details"  >> %nxadmlog%
 REM show heap summary
 CALL :print_header "show heap summary:"  
-%execdir%nxadm -c "show heap summary"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show heap summary"  >> %nxadmlog%
 REM show index id
 CALL :print_header "show index id:"  
-%execdir%nxadm -c "show index id"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show index id"  >> %nxadmlog%
 REM show index interface
 CALL :print_header "show index interface:"  
-%execdir%nxadm -c "show index interface"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show index interface"  >> %nxadmlog%
 REM show index nodeaddr
 CALL :print_header "show index nodeaddr:" 
-%execdir%nxadm -c "show index nodeaddr"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show index nodeaddr"  >> %nxadmlog%
 REM show index subnet
 CALL :print_header "show index subnet:" 
-%execdir%nxadm -c "show index subnet"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show index subnet"  >> %nxadmlog%
 REM show index zone
 CALL :print_header "show index zone:"  
-%execdir%nxadm -c "show index zone"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show index zone"  >> %nxadmlog%
 REM show modules
 CALL :print_header "show modules:" 
-%execdir%nxadm -c "show modules"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show modules"  >> %nxadmlog%
 REM show msgwq
 CALL :print_header "show msgwq:" 
-%execdir%nxadm -c "show msgwq"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show msgwq"  >> %nxadmlog%
 REM show objects
 CALL :print_header "show objects:"  
-%execdir%nxadm -c "show objects"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show objects"  >> %nxadmlog%
 REM show pe
 CALL :print_header "show pe:" 
-%execdir%nxadm -c "show pe"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show pe"  >> %nxadmlog%
 REM show pollers
 CALL :print_header "show pollers:" 
-%execdir%nxadm -c "show pollers"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show pollers"  >> %nxadmlog%
 REM show queues
 CALL :print_header "show queues:" 
-%execdir%nxadm -c "show queues"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show queues"  >> %nxadmlog%
 REM show sessions
 CALL :print_header "show sessions:" 
-%execdir%nxadm -c "show sessions"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show sessions"  >> %nxadmlog%
 REM show stats
 CALL :print_header "show stats:" 
-%execdir%nxadm -c "show stats"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show stats"  >> %nxadmlog%
 REM show tunnels
 CALL :print_header "show tunnels:" 
-%execdir%nxadm -c "show tunnels"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show tunnels"  >> %nxadmlog%
 REM show users
 CALL :print_header "show users:" 
-%execdir%nxadm -c "show users"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show users"  >> %nxadmlog%
 REM show watchdog
 CALL :print_header "show watchdog:" 
-%execdir%nxadm -c "show watchdog"  >> %nxadmlog%
+%execdir%nxadm %nxadm_opts% -c "show watchdog"  >> %nxadmlog%
 
 REM netxmsd, nxagentd log files
 For /f "tokens=1* delims=^" %%a in ('%execdir%netxmsd -l') do (set netxmslog=%%a)
