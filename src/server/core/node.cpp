@@ -5403,20 +5403,118 @@ bool Node::isDuplicateOf(Node *node, TCHAR *reason, size_t size)
 {
    // Check if primary IP is on one of other node's interfaces
    if (!(m_flags & NF_EXTERNAL_GATEWAY) && m_ipAddress.isValidUnicast() &&
-       !(node->getFlags() &  NF_EXTERNAL_GATEWAY) && node->getIpAddress().isValidUnicast())
+       !(node->getFlags() & NF_EXTERNAL_GATEWAY) && node->getIpAddress().isValidUnicast())
    {
       shared_ptr<Interface> iface = node->findInterfaceByIP(m_ipAddress);
       if (iface != nullptr)
       {
+         // IP match found - verify with live SNMP identity checks if both nodes support SNMP
+         if (isSNMPSupported() && node->isSNMPSupported())
+         {
+            SNMP_Transport *snmp = node->createSnmpTransport();
+            if (snmp != nullptr)
+            {
+               bool rejected = false;
+
+               // Read sysName live from candidate and compare with this node's fresh value
+               TCHAR candidateSysName[256] = L"";
+               if (SnmpGet(node->getSNMPVersion(), snmp, _T(".1.3.6.1.2.1.1.5.0"), nullptr, 0,
+                           candidateSysName, sizeof(candidateSysName), SG_STRING_RESULT) == SNMP_ERR_SUCCESS)
+               {
+                  lockProperties();
+                  bool thisHasSysName = (m_sysName != nullptr) && (m_sysName[0] != 0);
+                  TCHAR thisSysName[256] = L"";
+                  if (thisHasSysName)
+                     _tcslcpy(thisSysName, m_sysName, 256);
+                  unlockProperties();
+
+                  if (thisHasSysName && (candidateSysName[0] != 0) && _tcscmp(thisSysName, candidateSysName) != 0)
+                  {
+                     nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 4,
+                        _T("DuplicateCheck(%s [%u] vs %s [%u]): sysName mismatch (this=\"%s\", candidate=\"%s\"), not a duplicate"),
+                        m_name, m_id, node->getName(), node->getId(), thisSysName, candidateSysName);
+                     rejected = true;
+                  }
+               }
+
+               // Read sysObjectID live from candidate and compare
+               if (!rejected)
+               {
+                  SNMP_ObjectId candidateObjectId({ 0, 0 });
+                  if (SnmpGet(node->getSNMPVersion(), snmp, { 1, 3, 6, 1, 2, 1, 1, 2, 0 },
+                              &candidateObjectId, 0, SG_OBJECT_ID_RESULT) == SNMP_ERR_SUCCESS)
+                  {
+                     lockProperties();
+                     bool thisHasOid = m_snmpObjectId.isValid() && !m_snmpObjectId.isZeroDotZero();
+                     SNMP_ObjectId thisOid(m_snmpObjectId);
+                     unlockProperties();
+
+                     bool candidateHasOid = candidateObjectId.isValid() && !candidateObjectId.isZeroDotZero();
+                     if (thisHasOid && candidateHasOid && !thisOid.equals(candidateObjectId))
+                     {
+                        nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 4,
+                           _T("DuplicateCheck(%s [%u] vs %s [%u]): sysObjectID mismatch (this=\"%s\", candidate=\"%s\"), not a duplicate"),
+                           m_name, m_id, node->getName(), node->getId(), thisOid.toString().cstr(), candidateObjectId.toString().cstr());
+                        rejected = true;
+                     }
+                  }
+               }
+
+               // Read bridge base MAC live from candidate and compare
+               if (!rejected)
+               {
+                  BYTE candidateBridgeAddr[64];
+                  memset(candidateBridgeAddr, 0, sizeof(candidateBridgeAddr));
+                  if (SnmpGet(node->getSNMPVersion(), snmp, { 1, 3, 6, 1, 2, 1, 17, 1, 1, 0 },
+                              candidateBridgeAddr, sizeof(candidateBridgeAddr), SG_RAW_RESULT) == SNMP_ERR_SUCCESS)
+                  {
+                     static const BYTE zeroMac[MAC_ADDR_LENGTH] = { 0 };
+                     lockProperties();
+                     bool thisHasBridge = (memcmp(m_baseBridgeAddress, zeroMac, MAC_ADDR_LENGTH) != 0);
+                     BYTE thisBridge[MAC_ADDR_LENGTH];
+                     memcpy(thisBridge, m_baseBridgeAddress, MAC_ADDR_LENGTH);
+                     unlockProperties();
+
+                     bool candidateHasBridge = (memcmp(candidateBridgeAddr, zeroMac, MAC_ADDR_LENGTH) != 0);
+                     if (thisHasBridge && candidateHasBridge && memcmp(thisBridge, candidateBridgeAddr, MAC_ADDR_LENGTH) != 0)
+                     {
+                        nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 4,
+                           _T("DuplicateCheck(%s [%u] vs %s [%u]): bridge base MAC mismatch, not a duplicate"),
+                           m_name, m_id, node->getName(), node->getId());
+                        rejected = true;
+                     }
+                  }
+               }
+
+               delete snmp;
+
+               if (rejected)
+                  return false;
+
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 4,
+                  _T("DuplicateCheck(%s [%u] vs %s [%u]): SNMP identity checks confirmed duplicate match"),
+                  m_name, m_id, node->getName(), node->getId());
+            }
+            else
+            {
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5,
+                  _T("DuplicateCheck(%s [%u] vs %s [%u]): cannot create SNMP transport to candidate, using IP-only match"),
+                  m_name, m_id, node->getName(), node->getId());
+            }
+         }
+         else
+         {
+            nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5,
+               _T("DuplicateCheck(%s [%u] vs %s [%u]): SNMP not supported on one or both nodes, using IP-only match"),
+               m_name, m_id, node->getName(), node->getId());
+         }
+
          _sntprintf(reason, size, _T("Primary IP address %s of node %s [%u] found on interface %s of node %s [%u]"),
                   (const TCHAR *)m_ipAddress.toString(), m_name, m_id, iface->getName(), node->getName(), node->getId());
          nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 3, _T("%s"), reason);
          return true;
       }
    }
-
-   // Check for exact match of interface list
-   //TODO
 
    return false;
 }
@@ -7963,9 +8061,8 @@ static void SetTableCellFromSNMPVariable(Table *table, int column, SNMP_Variable
    }
    else
    {
-      bool convert = false;
       TCHAR buffer[1024];
-      table->set(column, v->getValueAsPrintableString(buffer, 1024, &convert));
+      table->set(column, FormatSNMPValue(v, buffer, 1024));
    }
 }
 
