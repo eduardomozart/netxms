@@ -157,6 +157,21 @@ uint32_t InstallSoftwarePackage(CommSession *session, const char *packageType, c
 #endif
    else if (!stricmp(packageType, "zip"))
    {
+#ifdef _WIN32
+      TCHAR binDir[MAX_PATH];
+      GetNetXMSDirectory(nxDirBin, binDir);
+      commandLine.append(binDir);
+      commandLine.append(_T("\\unzip.exe"));
+      commandLine.append(_T(" \""));
+      commandLine.append(packageFile);
+      commandLine.append(_T("\""));
+      if (command[0] != 0)
+      {
+         commandLine.append(_T(" -d \""));
+         commandLine.append(command);
+         commandLine.append(_T("\""));
+      }
+#else
       commandLine.append(_T("unzip"));
       commandLine.append(_T(" '"));
       commandLine.append(packageFile);
@@ -167,6 +182,7 @@ uint32_t InstallSoftwarePackage(CommSession *session, const char *packageType, c
          commandLine.append(command);
          commandLine.append(_T("'"));
       }
+#endif
    }
 
    nxlog_debug_tag(DEBUG_TAG, 4, _T("Starting package installation using command line %s"), commandLine.cstr());
