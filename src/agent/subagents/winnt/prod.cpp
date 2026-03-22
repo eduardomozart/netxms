@@ -225,26 +225,71 @@ static void ReadStorePackagesFromRegistryPath(HKEY hRootKey, const TCHAR *basePa
 }
 
 /**
+ * Enable or disable a process privilege
+ */
+static bool EnablePrivilege(const TCHAR *privilege, bool enable)
+{
+   HANDLE hToken;
+   if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+      return false;
+
+   LUID luid;
+   if (!LookupPrivilegeValue(nullptr, privilege, &luid))
+   {
+      CloseHandle(hToken);
+      return false;
+   }
+
+   TOKEN_PRIVILEGES tp;
+   tp.PrivilegeCount = 1;
+   tp.Privileges[0].Luid = luid;
+   tp.Privileges[0].Attributes = enable ? SE_PRIVILEGE_ENABLED : 0;
+
+   bool success = AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), nullptr, nullptr) && (GetLastError() != ERROR_NOT_ALL_ASSIGNED);
+   CloseHandle(hToken);
+   return success;
+}
+
+/**
+ * Check if a user's registry hive is already loaded in HKEY_USERS
+ */
+static bool IsHiveLoaded(const TCHAR *sidString)
+{
+   HKEY hKey;
+   if (RegOpenKeyEx(HKEY_USERS, sidString, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+   {
+      RegCloseKey(hKey);
+      return true;
+   }
+   return false;
+}
+
+/**
  * Read Windows Store packages from all user profiles
  */
 static void ReadStorePackagesFromAllUsers(Table *table)
 {
-   HKEY hUsers;
-   if (RegOpenKeyEx(HKEY_USERS, nullptr, 0, KEY_READ, &hUsers) != ERROR_SUCCESS)
+   // Enumerate all user profiles from ProfileList (includes logged-off users)
+   HKEY hProfileList;
+   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+       _T("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"),
+       0, KEY_READ, &hProfileList) != ERROR_SUCCESS)
       return;
+
+   // Enable SE_BACKUP_NAME and SE_RESTORE_NAME privileges needed for RegLoadKey/RegUnloadKey
+   bool backupPrivEnabled = EnablePrivilege(SE_BACKUP_NAME, true);
+   bool restorePrivEnabled = EnablePrivilege(SE_RESTORE_NAME, true);
 
    DWORD index = 0;
    while(true)
    {
       TCHAR sidName[256];
       DWORD sidNameLen = 256;
-      if (RegEnumKeyEx(hUsers, index++, sidName, &sidNameLen, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
+      if (RegEnumKeyEx(hProfileList, index++, sidName, &sidNameLen, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
          break;
 
-      // Skip _Classes keys and well-known short SIDs
-      if (_tcsstr(sidName, _T("_Classes")) != nullptr)
-         continue;
-      if (_tcslen(sidName) < 20)  // Real user SIDs are longer (e.g., S-1-5-21-...)
+      // Skip well-known short SIDs (e.g., S-1-5-18, S-1-5-19, S-1-5-20)
+      if (_tcslen(sidName) < 20)
          continue;
 
       // Resolve SID to username
@@ -253,11 +298,57 @@ static void ReadStorePackagesFromAllUsers(Table *table)
       if (ResolveSidToUsername(sidName, userName, 512))
          userNamePtr = userName;
 
+      bool hiveLoadedByUs = false;
+      if (!IsHiveLoaded(sidName))
+      {
+         // Hive is not loaded - load it from the user's profile directory
+         HKEY hProfileKey;
+         if (RegOpenKeyEx(hProfileList, sidName, 0, KEY_READ, &hProfileKey) == ERROR_SUCCESS)
+         {
+            TCHAR profilePath[MAX_PATH];
+            DWORD type, size = sizeof(profilePath);
+            if (RegQueryValueEx(hProfileKey, _T("ProfileImagePath"), nullptr, &type, reinterpret_cast<BYTE*>(profilePath), &size) == ERROR_SUCCESS)
+            {
+               // Expand environment variables in profile path
+               TCHAR expandedPath[MAX_PATH];
+               ExpandEnvironmentStrings(profilePath, expandedPath, MAX_PATH);
+
+               StringBuffer ntUserDat(expandedPath);
+               ntUserDat.append(_T("\\NTUSER.DAT"));
+
+               if (RegLoadKey(HKEY_USERS, sidName, ntUserDat) == ERROR_SUCCESS)
+               {
+                  hiveLoadedByUs = true;
+                  nxlog_debug_tag(DEBUG_TAG, 6, _T("Loaded registry hive for user %s (%s)"),
+                     (userNamePtr != nullptr) ? userNamePtr : _T("unknown"), sidName);
+               }
+               else
+               {
+                  nxlog_debug_tag(DEBUG_TAG, 6, _T("Cannot load registry hive for %s from %s"), sidName, ntUserDat.cstr());
+               }
+            }
+            RegCloseKey(hProfileKey);
+         }
+      }
+
       StringBuffer path(sidName);
       path.append(_T("\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"));
       ReadStorePackagesFromRegistryPath(HKEY_USERS, path, userNamePtr, table);
+
+      if (hiveLoadedByUs)
+      {
+         RegUnloadKey(HKEY_USERS, sidName);
+         nxlog_debug_tag(DEBUG_TAG, 6, _T("Unloaded registry hive for %s"), sidName);
+      }
    }
-   RegCloseKey(hUsers);
+
+   // Restore privileges
+   if (backupPrivEnabled)
+      EnablePrivilege(SE_BACKUP_NAME, false);
+   if (restorePrivEnabled)
+      EnablePrivilege(SE_RESTORE_NAME, false);
+
+   RegCloseKey(hProfileList);
 }
 
 /**
