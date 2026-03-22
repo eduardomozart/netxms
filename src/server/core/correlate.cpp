@@ -1,6 +1,6 @@
 /* 
 ** NetXMS - Network Management System
-** Copyright (C) 2003-2024 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -32,13 +32,13 @@ static uint64_t m_networkLostEventId = 0;
 /**
  * Correlate current event to agent unreachable event
  */
-static bool CheckAgentDown(Node *currNode, Event *pEvent, uint32_t nodeId, const TCHAR *nodeType)
+static bool CheckAgentDown(Node *currNode, Event *event, uint32_t nodeId, const wchar_t *nodeType)
 {
 	shared_ptr<Node> node = static_pointer_cast<Node>(FindObjectById(nodeId, OBJECT_NODE));
 	if ((node != nullptr) && node->isNativeAgent() && (node->getState() & NSF_AGENT_UNREACHABLE))
 	{
-		pEvent->setRootId(node->getLastEventId(LAST_EVENT_AGENT_DOWN));
-		nxlog_debug_tag(DEBUG_TAG, 5, _T("C_SysNodeDown: agent on %s %s [%u] for current node %s [%u] is down"),
+		event->setRootId(node->getLastEventId(LAST_EVENT_AGENT_DOWN));
+		nxlog_debug_tag(DEBUG_TAG, 5, L"CheckAgentDown: agent on %s %s [%u] for current node %s [%u] is down",
 		          nodeType, node->getName(), node->getId(), currNode->getName(), currNode->getId());
 		return true;
 	}
@@ -50,9 +50,9 @@ static bool CheckAgentDown(Node *currNode, Event *pEvent, uint32_t nodeId, const
  */
 static void C_SysNodeDown(Node *node, Event *event)
 {
-   if (!ConfigReadBoolean(_T("Events.Correlation.TopologyBased"), true))
+   if (!ConfigReadBoolean(L"Events.Correlation.TopologyBased", true))
    {
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("C_SysNodeDown: topology based event correlation disabled"));
+      nxlog_debug_tag(DEBUG_TAG, 6, L"C_SysNodeDown: topology based event correlation disabled");
       return;
    }
 
@@ -69,7 +69,7 @@ static void C_SysNodeDown(Node *node, Event *event)
 		shared_ptr<Zone> zone = FindZoneByUIN(node->getZoneUIN());
 		if ((zone != nullptr) && !zone->isProxyNode(node->getId()) && (node->getAssignedZoneProxyId() != 0))
 		{
-		   if (CheckAgentDown(node, event, node->getAssignedZoneProxyId(), _T("zone proxy")))
+		   if (CheckAgentDown(node, event, node->getAssignedZoneProxyId(), L"zone proxy"))
 		      return;
 			event->setRootId(0);
 		}
@@ -81,9 +81,9 @@ static void C_SysNodeDown(Node *node, Event *event)
  */
 static void C_SysNodeUnreachable(Node *node, Event *event)
 {
-   if (!ConfigReadBoolean(_T("Events.Correlation.TopologyBased"), true))
+   if (!ConfigReadBoolean(L"Events.Correlation.TopologyBased", true))
    {
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("C_SysNodeUnreachable: topology based event correlation disabled"));
+      nxlog_debug_tag(DEBUG_TAG, 6, L"C_SysNodeUnreachable: topology based event correlation disabled");
       return;
    }
 
@@ -139,11 +139,69 @@ static void CorrelateNodeEvent(Event *event, Node *node)
          }
          // there are intentionally no break
       case EVENT_SERVICE_DOWN:
+         if (node->getState() & DCSF_UNREACHABLE)
+         {
+            event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         break;
       case EVENT_SNMP_FAIL:
+         if (node->getState() & DCSF_UNREACHABLE)
+         {
+            event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         else
+         {
+            uint32_t proxyId = node->getEffectiveSnmpProxy();
+            if (proxyId != 0)
+               CheckAgentDown(node, event, proxyId, L"SNMP proxy");
+         }
+         break;
       case EVENT_ICMP_UNREACHABLE:
          if (node->getState() & DCSF_UNREACHABLE)
          {
             event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         else
+         {
+            uint32_t proxyId = node->getEffectiveIcmpProxy();
+            if (proxyId != 0)
+               CheckAgentDown(node, event, proxyId, L"ICMP proxy");
+         }
+         break;
+      case EVENT_ETHERNET_IP_UNREACHABLE:
+         if (node->getState() & DCSF_UNREACHABLE)
+         {
+            event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         else
+         {
+            uint32_t proxyId = node->getEffectiveEtherNetIPProxy();
+            if (proxyId != 0)
+               CheckAgentDown(node, event, proxyId, L"EtherNet/IP proxy");
+         }
+         break;
+      case EVENT_SSH_UNREACHABLE:
+         if (node->getState() & DCSF_UNREACHABLE)
+         {
+            event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         else
+         {
+            uint32_t proxyId = node->getEffectiveSshProxy();
+            if (proxyId != 0)
+               CheckAgentDown(node, event, proxyId, L"SSH proxy");
+         }
+         break;
+      case EVENT_MODBUS_UNREACHABLE:
+         if (node->getState() & DCSF_UNREACHABLE)
+         {
+            event->setRootId(node->getLastEventId(LAST_EVENT_NODE_DOWN));
+         }
+         else
+         {
+            uint32_t proxyId = node->getEffectiveModbusProxy();
+            if (proxyId != 0)
+               CheckAgentDown(node, event, proxyId, L"Modbus proxy");
          }
          break;
       case EVENT_AGENT_FAIL:
@@ -171,7 +229,7 @@ static void CorrelateNodeEvent(Event *event, Node *node)
          m_networkLostEventId = event->getId();
          break;
       case EVENT_ROUTING_LOOP_DETECTED:
-         node->setRoutingLoopEvent(InetAddress::parse(event->getNamedParameter(_T("destAddress"), _T(""))), event->getNamedParameterAsUInt32(_T("destNodeId")), event->getId());
+         node->setRoutingLoopEvent(InetAddress::parse(event->getNamedParameter(L"destAddress", L"")), event->getNamedParameterAsUInt32(L"destNodeId"), event->getId());
          break;
       default:
          break;
@@ -183,9 +241,9 @@ static void CorrelateNodeEvent(Event *event, Node *node)
  */
 static void C_SysApDown(AccessPoint *ap, Event *event)
 {
-   if (!ConfigReadBoolean(_T("Events.Correlation.TopologyBased"), true))
+   if (!ConfigReadBoolean(L"Events.Correlation.TopologyBased", true))
    {
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("C_SysApDown: topology based event correlation disabled"));
+      nxlog_debug_tag(DEBUG_TAG, 6, L"C_SysApDown: topology based event correlation disabled");
       return;
    }
 
