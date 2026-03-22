@@ -1115,7 +1115,8 @@ void Interface::icmpStatusPoll(uint32_t rqId, uint32_t nodeIcmpProxy, Cluster *c
                if (a->isValidUnicast() && ((cluster == nullptr) || !cluster->isSyncAddr(*a)))
                {
 				      _sntprintf(parameter, 128, _T("Icmp.Ping(%s)"), a->toString(buffer));
-				      if (conn->getParameter(parameter, buffer, 64) == ERR_SUCCESS)
+                  uint32_t rcc = conn->getParameter(parameter, buffer, 64);
+				      if (rcc == ERR_SUCCESS)
 				      {
 				         nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 7, _T("Interface::StatusPoll(%d,%s): proxy response: \"%s\""), m_id, m_name, buffer);
 					      TCHAR *eptr;
@@ -1124,6 +1125,12 @@ void Interface::icmpStatusPoll(uint32_t rqId, uint32_t nodeIcmpProxy, Cluster *c
                      {
                         value = -1;
                      }
+                  }
+                  else if ((rcc == ERR_UNKNOWN_METRIC) || (rcc == ERR_UNSUPPORTED_METRIC))
+                  {
+                     nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("Interface::StatusPoll(%d,%s): ICMP ping metric is not supported by proxy agent (PING subagent may not be loaded)"), m_id, m_name);
+                     sendPollerMsg(POLLER_WARNING _T("      ICMP ping metric is not supported by proxy agent (PING subagent may not be loaded)\r\n"));
+                     break;
                   }
                }
             }

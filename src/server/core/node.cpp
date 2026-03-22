@@ -14392,6 +14392,10 @@ void Node::icmpPollAddress(AgentConnection *conn, const TCHAR *target, const Ine
          status = ICMP_TIMEOUT;
          rtt = 10000;
       }
+      else if ((rcc == ERR_UNKNOWN_METRIC) || (rcc == ERR_UNSUPPORTED_METRIC))
+      {
+         nxlog_debug_tag(DEBUG_TAG_ICMP_POLL, 5, _T("%s ICMP ping metric is not supported by proxy agent (PING subagent may not be loaded)"), debugPrefix);
+      }
       nxlog_debug_tag(DEBUG_TAG_ICMP_POLL, 7, _T("%s: response time %u"), debugPrefix, rtt);
    }
    else  // not using ICMP proxy

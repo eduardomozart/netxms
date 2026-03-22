@@ -579,7 +579,8 @@ void AccessPoint::statusPollFromController(ClientSession *session, uint32_t requ
                   TCHAR parameter[64], buffer[64];
 
                   _sntprintf(parameter, 64, _T("Icmp.Ping(%s)"), m_ipAddress.toString(buffer));
-                  if (conn->getParameter(parameter, buffer, 64) == ERR_SUCCESS)
+                  uint32_t rcc = conn->getParameter(parameter, buffer, 64);
+                  if (rcc == ERR_SUCCESS)
                   {
                      nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 7, _T("AccessPoint::StatusPoll(%s [%u]): proxy response: \"%s\""), m_name, m_id, buffer);
                      TCHAR *eptr;
@@ -598,6 +599,11 @@ void AccessPoint::statusPollFromController(ClientSession *session, uint32_t requ
                            state = AP_DOWN;
                         }
                      }
+                  }
+                  else if ((rcc == ERR_UNKNOWN_METRIC) || (rcc == ERR_UNSUPPORTED_METRIC))
+                  {
+                     nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("AccessPoint::StatusPoll(%s [%u]): ICMP ping metric is not supported by proxy agent (PING subagent may not be loaded)"), m_name, m_id);
+                     sendPollerMsg(POLLER_WARNING _T("      ICMP ping metric is not supported by proxy agent (PING subagent may not be loaded)\r\n"));
                   }
                   conn->disconnect();
                }
