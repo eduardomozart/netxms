@@ -24,6 +24,31 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.22 to 61.23
+ */
+static bool H_UpgradeFromV22()
+{
+   int ruleId = NextFreeEPPruleID();
+   TCHAR query[2048];
+   _sntprintf(query, 2048,
+      _T("INSERT INTO event_policy (rule_id,rule_guid,flags,comments,alarm_message,alarm_severity,alarm_key,filter_script,alarm_timeout,alarm_timeout_event,incident_delay,incident_ai_depth) ")
+      _T("VALUES (%d,'abced820-4a67-4a52-8f0c-59c787e34128',7944,'Terminate unexpected up alarm when interface with expected state DOWN is administratively disabled',")
+      _T("'%%m',6,'IF_UNEXP_UP_%%i_%%5',")
+      _T("'interface = GetInterfaceObject($node, $event->parameters[5]);\r\n\r\n")
+      _T("// if interface not found or interface expected state is not DOWN, do not match\r\n")
+      _T("// otherwise (if interface expected state is DOWN), match\r\n")
+      _T("return (interface != null && interface->expectedState == 1);',0,%d,0,0)"),
+      ruleId, EVENT_ALARM_TIMEOUT);
+   CHK_EXEC(SQLQuery(query));
+
+   _sntprintf(query, 2048, _T("INSERT INTO policy_event_list (rule_id,event_code) VALUES (%d,%d)"), ruleId, EVENT_INTERFACE_DISABLED);
+   CHK_EXEC(SQLQuery(query));
+
+   CHK_EXEC(SetMinorSchemaVersion(23));
+   return true;
+}
+
+/**
  * Upgrade from 61.21 to 61.22
  */
 static bool H_UpgradeFromV21()
@@ -609,6 +634,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 22, 61, 23, H_UpgradeFromV22 },
    { 21, 61, 22, H_UpgradeFromV21 },
    { 20, 61, 21, H_UpgradeFromV20 },
    { 19, 61, 20, H_UpgradeFromV19 },
