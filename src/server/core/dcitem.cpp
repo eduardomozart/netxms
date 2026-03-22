@@ -3224,6 +3224,13 @@ uint32_t DCItem::postThresholdRepeatEvent(uint32_t thresholdId, uint64_t activat
       return repeatInterval;
    }
 
+   if ((m_thresholdDisableEndTime < 0) || ((m_thresholdDisableEndTime > 0) && (m_thresholdDisableEndTime >= time(nullptr))))
+   {
+      nxlog_debug_tag(DEBUG_TAG_DC_THRESHOLDS, 7, _T("Threshold processing is disabled on DCI %u"), m_id);
+      unlock();
+      return repeatInterval;
+   }
+
    // Gather values for event
    const wchar_t *dciValue = (m_cacheSize > 0) ? m_ppValueCache[0]->getString() : L"";
    String currentValue = t->getLastCheckValue().getString();
