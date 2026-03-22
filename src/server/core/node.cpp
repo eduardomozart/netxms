@@ -7946,6 +7946,87 @@ DataCollectionError Node::getMetricFromSNMP(uint16_t port, SNMP_Version version,
 /**
  * Read one row for SNMP table
  */
+/**
+ * Set table cell value from SNMP variable
+ */
+static void SetTableCellFromSNMPVariable(Table *table, int column, SNMP_Variable *v, const DCTableColumn *c)
+{
+   if ((v == nullptr) || (v->getType() == ASN_NO_SUCH_OBJECT) || (v->getType() == ASN_NO_SUCH_INSTANCE))
+      return;
+
+   if ((c != nullptr) && c->isConvertSnmpStringToHex())
+   {
+      size_t size = v->getValueLength();
+      TCHAR *buffer = MemAllocString(size * 2 + 1);
+      BinToStr(v->getValue(), size, buffer);
+      table->setPreallocated(column, buffer);
+   }
+   else
+   {
+      bool convert = false;
+      TCHAR buffer[1024];
+      table->set(column, v->getValueAsPrintableString(buffer, 1024, &convert));
+   }
+}
+
+/**
+ * Build OID for SNMP table cell (column OID + row suffix)
+ */
+static size_t BuildSNMPTableCellOID(const DCTableColumn *c, const SNMP_ObjectId *rowOid, size_t baseOidLen, uint32_t index, uint32_t *oid)
+{
+   size_t oidLen = c->getSnmpOid().length();
+   memcpy(oid, c->getSnmpOid().value(), oidLen * sizeof(uint32_t));
+   if (rowOid != nullptr)
+   {
+      size_t suffixLen = rowOid->length() - baseOidLen;
+      memcpy(&oid[oidLen], rowOid->value() + baseOidLen, suffixLen * sizeof(uint32_t));
+      oidLen += suffixLen;
+   }
+   else
+   {
+      oid[oidLen++] = index;
+   }
+   return oidLen;
+}
+
+/**
+ * Read SNMP table row using individual GET requests (one per column).
+ * Used as fallback when multi-varbind request returns tooBig error.
+ */
+static uint32_t ReadSNMPTableRowOneByOne(SNMP_Transport *snmp, const SNMP_ObjectId *rowOid, size_t baseOidLen,
+         uint32_t index, const ObjectArray<DCTableColumn> &columns, Table *table)
+{
+   table->addRow();
+   for (int i = 0; i < columns.size(); i++)
+   {
+      const DCTableColumn *c = columns.get(i);
+      if (!c->getSnmpOid().isValid())
+         continue;
+
+      uint32_t oid[MAX_OID_LEN];
+      size_t oidLen = BuildSNMPTableCellOID(c, rowOid, baseOidLen, index, oid);
+
+      SNMP_PDU singleRequest(SNMP_GET_REQUEST, SnmpNewRequestId(), snmp->getSnmpVersion());
+      singleRequest.bindVariable(new SNMP_Variable(oid, oidLen));
+
+      SNMP_PDU *singleResponse;
+      uint32_t rc = snmp->doRequest(&singleRequest, &singleResponse);
+      if (rc == SNMP_ERR_SUCCESS)
+      {
+         if ((singleResponse->getErrorCode() == SNMP_PDU_ERR_SUCCESS) && (singleResponse->getNumVariables() > 0))
+         {
+            SetTableCellFromSNMPVariable(table, i, singleResponse->getVariable(0), c);
+         }
+         delete singleResponse;
+      }
+      else
+      {
+         return rc;
+      }
+   }
+   return SNMP_ERR_SUCCESS;
+}
+
 static uint32_t ReadSNMPTableRow(SNMP_Transport *snmp, const SNMP_ObjectId *rowOid, size_t baseOidLen,
          uint32_t index, const ObjectArray<DCTableColumn> &columns, Table *table)
 {
@@ -7956,18 +8037,7 @@ static uint32_t ReadSNMPTableRow(SNMP_Transport *snmp, const SNMP_ObjectId *rowO
       if (c->getSnmpOid().isValid())
       {
          uint32_t oid[MAX_OID_LEN];
-         size_t oidLen = c->getSnmpOid().length();
-         memcpy(oid, c->getSnmpOid().value(), oidLen * sizeof(uint32_t));
-         if (rowOid != nullptr)
-         {
-            size_t suffixLen = rowOid->length() - baseOidLen;
-            memcpy(&oid[oidLen], rowOid->value() + baseOidLen, suffixLen * sizeof(uint32_t));
-            oidLen += suffixLen;
-         }
-         else
-         {
-            oid[oidLen++] = index;
-         }
+         size_t oidLen = BuildSNMPTableCellOID(c, rowOid, baseOidLen, index, oid);
          request.bindVariable(new SNMP_Variable(oid, oidLen));
       }
    }
@@ -7976,30 +8046,19 @@ static uint32_t ReadSNMPTableRow(SNMP_Transport *snmp, const SNMP_ObjectId *rowO
    uint32_t rc = snmp->doRequest(&request, &response);
    if (rc == SNMP_ERR_SUCCESS)
    {
+      if (response->getErrorCode() == SNMP_PDU_ERR_TOO_BIG)
+      {
+         delete response;
+         nxlog_debug_tag(_T("snmp.table"), 5, _T("SNMP tooBig response for table row, retrying with individual GET requests"));
+         return ReadSNMPTableRowOneByOne(snmp, rowOid, baseOidLen, index, columns, table);
+      }
       if (((int)response->getNumVariables() >= columns.size()) &&
           (response->getErrorCode() == SNMP_PDU_ERR_SUCCESS))
       {
          table->addRow();
          for(int i = 0; i < response->getNumVariables(); i++)
          {
-            SNMP_Variable *v = response->getVariable(i);
-            if ((v != nullptr) && (v->getType() != ASN_NO_SUCH_OBJECT) && (v->getType() != ASN_NO_SUCH_INSTANCE))
-            {
-               const DCTableColumn *c = columns.get(i);
-               if ((c != nullptr) && c->isConvertSnmpStringToHex())
-               {
-                  size_t size = v->getValueLength();
-                  TCHAR *buffer = MemAllocString(size * 2 + 1);
-                  BinToStr(v->getValue(), size, buffer);
-                  table->setPreallocated(i, buffer);
-               }
-               else
-               {
-                  bool convert = false;
-                  TCHAR buffer[1024];
-                  table->set(i, v->getValueAsPrintableString(buffer, 1024, &convert));
-               }
-            }
+            SetTableCellFromSNMPVariable(table, i, response->getVariable(i), columns.get(i));
          }
       }
       delete response;

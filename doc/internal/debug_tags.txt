@@ -216,6 +216,7 @@ snmp.discovery	SNMP discovery related
 snmp.entity	Entity MIB processing
 snmp.lib	SNMP library low-level diagnostic
 snmp.proxy	SNMP proxy related
+snmp.table	SNMP table DCI data collection
 snmp.trap	SNMP trap processing
 snmp.trap.flood	SNMP trap flood detection
 ssh		SSH subagent
