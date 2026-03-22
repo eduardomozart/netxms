@@ -1290,7 +1290,27 @@ void CheckRange(const InetAddressListElement& range, void (*callback)(const Inet
    bool snmpScanEnabled = ConfigReadBoolean(_T("NetworkDiscovery.ActiveDiscovery.EnableSNMPProbing"), true);
    bool tcpScanEnabled = ConfigReadBoolean(_T("NetworkDiscovery.ActiveDiscovery.EnableTCPProbing"), false);
 
-   if ((range.getZoneUIN() != 0) || (range.getProxyId() != 0))
+   bool useProxy = (range.getProxyId() != 0);
+   if (!useProxy && (range.getZoneUIN() != 0))
+   {
+      shared_ptr<Zone> zone = FindZoneByUIN(range.getZoneUIN());
+      if (zone == nullptr)
+      {
+         ConsoleDebugPrintf(console, DEBUG_TAG_DISCOVERY, 4, _T("Invalid zone UIN for address range %s"), range.toString().cstr());
+         return;
+      }
+      if (!zone->getAllProxyNodes().isEmpty())
+      {
+         useProxy = true;
+      }
+      else
+      {
+         ConsoleDebugPrintf(console, DEBUG_TAG_DISCOVERY, 4, _T("Zone %s [uin=%d] has no proxy nodes configured, using direct scan for address range %s"),
+               zone->getName(), zone->getUIN(), range.toString().cstr());
+      }
+   }
+
+   if (useProxy)
    {
       uint32_t proxyId;
       if (range.getProxyId() != 0)
@@ -1459,19 +1479,16 @@ void CheckRange(const InetAddressListElement& range, void (*callback)(const Inet
             ports.addAll(GetWellKnownPorts(_T("ssh"), 0));
             ports.add(ETHERNET_IP_DEFAULT_PORT);
 
-            // Filter blocked TCP ports using default zone settings
-            if (IsZoningEnabled())
+            // Filter blocked TCP ports
+            shared_ptr<Zone> zone = FindZoneByUIN(range.getZoneUIN());
+            if (zone != nullptr)
             {
-               shared_ptr<Zone> zone = FindZoneByUIN(0); // Default zone
-               if (zone != nullptr)
+               IntegerArray<uint16_t> blockedTcpPorts;
+               zone->getEffectivePortStopList(&blockedTcpPorts, nullptr);
+               for (int i = ports.size() - 1; i >= 0; i--)
                {
-                  IntegerArray<uint16_t> blockedTcpPorts;
-                  zone->getEffectivePortStopList(&blockedTcpPorts, nullptr);
-                  for (int i = ports.size() - 1; i >= 0; i--)
-                  {
-                     if (blockedTcpPorts.contains(ports.get(i)))
-                        ports.remove(i);
-                  }
+                  if (blockedTcpPorts.contains(ports.get(i)))
+                     ports.remove(i);
                }
             }
 

@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2024 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ public class AddressListElementEditDialog extends Dialog
 
 		   proxySelector = new ObjectSelector(dialogArea, SWT.NONE, true);
          proxySelector.setLabel(i18n.tr("Proxy node"));
-         proxySelector.setEmptySelectionName(i18n.tr("Zone proxy"));
+         proxySelector.setEmptySelectionName(i18n.tr("Zone proxy (direct if not configured)"));
 		   proxySelector.setClassFilter(ObjectSelectionFilterFactory.getInstance().createNodeSelectionFilter(false));
          gd = new GridData();
          gd.horizontalAlignment = SWT.FILL;
