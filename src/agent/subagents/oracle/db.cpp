@@ -199,11 +199,19 @@ bool DatabaseInstance::poll()
 
             for(; col < numColumns; col++)
             {
-               DBGetColumnName(hResult, col, &tag[tagBaseLen], 256 - tagBaseLen);
-               size_t tagLen = _tcslen(tag);
-               tag[tagLen++] = _T('@');
-               _tcslcpy(&tag[tagLen], instance, 256 - tagLen);
-               data->setPreallocated(MemCopyString(tag), DBGetField(hResult, row, col, nullptr, 0));
+               TCHAR *fieldValue = DBGetField(hResult, row, col, nullptr, 0);
+               if (fieldValue != nullptr && fieldValue[0] != 0)
+               {
+                  DBGetColumnName(hResult, col, &tag[tagBaseLen], 256 - tagBaseLen);
+                  size_t tagLen = _tcslen(tag);
+                  tag[tagLen++] = _T('@');
+                  _tcslcpy(&tag[tagLen], instance, 256 - tagLen);
+                  data->setPreallocated(MemCopyString(tag), fieldValue);
+               }
+               else
+               {
+                  MemFree(fieldValue);
+               }
             }
          }
       }

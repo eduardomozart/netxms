@@ -92,8 +92,8 @@ DatabaseQuery g_queries[] =
          _T("trim(to_char(round((100 - m.used_percent), 2), '990.99')) AS FreeSpacePct,")
          _T("(SELECT count(*) FROM v$datafile df WHERE df.ts#=v.ts#) AS DataFiles ")
          _T("FROM dba_tablespaces d ")
-         _T("INNER JOIN dba_tablespace_usage_metrics m ON m.tablespace_name = d.tablespace_name ")
-         _T("INNER JOIN v$tablespace v ON v.name = d.tablespace_name")
+         _T("LEFT JOIN dba_tablespace_usage_metrics m ON m.tablespace_name = d.tablespace_name ")
+         _T("LEFT JOIN v$tablespace v ON v.name = d.tablespace_name")
    },
    { nullptr, 0, 0, nullptr }
 };
@@ -132,8 +132,8 @@ static TableDescriptor s_tqTableSpaces =
       _T("trim(to_char(round((100 - m.used_percent),2), '990.99')) AS free_pct,")
       _T("(SELECT count(*) FROM v$datafile df WHERE df.ts#=v.ts#) AS data_files ")
       _T("FROM dba_tablespaces d ")
-      _T("INNER JOIN dba_tablespace_usage_metrics m ON m.tablespace_name=d.tablespace_name ")
-      _T("INNER JOIN v$tablespace v ON v.name=d.tablespace_name"),
+      _T("LEFT JOIN dba_tablespace_usage_metrics m ON m.tablespace_name=d.tablespace_name ")
+      _T("LEFT JOIN v$tablespace v ON v.name=d.tablespace_name"),
    {
       { DCI_DT_STRING, _T("Name") },
       { DCI_DT_STRING, _T("Status") },
