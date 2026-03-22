@@ -13,7 +13,7 @@ for var in "$@"; do
    fi
 done
 
-if [ "x$prefix" != "x" ]; then
+if [ "x$prefix" = "x" ]; then
    prefix=/opt/netxms
 fi
 

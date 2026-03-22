@@ -22,6 +22,28 @@ while [ "x"$1 != "x" ]; do
 	shift
 done
 
+# Abort if agent was installed from system packages
+if command -v rpm >/dev/null 2>&1; then
+	if rpm -q netxms-agent >/dev/null 2>&1; then
+		echo "Agent was installed from RPM package, .apkg upgrade is not supported; upgrade aborted" >>$log
+		exit 10
+	fi
+fi
+if command -v dpkg >/dev/null 2>&1; then
+	if dpkg -s netxms-agent >/dev/null 2>&1; then
+		echo "Agent was installed from DEB package, .apkg upgrade is not supported; upgrade aborted" >>$log
+		exit 10
+	fi
+fi
+
+# Abort if prefix points to a system directory
+case "$prefix" in
+	/|/usr|/usr/local)
+		echo "Refusing to upgrade agent installed in system directory $prefix; upgrade aborted" >>$log
+		exit 11
+		;;
+esac
+
 make=`which gmake`
 if [ $? = 0 ]; then
 	echo $make | grep "no gmake in " >/dev/null && make=make
