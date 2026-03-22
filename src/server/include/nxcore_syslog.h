@@ -106,6 +106,15 @@ public:
       size_t len = strlen(m_rawMessage) + 1;
       m_message = MemAllocStringW(len);
       mbcp_to_wchar(m_rawMessage, -1, m_message, len, codepage);
+
+      // Sanitize converted message - replace invalid Unicode codepoints
+      // (surrogates, out-of-range) with '?' to prevent database write failures
+      for (wchar_t *p = m_message; *p != 0; p++)
+      {
+         uint32_t ch = static_cast<uint32_t>(*p);
+         if ((ch >= 0xD800 && ch <= 0xDFFF) || (ch > 0x10FFFF))
+            *p = L'?';
+      }
    }
 
    void fillNXCPMessage(NXCPMessage *msg) const;
