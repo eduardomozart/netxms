@@ -6930,7 +6930,7 @@ void ClientSession::deleteObject(const NXCPMessage& request)
                   bool removeDCI = request.isFieldExist(VID_REMOVE_DCI) ? request.getFieldAsBoolean(VID_REMOVE_DCI) : true;
                   static_cast<Cluster&>(*object).setRemoveDCIOnDelete(removeDCI);
                }
-               ThreadPoolExecute(g_clientThreadPool, DeleteObjectWorker, object);
+               ThreadPoolExecuteSerialized(g_clientThreadPool, _T("DeleteObject"), DeleteObjectWorker, object);
                response.setField(VID_RCC, RCC_SUCCESS);
                WriteAuditLog(AUDIT_OBJECTS, TRUE, m_userId, m_workstation, m_id, object->getId(), _T("Object %s deleted"), object->getName());
 				}
