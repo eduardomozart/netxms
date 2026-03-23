@@ -1,0 +1,52 @@
+# Vendored C libraries
+src/jansson/
+src/sqlite/
+src/libpng/
+
+# Generated lexer/parser files
+src/libnxsl/lex.parser.cpp
+src/libnxsl/parser.tab.*
+src/snmp/nxmibc/lex.parser.cpp
+src/snmp/nxmibc/parser.tab.*
+src/server/core/lex.nxmp_parser.cpp
+src/server/core/nxmp_parser.tab.*
+
+# Generated message files
+**/messages.c
+**/messages.h
+**/MSG00001.bin
+
+# Generated OTLP protobuf code
+src/server/otlp/generated/
+
+# Build and autoconf artifacts
+target/
+configure
+config.h.in
+aclocal.m4
+m4/
+autom4te.cache/
+build/netxms-build-tag.*
+
+# Non-code directories
+doc/
+docs/
+manpages/
+/packages/
+images/
+share/
+contrib/mibs/
+sql/dbinit_*.sql
+sql/dbschema_*.sql
+
+# IDE and tool configs
+.idea/
+.vscode/
+.vs/
+.claude/
+.ralphex/
+.serena/
+
+# Vendored JS and samples
+src/client/nxmc/java/src/rwt/resources/vncviewer/
+src/client/nxshell/samples/

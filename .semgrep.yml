@@ -1,0 +1,18 @@
+# NetXMS custom semgrep rules
+# Add project-specific rules below as needed.
+#
+# Example: flag direct malloc usage (prefer MemAlloc/MemAllocStruct/MemAllocArray)
+# - id: netxms-no-raw-malloc
+#   pattern: malloc(...)
+#   message: "Use MemAlloc/MemAllocStruct<T>/MemAllocArray<T> instead of malloc"
+#   languages: [c, cpp]
+#   severity: WARNING
+#
+# Example: flag NULL usage (prefer nullptr in C++ code)
+# - id: netxms-use-nullptr
+#   pattern: "NULL"
+#   message: "Use nullptr instead of NULL in C++ code"
+#   languages: [cpp]
+#   severity: WARNING
+
+rules: []

@@ -195,6 +195,13 @@ mvn -f src/client/nxmc/java/pom.xml jetty:run -Pweb -Dnetxms.build.disablePlatfo
 - [Java API](https://www.netxms.org/documentation/javadoc/latest/)
 - [Data Dictionary](https://www.netxms.org/documentation/datadictionary-latest/)
 
+## CI / Static Analysis
+
+- **Semgrep SAST** runs on every PR (diff-aware, blocks on ERROR severity) and nightly (full scan, informational). Workflow: `.github/workflows/semgrep.yaml`
+- **cppcheck** runs nightly for C++ code quality. Workflow: `.github/workflows/cppcheck.yaml`
+- Custom semgrep rules go in `.semgrep.yml`; exclusions in `.semgrepignore`
+- Inline suppression: `// nosemgrep: <rule-id>` (C/C++, Java) or `# nosemgrep: <rule-id>` (Python). Always specify the rule-id
+
 ## Code Changes
 
 When implementing changes, ensure ALL call sites and consumers are updated. After making a rename or API change, run a project-wide grep for the old name to catch missed references before attempting a build.
