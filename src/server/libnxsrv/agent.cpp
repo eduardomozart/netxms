@@ -3639,8 +3639,12 @@ uint32_t AgentConnection::getUserSessions(ObjectArray<UserSession> **sessions)
    if ((rcc == ERR_SUCCESS) && !hasSessionAgentInfo && (getTable(_T("Agent.SessionAgents"), &table) == ERR_SUCCESS))
    {
       int cId = table->getColumnIndex(_T("SESSION_ID"));
+      int cName = table->getColumnIndex(_T("SESSION_NAME"));
       int cAgentType = table->getColumnIndex(_T("AGENT_TYPE"));
       int cAgentPid = table->getColumnIndex(_T("AGENT_PID"));
+      int cScreenWidth = table->getColumnIndex(_T("SCREEN_WIDTH"));
+      int cScreenHeight = table->getColumnIndex(_T("SCREEN_HEIGHT"));
+      int cScreenBpp = table->getColumnIndex(_T("SCREEN_BPP"));
       for(int i = 0; i < table->getNumRows(); i++)
       {
          uint32_t sid = table->getAsUInt(i, cId);
@@ -3660,6 +3664,19 @@ uint32_t AgentConnection::getUserSessions(ObjectArray<UserSession> **sessions)
          {
             session->agentPID = table->getAsUInt(i, cAgentPid);
             session->agentType = table->getAsUInt(i, cAgentType);
+            session->sessionName = table->getAsString(i, cName, _T(""));
+            if (cScreenWidth != -1 && cScreenHeight != -1 && cScreenBpp != -1)
+            {
+               int32_t w = table->getAsInt(i, cScreenWidth);
+               int32_t h = table->getAsInt(i, cScreenHeight);
+               int32_t bpp = table->getAsInt(i, cScreenBpp);
+               if (w > 0 && h > 0 && bpp > 0)
+               {
+                  session->displayWidth = w;
+                  session->displayHeight = h;
+                  session->displayColorDepth = bpp;
+               }
+            }
          }
       }
       delete table;

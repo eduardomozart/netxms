@@ -226,6 +226,11 @@ OPENSSL_LIBSSL="ssl"
 OPENSSL_LIBCRYPTO="crypto"
 SYSTEMD_SUPPORT="yes"
 HAVE_SDBUS="no"
+HAVE_LIBPNG="no"
+PNG_LIBS=""
+HAVE_X11="no"
+X11_LIBS=""
+HAVE_XEXT="no"
 EXEC_LDFLAGS=""
 EXEC_LIBS=""
 DIST_BUILD="no"
@@ -2707,6 +2712,59 @@ fi
 
 
 #--------------------------------------------------------------------
+# libpng detection
+#--------------------------------------------------------------------
+
+AC_CHECK_HEADER(png.h, [ HAVE_LIBPNG=yes ], [ HAVE_LIBPNG=no ])
+if test "x$HAVE_LIBPNG" = "xyes"; then
+	AC_CHECK_LIB(png, png_create_write_struct, [ HAVE_LIBPNG=yes ], [ HAVE_LIBPNG=no ], [-lz -lm])
+fi
+if test "x$HAVE_LIBPNG" = "xyes"; then
+	AC_DEFINE(HAVE_LIBPNG, 1, Define to 1 if you have libpng)
+	PNG_LIBS="-lpng -lz"
+fi
+
+
+#--------------------------------------------------------------------
+# X11 detection (for session agent screenshot support)
+#--------------------------------------------------------------------
+
+if test "x$PLATFORM" = "xLinux"; then
+	AC_CHECK_HEADER(X11/Xlib.h, [ HAVE_X11=yes ], [ HAVE_X11=no ])
+	if test "x$HAVE_X11" = "xyes"; then
+		AC_CHECK_LIB(X11, XOpenDisplay, [ HAVE_X11=yes ], [ HAVE_X11=no ])
+	fi
+	if test "x$HAVE_X11" = "xyes"; then
+		AC_DEFINE(HAVE_X11, 1, Define to 1 if you have X11)
+		X11_LIBS="-lX11"
+		AC_CHECK_HEADER(X11/extensions/XShm.h, [ HAVE_XEXT=yes ], [ HAVE_XEXT=no ],
+			[#include <X11/Xlib.h>])
+		if test "x$HAVE_XEXT" = "xyes"; then
+			AC_CHECK_LIB(Xext, XShmGetImage, [ HAVE_XEXT=yes ], [ HAVE_XEXT=no ], [-lX11])
+		fi
+		if test "x$HAVE_XEXT" = "xyes"; then
+			AC_DEFINE(HAVE_XEXT, 1, Define to 1 if you have X11 XShm extension)
+			X11_LIBS="$X11_LIBS -lXext"
+		fi
+	fi
+fi
+
+
+#--------------------------------------------------------------------
+# Enable session agent and fbdev subagent on Linux
+#--------------------------------------------------------------------
+
+if test "x$PLATFORM" = "xLinux"; then
+	if test "x$HAVE_LIBPNG" = "xyes" -a "x$HAVE_X11" = "xyes"; then
+		AGENT_DIRS="$AGENT_DIRS nxsagent"
+	fi
+	if test "x$HAVE_LIBPNG" = "xyes"; then
+		SUBAGENT_DIRS="$SUBAGENT_DIRS fbdev"
+	fi
+fi
+
+
+#--------------------------------------------------------------------
 # Checks for data types
 #--------------------------------------------------------------------
 
@@ -4727,6 +4785,7 @@ if test "x$CXX" = "xCC" ; then
 fi
 
 AM_CONDITIONAL([ALL_STATIC], [test "x$ALL_STATIC" = "xyes"])
+AM_CONDITIONAL([HAVE_SDBUS], [test "x$HAVE_SDBUS" = "xyes"])
 AM_CONDITIONAL([JAR_BUILD], [test "x$JAR_BUILD" = "xyes"])
 AM_CONDITIONAL([MQTT_SUPPORT], [test "x$MQTT_SUPPORT" = "xyes"])
 AM_CONDITIONAL([PYTHON_SUPPORT], [test "x$PYTHON_SUPPORT" = "xyes"])
@@ -4856,6 +4915,7 @@ AC_SUBST(PROTOBUF_LIBS)
 AC_SUBST(PYTHON_CPPFLAGS)
 AC_SUBST(PYTHON_LDFLAGS)
 AC_SUBST(PYTHON_LIBS)
+AC_SUBST(PNG_LIBS)
 AC_SUBST(SNAPPY_CPPFLAGS)
 AC_SUBST(SNAPPY_LDFLAGS)
 AC_SUBST(SNAPPY_LIBS)
@@ -4879,6 +4939,7 @@ AC_SUBST(TUXEDO_TPINIT)
 AC_SUBST(VMGR_CPPFLAGS)
 AC_SUBST(VMGR_LDFLAGS)
 AC_SUBST(VMGR_LIBS)
+AC_SUBST(X11_LIBS)
 AC_SUBST(XEN_CPPFLAGS)
 AC_SUBST(XEN_LDFLAGS)
 AC_SUBST(XEN_LIBS)
@@ -4929,6 +4990,7 @@ AC_CONFIG_FILES([
 	src/agent/libnxappc/Makefile
 	src/agent/libnxsde/Makefile
 	src/agent/libnxtux/Makefile
+	src/agent/nxsagent/Makefile
 	src/agent/smbios/Makefile
 	src/agent/subagents/Makefile
 	src/agent/subagents/aix/Makefile
@@ -4940,6 +5002,7 @@ AC_CONFIG_FILES([
 	src/agent/subagents/dbquery/Makefile
 	src/agent/subagents/devemu/Makefile
 	src/agent/subagents/ds18x20/Makefile
+	src/agent/subagents/fbdev/Makefile
 	src/agent/subagents/filemgr/Makefile
 	src/agent/subagents/freebsd/Makefile
 	src/agent/subagents/gps/Makefile
@@ -5310,6 +5373,16 @@ if test "x${BUILD_AGENT}" = "xyes"; then
 		fi
 	else
 		echo "Systemd support         : NO"
+	fi
+	if test "x${HAVE_LIBPNG}" = "xyes"; then
+		echo "libpng support          : YES"
+	else
+		echo "libpng support          : NO"
+	fi
+	if test "x${HAVE_X11}" = "xyes"; then
+		echo "X11 support             : YES (XShm: ${HAVE_XEXT})"
+	else
+		echo "X11 support             : NO"
 	fi
 else
 	echo "Build Agent             : NO"

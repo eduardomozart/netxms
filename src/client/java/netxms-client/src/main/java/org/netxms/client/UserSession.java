@@ -41,6 +41,7 @@ public class UserSession
    private int idleTime;
    private long agentPID;
    private int agentType;
+   private String sessionName;
 
    /**
     * Create session information object from NXCP message.
@@ -64,6 +65,7 @@ public class UserSession
       idleTime = msg.getFieldAsInt32(baseId + 11);
       agentPID = msg.getFieldAsInt64(baseId + 12);
       agentType = msg.getFieldAsInt32(baseId + 13);
+      sessionName = msg.getFieldAsString(baseId + 14);
    }
 
    /**
@@ -188,5 +190,24 @@ public class UserSession
    public int getAgentType()
    {
       return agentType;
+   }
+
+   /**
+    * @return the session name as reported by session agent
+    */
+   public String getSessionName()
+   {
+      return sessionName;
+   }
+
+   /**
+    * Get session name suitable for screenshot requests. Returns session agent's
+    * session name if available, otherwise falls back to terminal name.
+    *
+    * @return session name for screenshot requests
+    */
+   public String getScreenshotSessionName()
+   {
+      return (sessionName != null && !sessionName.isEmpty()) ? sessionName : terminal;
    }
 }

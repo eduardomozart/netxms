@@ -149,7 +149,9 @@ void LIBNXAGENT_EXPORTABLE InitSubAgentAPI(
       void (*queueNotificationMessage)(NXCPMessage*),
       void (*registerProblem)(int, const TCHAR*, const TCHAR*),
       void (*unregisterProblem)(const TCHAR*),
-      ThreadPool *timerThreadPool
+      ThreadPool *timerThreadPool,
+      void (*registerScreenshotProvider)(const TCHAR*, ScreenshotProviderCallback),
+      void (*unregisterScreenshotProvider)(const TCHAR*)
    );
 
 int CreateConfig(bool forceCreate, const char *masterServers, const char *logFile, const char *fileStore,
@@ -250,7 +252,7 @@ StringSet g_trustedRootCertificates;
 #ifdef _WIN32
 uint16_t g_sessionAgentPort = 28180;
 #else
-uint16_t g_sessionAgentPort = 0;
+uint16_t g_sessionAgentPort = 28180;
 #endif
 uint32_t g_dwIdleTimeout = 120;   // Session idle timeout
 uint32_t g_webSvcCacheExpirationTime = 600;  // 10 minutes by default
@@ -1222,7 +1224,7 @@ BOOL Initialize()
    // Initialize API for subagents
    InitSubAgentAPI(PostEvent, PostEvent, PostEvent, EnumerateSessions, FindServerSessionByServerId,
       PushData, PushData, GetLocalDatabaseHandle, g_szDataDirectory, ExecuteAction, GetScreenInfoForUserSession, QueueNotificationMessage,
-      RegisterProblem, UnregisterProblem, s_timerThreadPool);
+      RegisterProblem, UnregisterProblem, s_timerThreadPool, RegisterScreenshotProvider, UnregisterScreenshotProvider);
    nxlog_debug_tag(DEBUG_TAG_STARTUP, 1, _T("Subagent API initialized"));
 
    DBInit();

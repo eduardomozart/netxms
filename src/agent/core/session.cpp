@@ -725,6 +725,10 @@ void CommSession::processCommand(NXCPMessage *request)
                   debugPrintf(6, _T("Session agent connector acquired"));
                   conn->takeScreenshot(&response);
                }
+               else if (TakeScreenshotFromProvider(sessionName, &response))
+               {
+                  debugPrintf(6, _T("Screenshot taken by registered provider"));
+               }
                else
                {
                   response.setField(VID_RCC, ERR_NO_SESSION_AGENT);

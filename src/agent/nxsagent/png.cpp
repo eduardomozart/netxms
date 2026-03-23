@@ -1,6 +1,6 @@
 /*
 ** NetXMS Session Agent
-** Copyright (C) 2003-2024 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -39,7 +39,76 @@ static void FlushBuffer(png_structp png_ptr)
 }
 
 /**
- * Save given bitmap as PNG
+ * Encode raw BGRA pixel buffer to PNG.
+ * pixels - raw pixel data in BGRA format (4 bytes per pixel)
+ * width, height - image dimensions
+ * stride - bytes per row (may include padding)
+ * bottomUp - if true, rows are stored bottom-to-top (Windows DIB format)
+ * Returns ByteStream with PNG data or nullptr on failure.
+ */
+ByteStream *EncodePngFromPixels(const uint8_t *pixels, int width, int height, int stride, bool bottomUp)
+{
+   png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+   if (png_ptr == nullptr)
+      return nullptr;
+
+   png_infop info_ptr = png_create_info_struct(png_ptr);
+   if (info_ptr == nullptr)
+   {
+      png_destroy_write_struct(&png_ptr, nullptr);
+      return nullptr;
+   }
+
+   ByteStream *pngData = nullptr;
+   BYTE *rowBuf = static_cast<BYTE*>(MemAlloc(width * 3));
+   if (rowBuf == nullptr)
+   {
+      png_destroy_write_struct(&png_ptr, &info_ptr);
+      return nullptr;
+   }
+
+   if (setjmp(png_jmpbuf(png_ptr)))
+   {
+      delete_and_null(pngData);
+      goto cleanup;
+   }
+
+   png_set_IHDR(png_ptr, info_ptr, width, height, 8,
+      PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+      PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+   pngData = new ByteStream(static_cast<size_t>(width * height * 3 + 4096));
+   pngData->setAllocationStep(65536);
+   png_set_write_fn(png_ptr, pngData, WriteData, FlushBuffer);
+   png_write_info(png_ptr, info_ptr);
+
+   for (int y = 0; y < height; y++)
+   {
+      int srcRow = bottomUp ? (height - y - 1) : y;
+      const uint8_t *src = pixels + srcRow * stride;
+
+      // Convert BGRA to RGB
+      for (int x = 0; x < width; x++)
+      {
+         rowBuf[x * 3 + 0] = src[x * 4 + 2]; // R (from B position in BGRA)
+         rowBuf[x * 3 + 1] = src[x * 4 + 1]; // G
+         rowBuf[x * 3 + 2] = src[x * 4 + 0]; // B (from R position in BGRA)
+      }
+      png_write_row(png_ptr, rowBuf);
+   }
+
+   png_write_end(png_ptr, info_ptr);
+
+cleanup:
+   png_destroy_write_struct(&png_ptr, &info_ptr);
+   MemFree(rowBuf);
+   return pngData;
+}
+
+#ifdef _WIN32
+
+/**
+ * Save given bitmap as PNG (Windows-specific)
  */
 ByteStream *SaveBitmapToPng(HBITMAP hBitmap)
 {
@@ -71,67 +140,13 @@ ByteStream *SaveBitmapToPng(HBITMAP hBitmap)
       return nullptr;
    }
 
-   const int width = bitmap.bmWidth;
-   const int height = bitmap.bmHeight;
-   const int depth = 8;
-   const int bytesPerPixel = 4;
-
-   png_structp png_ptr = nullptr;
-   png_infop info_ptr = nullptr;
-   ByteStream *pngData = nullptr;
-
-   png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-   if (png_ptr == nullptr)
-      goto png_create_write_struct_failed;
-
-   info_ptr = png_create_info_struct(png_ptr);
-   if (info_ptr == nullptr)
-      goto png_create_info_struct_failed;
-
-   if (setjmp(png_jmpbuf(png_ptr)))
-   {
-      delete_and_null(pngData);
-      goto png_failure;
-   }
-
-   png_set_IHDR(png_ptr,
-      info_ptr,
-      width,
-      height,
-      depth,
-      PNG_COLOR_TYPE_RGB,
-      PNG_INTERLACE_NONE,
-      PNG_COMPRESSION_TYPE_DEFAULT,
-      PNG_FILTER_TYPE_DEFAULT);
-   png_byte **row_pointers = (png_byte **)alloca(height * sizeof (png_byte *));
-   for(int y = 0; y < height; ++y)
-   {
-      png_byte *row = (png_byte *)&buffer[y * bitmap.bmWidth * 4];
-      row_pointers[height - y - 1] = row;
-
-      // Convert RGBA to BGR
-      for(int i = 0, j = 0; i < width * 4; i++)
-      {
-         png_byte r = row[i++];
-         png_byte g = row[i++];
-         png_byte b = row[i++];
-         row[j++] = b;
-         row[j++] = g;
-         row[j++] = r;
-      }
-   }
-
-   pngData = new ByteStream(bufferSize + 4096); // Use uncompresed bitmap size + 4K as buffer size
-   pngData->setAllocationStep(65536);
-   png_set_write_fn(png_ptr, pngData, WriteData, FlushBuffer);
-   png_set_rows(png_ptr, info_ptr, row_pointers);
-   png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
-
-png_failure:
-png_create_info_struct_failed:
-   png_destroy_write_struct (&png_ptr, &info_ptr);
-png_create_write_struct_failed:
    ReleaseDC(nullptr, hDC);
+
+   ByteStream *pngData = EncodePngFromPixels(buffer, bitmap.bmWidth, bitmap.bmHeight,
+      static_cast<int>(scanlineSize), true);
+
    MemFree(buffer);
    return pngData;
 }
+
+#endif /* _WIN32 */

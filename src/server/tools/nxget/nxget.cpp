@@ -290,6 +290,7 @@ static int GetUserSessions(AgentConnection *conn)
    Table table;
    table.addColumn(_T("ID"), DCI_DT_UINT, _T("ID"), true);
    table.addColumn(_T("User Name"));
+   table.addColumn(_T("Session Name"));
    table.addColumn(_T("Terminal"));
    table.addColumn(_T("State"));
    table.addColumn(_T("Client Name"));
@@ -307,23 +308,24 @@ static int GetUserSessions(AgentConnection *conn)
       table.addRow();
       table.set(0, s->id);
       table.set(1, s->loginName);
-      table.set(2, s->terminal);
-      table.set(3, s->connected ? _T("Active") : _T("Disconnected"));
-      table.set(4, s->clientName);
+      table.set(2, s->sessionName);
+      table.set(3, s->terminal);
+      table.set(4, s->connected ? _T("Active") : _T("Disconnected"));
+      table.set(5, s->clientName);
       if (s->clientAddress.isValid())
-         table.set(5, s->clientAddress.toString());
+         table.set(6, s->clientAddress.toString());
       if ((s->displayWidth > 0) && (s->displayHeight > 0) && (s->displayColorDepth > 0))
-         table.set(6, StringBuffer().append(s->displayWidth).append(_T('x')).append(s->displayHeight).append(_T('x')).append(s->displayColorDepth));
+         table.set(7, StringBuffer().append(s->displayWidth).append(_T('x')).append(s->displayHeight).append(_T('x')).append(s->displayColorDepth));
       if (s->connectTime > 0)
-         table.set(7, static_cast<int64_t>(s->connectTime));
+         table.set(8, static_cast<int64_t>(s->connectTime));
       if (s->loginTime > 0)
-         table.set(8, static_cast<int64_t>(s->loginTime));
+         table.set(9, static_cast<int64_t>(s->loginTime));
       if ((s->connectTime > 0) || (s->loginTime > 0))
-         table.set(9, static_cast<int64_t>(s->idleTime));
+         table.set(10, static_cast<int64_t>(s->idleTime));
       if (s->agentType != -1)
-         table.set(10, s->agentType);
+         table.set(11, s->agentType);
       if (s->agentPID != 0)
-         table.set(11, s->agentPID);
+         table.set(12, s->agentPID);
    }
    if (s_tableOutputDelimiter != 0)
       table.dump(stdout, true, s_tableOutputDelimiter);

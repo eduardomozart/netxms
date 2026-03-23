@@ -618,6 +618,9 @@ LONG H_SessionAgents(const TCHAR *cmd, const TCHAR *arg, Table *value, AbstractC
    value->addColumn(_T("STATE"), DCI_DT_INT, _T("State"));
    value->addColumn(_T("AGENT_TYPE"), DCI_DT_INT, _T("Agent type"));
    value->addColumn(_T("AGENT_PID"), DCI_DT_INT, _T("Agent PID"));
+   value->addColumn(_T("SCREEN_WIDTH"), DCI_DT_UINT, _T("Screen width"));
+   value->addColumn(_T("SCREEN_HEIGHT"), DCI_DT_UINT, _T("Screen height"));
+   value->addColumn(_T("SCREEN_BPP"), DCI_DT_UINT, _T("Screen BPP"));
 
    s_lock.readLock();
    for(int i = 0; i < s_agents.size(); i++)
@@ -631,6 +634,14 @@ LONG H_SessionAgents(const TCHAR *cmd, const TCHAR *arg, Table *value, AbstractC
       value->set(4, c->getSessionState());
       value->set(5, c->isUserAgent() ? 1 : 0);
       value->set(6, c->getProcessId());
+
+      uint32_t width = 0, height = 0, bpp = 0;
+      if (c->getScreenInfo(&width, &height, &bpp))
+      {
+         value->set(7, width);
+         value->set(8, height);
+         value->set(9, bpp);
+      }
    }
    s_lock.unlock();
 
@@ -858,4 +869,92 @@ bool GetScreenInfoForUserSession(uint32_t sessionId, uint32_t *width, uint32_t *
 
    bool success = connector->getScreenInfo(width, height, bpp);
    return success;
+}
+
+/**
+ * Registered screenshot provider entry
+ */
+struct ScreenshotProviderEntry
+{
+   TCHAR sessionName[256];
+   ScreenshotProviderCallback callback;
+};
+
+/**
+ * Registered screenshot providers
+ */
+static ObjectArray<ScreenshotProviderEntry> s_screenshotProviders(4, 4, Ownership::True);
+static Mutex s_screenshotProviderLock;
+
+/**
+ * Register screenshot provider for given session name
+ */
+void RegisterScreenshotProvider(const TCHAR *sessionName, ScreenshotProviderCallback callback)
+{
+   s_screenshotProviderLock.lock();
+
+   // Check for existing provider with same name and replace
+   bool found = false;
+   for (int i = 0; i < s_screenshotProviders.size(); i++)
+   {
+      if (!_tcsicmp(s_screenshotProviders.get(i)->sessionName, sessionName))
+      {
+         s_screenshotProviders.get(i)->callback = callback;
+         found = true;
+         break;
+      }
+   }
+
+   if (!found)
+   {
+      auto entry = new ScreenshotProviderEntry();
+      _tcslcpy(entry->sessionName, sessionName, 256);
+      entry->callback = callback;
+      s_screenshotProviders.add(entry);
+   }
+
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("Screenshot provider registered for session \"%s\""), sessionName);
+   s_screenshotProviderLock.unlock();
+}
+
+/**
+ * Unregister screenshot provider for given session name
+ */
+void UnregisterScreenshotProvider(const TCHAR *sessionName)
+{
+   s_screenshotProviderLock.lock();
+   for (int i = 0; i < s_screenshotProviders.size(); i++)
+   {
+      if (!_tcsicmp(s_screenshotProviders.get(i)->sessionName, sessionName))
+      {
+         s_screenshotProviders.remove(i);
+         nxlog_debug_tag(DEBUG_TAG, 3, _T("Screenshot provider unregistered for session \"%s\""), sessionName);
+         break;
+      }
+   }
+   s_screenshotProviderLock.unlock();
+}
+
+/**
+ * Try to take screenshot from a registered provider
+ */
+bool TakeScreenshotFromProvider(const TCHAR *sessionName, NXCPMessage *response)
+{
+   ScreenshotProviderCallback callback = nullptr;
+
+   s_screenshotProviderLock.lock();
+   for (int i = 0; i < s_screenshotProviders.size(); i++)
+   {
+      if (!_tcsicmp(s_screenshotProviders.get(i)->sessionName, sessionName))
+      {
+         callback = s_screenshotProviders.get(i)->callback;
+         break;
+      }
+   }
+   s_screenshotProviderLock.unlock();
+
+   if (callback != nullptr)
+      return callback(sessionName, response);
+
+   return false;
 }

@@ -1117,6 +1117,17 @@ struct NETXMS_SUBAGENT_INFO
 };
 
 /**
+ * Screenshot provider callback type.
+ * Called by core agent when CMD_TAKE_SCREENSHOT arrives for a matching session name.
+ * Must set VID_RCC and VID_FILE_DATA on the response message.
+ * Returns true if the session name is handled by this provider, false otherwise.
+ */
+typedef bool (*ScreenshotProviderCallback)(const TCHAR *sessionName, NXCPMessage *response);
+
+void LIBNXAGENT_EXPORTABLE AgentRegisterScreenshotProvider(const TCHAR *sessionName, ScreenshotProviderCallback callback);
+void LIBNXAGENT_EXPORTABLE AgentUnregisterScreenshotProvider(const TCHAR *sessionName);
+
+/**
  * Inline functions for returning parameters
  */
 static inline void ret_string(TCHAR *rbuf, const TCHAR *value)

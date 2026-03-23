@@ -932,6 +932,9 @@ shared_ptr<SessionAgentConnector> AcquireSessionAgentConnector(uint32_t sessionI
 void ShutdownSessionAgents(bool restart);
 bool IsUserAgentInstalled();
 bool GetScreenInfoForUserSession(uint32_t sessionId, uint32_t *width, uint32_t *height, uint32_t *bpp);
+void RegisterScreenshotProvider(const TCHAR *sessionName, ScreenshotProviderCallback callback);
+void UnregisterScreenshotProvider(const TCHAR *sessionName);
+bool TakeScreenshotFromProvider(const TCHAR *sessionName, NXCPMessage *response);
 
 uint32_t GenerateMessageId();
 

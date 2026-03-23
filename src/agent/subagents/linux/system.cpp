@@ -89,8 +89,6 @@ LONG H_UserSessionTable(const TCHAR *param, const TCHAR *arg, Table *value, Abst
    value->addColumn(_T("CONNECT_TIMESTAMP"), DCI_DT_UINT64, _T("Connect time"));
    value->addColumn(_T("LOGON_TIMESTAMP"), DCI_DT_UINT64, _T("Logon time"));
    value->addColumn(_T("IDLE_TIME"), DCI_DT_UINT, _T("Idle for"));
-   value->addColumn(_T("AGENT_TYPE"), DCI_DT_INT, _T("Agent type"));
-   value->addColumn(_T("AGENT_PID"), DCI_DT_UINT, _T("Agent PID"));
 
    char tty[128] = "/dev/";
    struct utmp rec;
@@ -116,9 +114,6 @@ LONG H_UserSessionTable(const TCHAR *param, const TCHAR *arg, Table *value, Abst
       struct stat st;
       if (stat(tty, &st) == 0)
          value->set(9, static_cast<int64_t>(time(nullptr) - st.st_atime));
-
-      value->set(10, -1);
-      value->set(11, 0);
    }
    fclose(f);
 

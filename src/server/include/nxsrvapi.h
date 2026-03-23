@@ -1049,10 +1049,11 @@ struct LIBNXSRV_EXPORTABLE UserSession
 {
    uint32_t id;
    MutableString loginName;
+   MutableString sessionName;
    MutableString terminal;
-   bool connected;
    MutableString clientName;
    InetAddress clientAddress;
+   bool connected;
    int32_t displayWidth;
    int32_t displayHeight;
    int32_t displayColorDepth;
@@ -1092,6 +1093,7 @@ struct LIBNXSRV_EXPORTABLE UserSession
       msg->setFieldFromTime(baseId++, idleTime);
       msg->setField(baseId++, agentPID);
       msg->setField(baseId++, agentType);
+      msg->setField(baseId++, sessionName);
    }
 };
 

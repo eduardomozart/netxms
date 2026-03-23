@@ -1,6 +1,6 @@
 /*
 ** NetXMS Session Agent
-** Copyright (C) 2003-2014 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -29,9 +29,20 @@
 #include <nms_agent.h>
 #include <nms_cscp.h>
 #include <nxcpapi.h>
+
+#ifdef _WIN32
 #include <wtsapi32.h>
+#else
+#include <pwd.h>
+#include <unistd.h>
+#endif
 
 void TakeScreenshot(NXCPMessage *response);
+
+#ifdef _WIN32
 ByteStream *SaveBitmapToPng(HBITMAP hBitmap);
+#endif
+
+ByteStream *EncodePngFromPixels(const uint8_t *pixels, int width, int height, int stride, bool bottomUp);
 
 #endif

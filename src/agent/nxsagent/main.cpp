@@ -1,6 +1,6 @@
 /*
 ** NetXMS Session Agent
-** Copyright (C) 2003-2024 Victor Kirhenshtein
+** Copyright (C) 2003-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -23,11 +23,17 @@
 #include "nxsagent.h"
 #include <netxms_getopt.h>
 #include <netxms-version.h>
-#include <shlobj.h>
-#include <shellapi.h>
 
 #ifdef _WIN32
+#include <shlobj.h>
+#include <shellapi.h>
 #include <Psapi.h>
+#else
+#include <sys/stat.h>
+#include <utmp.h>
+#if HAVE_X11
+#include <X11/Xlib.h>
+#endif
 #endif
 
 NETXMS_EXECUTABLE_HEADER(nxsagent)
@@ -57,6 +63,7 @@ static bool s_hideConsole = true;
  */
 static void InitLogging()
 {
+#ifdef _WIN32
    TCHAR path[MAX_PATH], *appDataPath;
    if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &appDataPath) == S_OK)
    {
@@ -71,6 +78,17 @@ static void InitLogging()
    CreateDirectoryTree(path);
 
    _tcscat(path, _T("\\nxsagent.log"));
+#else
+   TCHAR path[MAX_PATH];
+   const char *home = getenv("HOME");
+   if (home != nullptr)
+      _sntprintf(path, MAX_PATH, _T("%hs/.local/share/nxsagent"), home);
+   else
+      _tcscpy(path, _T("/tmp/nxsagent"));
+   CreateDirectoryTree(path);
+
+   _tcslcat(path, _T("/nxsagent.log"), MAX_PATH);
+#endif
    nxlog_open(path, s_hideConsole ? 0 : NXLOG_PRINT_TO_STDOUT);
    nxlog_set_debug_level(9);
 }
@@ -103,7 +121,7 @@ static bool ConnectToMasterAgent()
       s_socket = INVALID_SOCKET;
       return false;
    }
-   
+
    return true;
 }
 
@@ -128,6 +146,7 @@ static void Login()
 {
    NXCPMessage msg(CMD_LOGIN, 0);
 
+#ifdef _WIN32
    DWORD sid;
    ProcessIdToSessionId(GetCurrentProcessId(), &sid);
    msg.setField(VID_SESSION_ID, sid);
@@ -191,6 +210,65 @@ static void Login()
    {
       msg.setField(VID_USER_NAME, userName);
    }
+#else
+   msg.setField(VID_PROCESS_ID, static_cast<uint32_t>(getpid()));
+   msg.setField(VID_SESSION_STATE, static_cast<int16_t>(USER_SESSION_ACTIVE));
+
+   // Determine display identifier from environment
+   const char *display = getenv("DISPLAY");
+   const char *waylandDisplay = getenv("WAYLAND_DISPLAY");
+   const char *displayId = nullptr;
+   if (display != nullptr && *display != 0)
+      displayId = display;
+   else if (waylandDisplay != nullptr && *waylandDisplay != 0)
+      displayId = waylandDisplay;
+
+   // Find matching utmp entry to get session ID (ut_pid) that matches System.ActiveUserSessions
+   uint32_t sid = 0;
+   if (displayId != nullptr)
+   {
+      FILE *f = fopen(UTMP_FILE, "r");
+      if (f != nullptr)
+      {
+         struct utmp rec;
+         while (fread(&rec, sizeof(rec), 1, f) == 1)
+         {
+            if (rec.ut_type == USER_PROCESS && !strncmp(rec.ut_host, displayId, sizeof(rec.ut_host)))
+            {
+               sid = static_cast<uint32_t>(rec.ut_pid);
+               nxlog_debug(3, _T("Login: matched utmp entry for display %hs: pid=%u, terminal=%hs"),
+                  displayId, sid, rec.ut_line);
+               break;
+            }
+         }
+         fclose(f);
+      }
+   }
+   msg.setField(VID_SESSION_ID, sid);
+
+   // Session name: use display identifier
+   if (displayId != nullptr)
+   {
+      TCHAR sessionName[256];
+      _sntprintf(sessionName, 256, _T("%hs"), displayId);
+      msg.setField(VID_NAME, sessionName);
+      nxlog_debug(3, _T("Login: session name set to \"%s\""), sessionName);
+   }
+   else
+   {
+      msg.setField(VID_NAME, _T("Console"));
+      nxlog_debug(3, _T("Login: session name set to \"Console\" (no display variable)"));
+   }
+
+   // User name
+   struct passwd *pw = getpwuid(getuid());
+   if (pw != nullptr)
+   {
+      TCHAR userName[256];
+      _sntprintf(userName, 256, _T("%hs"), pw->pw_name);
+      msg.setField(VID_USER_NAME, userName);
+   }
+#endif
 
    SendMsg(msg);
 }
@@ -202,6 +280,7 @@ static void ShutdownAgent(bool restart)
 {
    nxlog_debug(1, _T("Shutdown request with restart option %s"), restart ? _T("ON") : _T("OFF"));
 
+#ifdef _WIN32
    if (restart)
    {
       TCHAR path[MAX_PATH];
@@ -240,6 +319,21 @@ static void ShutdownAgent(bool restart)
       }
    }
    ExitProcess(0);
+#else
+   if (restart)
+   {
+      char exePath[MAX_PATH];
+      ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+      if (len > 0)
+      {
+         exePath[len] = 0;
+         nxlog_debug(1, _T("Restarting session agent: %hs"), exePath);
+         execl(exePath, exePath, s_hideConsole ? "-H" : "-f", nullptr);
+      }
+      nxlog_debug(1, _T("Failed to restart session agent"));
+   }
+   _exit(0);
+#endif
 }
 
 /**
@@ -247,6 +341,7 @@ static void ShutdownAgent(bool restart)
  */
 static void GetScreenInfo(NXCPMessage *msg)
 {
+#ifdef _WIN32
    DEVMODE dm;
    if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm))
    {
@@ -258,6 +353,21 @@ static void GetScreenInfo(NXCPMessage *msg)
    {
       nxlog_debug(5, _T("Call to EnumDisplaySettings failed"));
    }
+#elif HAVE_X11
+   Display *display = XOpenDisplay(nullptr);
+   if (display != nullptr)
+   {
+      Screen *screen = DefaultScreenOfDisplay(display);
+      msg->setField(VID_SCREEN_WIDTH, static_cast<uint32_t>(screen->width));
+      msg->setField(VID_SCREEN_HEIGHT, static_cast<uint32_t>(screen->height));
+      msg->setField(VID_SCREEN_BPP, static_cast<uint32_t>(DefaultDepthOfScreen(screen)));
+      XCloseDisplay(display);
+   }
+   else
+   {
+      nxlog_debug(5, _T("XOpenDisplay failed in GetScreenInfo"));
+   }
+#endif
 }
 
 /**
@@ -421,23 +531,27 @@ int main(int argc, char *argv[])
 #endif
 
    int ch;
+#ifdef _WIN32
    while((ch = getoptW(argc, argv, "fHv")) != -1)
+#else
+   while((ch = getopt(argc, argv, "fHv")) != -1)
+#endif
    {
-		switch(ch)
-		{
+      switch(ch)
+      {
          case 'f':   // run in foreground
             s_hideConsole = false;
             break;
          case 'H':   // hide console (for compatibility)
             s_hideConsole = true;
             break;
-		   case 'v':   // version
+         case 'v':   // version
             _tprintf(_T("NetXMS Session Agent Version ") NETXMS_VERSION_STRING _T(" Build ") NETXMS_BUILD_TAG _T("\n"));
             exit(0);
-			   break;
-		   case '?':
-			   return 3;
-		}
+            break;
+         case '?':
+            return 3;
+      }
    }
 
 #ifdef _WIN32

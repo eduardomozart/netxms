@@ -274,7 +274,7 @@ public class UserSessionsView extends ObjectView
          for(Object o : selection.toList())
          {
             UserSession s = (UserSession)o;
-            openView(new ScreenshotView((AbstractNode)getObject(), s.getTerminal(), s.getLoginName(), getObjectId()));
+            openView(new ScreenshotView((AbstractNode)getObject(), s.getScreenshotSessionName(), s.getLoginName(), getObjectId()));
          }
       }
    }

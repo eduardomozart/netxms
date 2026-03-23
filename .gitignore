@@ -141,6 +141,7 @@ target
 /src/agent/core/nxagentd
 /src/agent/core/static_subagents.cpp
 /src/agent/install/Output
+/src/agent/nxsagent/nxsagent
 /src/agent/nxuseragent/MSG00001.bin
 /src/agent/nxuseragent/messages.c
 /src/agent/nxuseragent/messages.h

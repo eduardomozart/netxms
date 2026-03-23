@@ -40,6 +40,8 @@ static void (*s_fpQueueNotificationMessage)(NXCPMessage*) = nullptr;
 static void (*s_fpRegisterProblem)(int, const TCHAR*, const TCHAR*) = nullptr;
 static void (*s_fpUnregisterProblem)(const TCHAR*) = nullptr;
 static ThreadPool *s_timerThreadPool = nullptr;
+static void (*s_fpRegisterScreenshotProvider)(const TCHAR*, ScreenshotProviderCallback) = nullptr;
+static void (*s_fpUnregisterScreenshotProvider)(const TCHAR*) = nullptr;
 
 /**
  * Initialize subagent API
@@ -59,7 +61,9 @@ void LIBNXAGENT_EXPORTABLE InitSubAgentAPI(
       void (*queueNotificationMessage)(NXCPMessage*),
       void (*registerProblem)(int, const TCHAR*, const TCHAR*),
       void (*unregisterProblem)(const TCHAR*),
-      ThreadPool *timerThreadPool)
+      ThreadPool *timerThreadPool,
+      void (*registerScreenshotProvider)(const TCHAR*, ScreenshotProviderCallback),
+      void (*unregisterScreenshotProvider)(const TCHAR*))
 {
    s_fpPostEvent1 = postEvent1;
    s_fpPostEvent2 = postEvent2;
@@ -76,6 +80,8 @@ void LIBNXAGENT_EXPORTABLE InitSubAgentAPI(
    s_fpRegisterProblem = registerProblem;
    s_fpUnregisterProblem = unregisterProblem;
    s_timerThreadPool = timerThreadPool;
+   s_fpRegisterScreenshotProvider = registerScreenshotProvider;
+   s_fpUnregisterScreenshotProvider = unregisterScreenshotProvider;
 }
 
 /**
@@ -267,4 +273,22 @@ void LIBNXAGENT_EXPORTABLE AgentSetTimer(uint32_t delay, std::function<void()> c
 {
    if (s_timerThreadPool != nullptr && !IsShutdownInProgress())
       ThreadPoolScheduleRelative(s_timerThreadPool, delay, callback);
+}
+
+/**
+ * Register screenshot provider for given session name
+ */
+void LIBNXAGENT_EXPORTABLE AgentRegisterScreenshotProvider(const TCHAR *sessionName, ScreenshotProviderCallback callback)
+{
+   if (s_fpRegisterScreenshotProvider != nullptr)
+      s_fpRegisterScreenshotProvider(sessionName, callback);
+}
+
+/**
+ * Unregister screenshot provider for given session name
+ */
+void LIBNXAGENT_EXPORTABLE AgentUnregisterScreenshotProvider(const TCHAR *sessionName)
+{
+   if (s_fpUnregisterScreenshotProvider != nullptr)
+      s_fpUnregisterScreenshotProvider(sessionName);
 }

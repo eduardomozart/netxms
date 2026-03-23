@@ -72,6 +72,8 @@ event.proc	Event processor
 ext.provider	Agent external provider
 exec		External function execution
 
+fbdev		Framebuffer screenshot subagent
+
 filemgr		File manager subagent
 filemon		File monitoring
 file.download	Server-side file download
@@ -144,6 +146,8 @@ npe.tsre	Time series regression engine
 
 ntcb		NTCB module
 ntcb.session	NTCB module sessions
+
+nxsagent	Session agent (nxsagent)
 
 nxsl.security	NXSL security context access validation
 nxsl.ssh	NXSL SSH session operations
