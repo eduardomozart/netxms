@@ -37,6 +37,7 @@ public class Template extends GenericObject implements PollingTarget
 	private String autoApplyFilter;
    private int numDataCollectionItems;
    private int numPolicies;
+   private String exclusionGroup;
 
 	/**
 	 * Create from NXCP message.
@@ -53,6 +54,7 @@ public class Template extends GenericObject implements PollingTarget
 		autoApplyFlags = msg.getFieldAsInt32(NXCPCodes.VID_AUTOBIND_FLAGS);
       numDataCollectionItems = msg.getFieldAsInt32(NXCPCodes.VID_NUM_ITEMS);
       numPolicies = msg.getFieldAsInt32(NXCPCodes.VID_POLICY_COUNT);
+      exclusionGroup = msg.getFieldAsString(NXCPCodes.VID_EXCLUSION_GROUP);
 	}
 
 	/**
@@ -118,6 +120,16 @@ public class Template extends GenericObject implements PollingTarget
    public int getNumPolicies()
    {
       return numPolicies;
+   }
+
+   /**
+    * Get exclusion group for this template.
+    *
+    * @return exclusion group name or null
+    */
+   public String getExclusionGroup()
+   {
+      return exclusionGroup;
    }
 
    /**

@@ -36,6 +36,7 @@ import org.netxms.client.objects.interfaces.AutoBindObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.modules.nxsl.widgets.ScriptEditor;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
@@ -48,6 +49,7 @@ public class AutoApply extends ObjectPropertyPage
    private I18n i18n = LocalizationHelper.getI18n(AutoApply.class);
 
    private Template template;
+   private LabeledText exclusionGroupField;
 	private Button checkboxEnableApply;
 	private Button checkboxEnableRemove;
 	private Label gracePeriodInfo;
@@ -55,6 +57,7 @@ public class AutoApply extends ObjectPropertyPage
 	private boolean initialBind;
    private boolean initialUnbind;
 	private String initialApplyFilter;
+	private String initialExclusionGroup;
 	
    /**
     * Create "auto apply" property page for given object
@@ -81,12 +84,18 @@ public class AutoApply extends ObjectPropertyPage
 		initialBind = template.isAutoApplyEnabled();
 		initialUnbind = template.isAutoRemoveEnabled();
 		initialApplyFilter = template.getAutoApplyFilter();
-		
+		initialExclusionGroup = (template.getExclusionGroup() != null) ? template.getExclusionGroup() : "";
+
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;
 		layout.marginWidth = 0;
 		layout.marginHeight = 0;
       dialogArea.setLayout(layout);
+
+      exclusionGroupField = new LabeledText(dialogArea, SWT.NONE);
+      exclusionGroupField.setLabel(i18n.tr("Exclusion group"));
+      exclusionGroupField.setText(initialExclusionGroup);
+      exclusionGroupField.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
       // Enable/disable check box
       checkboxEnableApply = new Button(dialogArea, SWT.CHECK);
@@ -180,20 +189,22 @@ public class AutoApply extends ObjectPropertyPage
 	{
 	   boolean apply = checkboxEnableApply.getSelection();
       boolean remove = checkboxEnableRemove.getSelection();
-			
-		if ((apply == initialBind) && (remove == initialUnbind) && initialApplyFilter.equals(filterSource.getText()))
+      String exclusionGroup = exclusionGroupField.getText().trim();
+
+		if ((apply == initialBind) && (remove == initialUnbind) && initialApplyFilter.equals(filterSource.getText()) && initialExclusionGroup.equals(exclusionGroup))
 			return true;		// Nothing to apply
-		
+
 		if (isApply)
 			setValid(false);
-		
+
 		final NXCSession session = Registry.getSession();
 		final NXCObjectModificationData md = new NXCObjectModificationData(object.getObjectId());
 		md.setAutoBindFilter(filterSource.getText());
       int flags = ((Template)object).getAutoApplyFlags();
-      flags = apply ? flags | AutoBindObject.OBJECT_BIND_FLAG : flags & ~AutoBindObject.OBJECT_BIND_FLAG;  
-      flags = remove ? flags | AutoBindObject.OBJECT_UNBIND_FLAG : flags & ~AutoBindObject.OBJECT_UNBIND_FLAG;  
+      flags = apply ? flags | AutoBindObject.OBJECT_BIND_FLAG : flags & ~AutoBindObject.OBJECT_BIND_FLAG;
+      flags = remove ? flags | AutoBindObject.OBJECT_UNBIND_FLAG : flags & ~AutoBindObject.OBJECT_UNBIND_FLAG;
       md.setAutoBindFlags(flags);
+      md.setExclusionGroup(exclusionGroup);
 
       new Job(i18n.tr("Updating auto-apply filter"), null, messageArea) {
 			@Override
@@ -203,6 +214,7 @@ public class AutoApply extends ObjectPropertyPage
 		      initialBind = apply;
 		      initialUnbind = remove;
 				initialApplyFilter = md.getAutoBindFilter();
+				initialExclusionGroup = exclusionGroup;
 			}
 
 			@Override

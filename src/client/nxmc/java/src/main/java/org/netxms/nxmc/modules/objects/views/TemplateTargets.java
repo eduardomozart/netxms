@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2024 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.SessionListener;
 import org.netxms.client.SessionNotification;
+import org.netxms.client.NXCException;
+import org.netxms.client.constants.RCC;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Template;
@@ -51,6 +53,7 @@ import org.netxms.nxmc.modules.objects.views.helpers.TemplateTargetsComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.TemplateTargetsFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.TemplateTargetsLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
@@ -251,19 +254,43 @@ public class TemplateTargets extends ObjectView
       if (dlg.open() != Window.OK)
          return;
 
-      new Job(i18n.tr("Binding objects"), this) {
+      new Job(i18n.tr("Applying template"), this) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
             List<AbstractObject> objects = dlg.getSelectedObjects();
-            for(AbstractObject o : objects)
-               session.bindObject(parentId, o.getObjectId());
+            for (AbstractObject o : objects)
+            {
+               try
+               {
+                  session.applyTemplate(parentId, o.getObjectId());
+               }
+               catch(NXCException e)
+               {
+                  if (e.getErrorCode() == RCC.TEMPLATE_EXCLUSION_CONFLICT)
+                  {
+                     final String conflictingName = e.getAdditionalInfo();
+                     final boolean[] confirmed = new boolean[1];
+                     getDisplay().syncExec(() -> {
+                        confirmed[0] = MessageDialogHelper.openQuestion(getWindow().getShell(),
+                              i18n.tr("Template Exclusion Conflict"),
+                              i18n.tr("Template \"{0}\" from the same exclusion group is already applied. Do you want to replace it?", conflictingName));
+                     });
+                     if (confirmed[0])
+                        session.applyTemplate(parentId, o.getObjectId(), true);
+                  }
+                  else
+                  {
+                     throw e;
+                  }
+               }
+            }
          }
 
          @Override
          protected String getErrorMessage()
          {
-            return i18n.tr("Cannot bind objects");
+            return i18n.tr("Cannot apply template");
          }
       }.start();
    }

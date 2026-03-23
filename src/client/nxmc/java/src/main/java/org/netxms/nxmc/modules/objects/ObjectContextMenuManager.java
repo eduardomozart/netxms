@@ -38,7 +38,9 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
+import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
+import org.netxms.client.constants.RCC;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Asset;
@@ -68,6 +70,7 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.agentmanagement.SendUserAgentNotificationAction;
 import org.netxms.nxmc.modules.agentmanagement.dialogs.PackageSelectionDialog;
 import org.netxms.nxmc.modules.agentmanagement.views.AgentConfigurationEditor;
+import org.netxms.nxmc.modules.agentmanagement.views.AgentExplorer;
 import org.netxms.nxmc.modules.assetmanagement.LinkAssetToObjectAction;
 import org.netxms.nxmc.modules.assetmanagement.LinkObjectToAssetAction;
 import org.netxms.nxmc.modules.assetmanagement.UnlinkAssetFromObjectAction;
@@ -94,18 +97,17 @@ import org.netxms.nxmc.modules.objects.actions.ObjectAction;
 import org.netxms.nxmc.modules.objects.actions.SetInterfacePeerInformation;
 import org.netxms.nxmc.modules.objects.dialogs.DecommissionNodeDialog;
 import org.netxms.nxmc.modules.objects.dialogs.EffectiveRightsDialog;
-import org.netxms.nxmc.modules.objects.dialogs.StatusExplanationDialog;
 import org.netxms.nxmc.modules.objects.dialogs.ObjectSelectionDialog;
 import org.netxms.nxmc.modules.objects.dialogs.RelatedObjectSelectionDialog;
 import org.netxms.nxmc.modules.objects.dialogs.RelatedObjectSelectionDialog.RelationType;
 import org.netxms.nxmc.modules.objects.dialogs.RelatedTemplateObjectSelectionDialog;
+import org.netxms.nxmc.modules.objects.dialogs.StatusExplanationDialog;
 import org.netxms.nxmc.modules.objects.dialogs.TemplateDeleteDialog;
 import org.netxms.nxmc.modules.objects.views.L2PathView;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.modules.objects.views.RemoteControlView;
 import org.netxms.nxmc.modules.objects.views.RouteView;
 import org.netxms.nxmc.modules.objects.views.ScreenshotView;
-import org.netxms.nxmc.modules.agentmanagement.views.AgentExplorer;
 import org.netxms.nxmc.modules.snmp.views.MibExplorer;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
@@ -1446,23 +1448,45 @@ public class ObjectContextMenuManager extends MenuManager
          return;
 
       final NXCSession session = Registry.getSession();
-      new Job(i18n.tr("Binding objects"), view) {
+      new Job(i18n.tr("Applying template"), view) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
-            List<AbstractObject> objects = dlg.getSelectedObjects();
-            for(Long target : targetsId)
-               session.bindObject(objects.get(0).getObjectId(), target);
+            long templateId = dlg.getSelectedObjects().get(0).getObjectId();
+            for (Long target : targetsId)
+            {
+               try
+               {
+                  session.applyTemplate(templateId, target);
+               }
+               catch(NXCException e)
+               {
+                  if (e.getErrorCode() == RCC.TEMPLATE_EXCLUSION_CONFLICT)
+                  {
+                     final String conflictingName = e.getAdditionalInfo();
+                     runInUIThread(() -> {
+                        if (MessageDialogHelper.openQuestion(view.getWindow().getShell(), i18n.tr("Template Exclusion Conflict"),
+                              i18n.tr("Template \"{0}\" from the same exclusion group is already applied. Do you want to replace it?", conflictingName)))
+                        {
+                           forceApplyTemplate(templateId, target);
+                        }
+                     });
+                  }
+                  else
+                  {
+                     throw e;
+                  }
+               }
+            }
          }
 
          @Override
          protected String getErrorMessage()
          {
-            return i18n.tr("Cannot bind objects");
+            return i18n.tr("Cannot apply template");
          }
       }.start();
    }
-
 
    /**
     * Remove selected in dialog templates from selected in tree data collection targets
@@ -1482,7 +1506,7 @@ public class ObjectContextMenuManager extends MenuManager
          return;
 
       final NXCSession session = Registry.getSession();
-      new Job(i18n.tr("Binding objects"), view) {
+      new Job(i18n.tr("Removing template"), view) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
@@ -1495,7 +1519,7 @@ public class ObjectContextMenuManager extends MenuManager
          @Override
          protected String getErrorMessage()
          {
-            return i18n.tr("Cannot bind objects");
+            return i18n.tr("Cannot remove template");
          }
       }.start();
    }
@@ -1509,6 +1533,7 @@ public class ObjectContextMenuManager extends MenuManager
       if (parentId == 0)
          return;
 
+      final boolean isTemplate = getObjectFromSelection() instanceof Template;
       Set<Integer> filter;
       if (getObjectFromSelection() instanceof Circuit)
          filter = ObjectSelectionDialog.createInterfaceSelectionFilter();
@@ -1524,14 +1549,76 @@ public class ObjectContextMenuManager extends MenuManager
          protected void run(IProgressMonitor monitor) throws Exception
          {
             List<AbstractObject> objects = dlg.getSelectedObjects();
-            for(AbstractObject o : objects)
-               session.bindObject(parentId, o.getObjectId());
+            for (AbstractObject o : objects)
+            {
+               final long targetId = o.getObjectId();
+               if (isTemplate)
+               {
+                  try
+                  {
+                     session.applyTemplate(parentId, targetId);
+                  }
+                  catch(NXCException e)
+                  {
+                     if (e.getErrorCode() == RCC.TEMPLATE_EXCLUSION_CONFLICT)
+                     {
+                        final String conflictingName = e.getAdditionalInfo();
+                        runInUIThread(() -> {
+                           if (MessageDialogHelper.openQuestion(view.getWindow().getShell(),
+                                 i18n.tr("Template Exclusion Conflict"),
+                                 i18n.tr("Template \"{0}\" from the same exclusion group is already applied. Do you want to replace it?", conflictingName)))
+                           {
+                              System.out.println("User chose to replace conflicting template");
+                              forceApplyTemplate(parentId, targetId);
+                           }
+                           else
+                           {
+                              System.out.println("User chose to keep existing template");
+                           }
+                        });
+                     }
+                     else
+                     {
+                        throw e;
+                     }
+                  }
+               }
+               else
+               {
+                  session.bindObject(parentId, targetId);
+               }
+            }
          }
 
          @Override
          protected String getErrorMessage()
          {
             return i18n.tr("Cannot bind objects");
+         }
+      }.start();
+   }
+
+   /**
+    * Force apply template to data collection target without asking user about exclusion conflict. This method should be called only
+    * after user confirmation.
+    *
+    * @param templateId ID of template to apply
+    * @param targetId ID of data collection target to which template should be applied
+    */
+   private void forceApplyTemplate(long templateId, long targetId)
+   {
+      final NXCSession session = Registry.getSession();
+      new Job(i18n.tr("Applying template"), view) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            session.applyTemplate(templateId, targetId, true);
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Cannot apply template");
          }
       }.start();
    }

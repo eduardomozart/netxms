@@ -99,14 +99,26 @@ void Template::calculateCompoundStatus(bool forcedRecalc)
 bool Template::saveToDatabase(DB_HANDLE hdb)
 {
    bool success = super::saveToDatabase(hdb);
-   if (success)
+   if (success && (m_modified & MODIFY_OTHER))
    {
-      if ((m_modified & MODIFY_OTHER) && !IsDatabaseRecordExist(hdb, _T("templates"), _T("id"), m_id))
+      if (IsDatabaseRecordExist(hdb, _T("templates"), _T("id"), m_id))
       {
-         DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO templates (id) VALUES (?)"));
+         DB_STATEMENT hStmt = DBPrepare(hdb, _T("UPDATE templates SET exclusion_group=? WHERE id=?"));
+         if (hStmt != nullptr)
+         {
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, m_exclusionGroup, DB_BIND_STATIC);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, m_id);
+            success = DBExecute(hStmt);
+            DBFreeStatement(hStmt);
+         }
+      }
+      else
+      {
+         DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO templates (id,exclusion_group) VALUES (?,?)"));
          if (hStmt != nullptr)
          {
             DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
+            DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, m_exclusionGroup, DB_BIND_STATIC);
             success = DBExecute(hStmt);
             DBFreeStatement(hStmt);
          }
@@ -211,6 +223,31 @@ bool Template::loadFromDatabase(DB_HANDLE hdb, uint32_t id, DB_STATEMENT *prepar
 
    if (success)
    {
+      DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT exclusion_group FROM templates WHERE id=?"));
+      if (hStmt != nullptr)
+      {
+         DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, id);
+         DB_RESULT hResult = DBSelectPrepared(hStmt);
+         if (hResult != nullptr)
+         {
+            if (DBGetNumRows(hResult) > 0)
+               m_exclusionGroup = DBGetFieldAsSharedString(hResult, 0, 0);
+            DBFreeResult(hResult);
+         }
+         else
+         {
+            success = false;
+         }
+         DBFreeStatement(hStmt);
+      }
+      else
+      {
+         success = false;
+      }
+   }
+
+   if (success)
+   {
       DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT guid,policy_type FROM ap_common WHERE owner_id=?"));
       if (hStmt != nullptr)
       {
@@ -292,6 +329,7 @@ void Template::createExportRecord(json_t *array)
    json_object_set_new(templateObj, "guid", json_string_t(m_guid.toString()));
    json_object_set_new(templateObj, "name", json_string_t(m_name));
    json_object_set_new(templateObj, "comments", json_string_t(m_comments));
+   json_object_set_new(templateObj, "exclusionGroup", json_string_t(m_exclusionGroup));
 
    // Path in groups
    json_t *pathArray = json_array();
@@ -443,6 +481,7 @@ void Template::fillMessageLocked(NXCPMessage *msg, uint32_t userId)
    super::fillMessageLocked(msg, userId);
    VersionableObject::fillMessage(msg);
    msg->setField(VID_POLICY_COUNT, m_policyList.size());
+   msg->setField(VID_EXCLUSION_GROUP, m_exclusionGroup);
 }
 
 /**
@@ -460,6 +499,8 @@ void Template::fillMessageUnlocked(NXCPMessage *msg, uint32_t userId)
 uint32_t Template::modifyFromMessageInternal(const NXCPMessage& msg, ClientSession *session)
 {
    AutoBindTarget::modifyFromMessage(msg);
+   if (msg.isFieldExist(VID_EXCLUSION_GROUP))
+      m_exclusionGroup = msg.getFieldAsSharedString(VID_EXCLUSION_GROUP);
    return super::modifyFromMessageInternal(msg, session);
 }
 
@@ -478,6 +519,8 @@ void Template::updateFromImport(ConfigEntry *config, ImportContext *context, boo
    VersionableObject::updateFromImport(config);
 
    lockProperties();
+
+   m_exclusionGroup = config->getSubEntryValue(_T("exclusionGroup"), 0, _T(""));
 
    m_policyList.clear();
    ConfigEntry *policyRoot = config->findEntry(_T("agentPolicies"));
@@ -519,6 +562,11 @@ void Template::updateFromImport(json_t *data, ImportContext *context)
 
    // Update version using VersionableObject's JSON method
    VersionableObject::updateFromImport(data);
+
+   // Handle exclusion group
+   lockProperties();
+   m_exclusionGroup = json_object_get_string(data, "exclusionGroup", _T(""));
+   unlockProperties();
 
    // Handle agent policies
    lockProperties();
@@ -571,6 +619,7 @@ json_t *Template::toJson()
    VersionableObject::toJson(root);
 
    lockProperties();
+   json_object_set_new(root, "exclusionGroup", json_string_t(m_exclusionGroup));
    for (int i = 0; i < m_policyList.size(); i++)
    {
       GenericAgentPolicy *object = m_policyList.get(i);
@@ -982,6 +1031,28 @@ void Template::autobindPoll(PollerInfo *poller, ClientSession *session, uint32_t
 
          if (!isDirectChild(object->getId()))
          {
+            // Check exclusion group - existing template wins during auto-apply
+            SharedString exclusionGroup = getExclusionGroup();
+            if (!exclusionGroup.isEmpty())
+            {
+               bool conflict = false;
+               unique_ptr<SharedObjectArray<NetObj>> parents = object->getParents(OBJECT_TEMPLATE);
+               for (int j = 0; j < parents->size(); j++)
+               {
+                  Template *t = static_cast<Template*>(parents->get(j));
+                  if ((t->getId() != m_id) && t->getExclusionGroup().str().equals(exclusionGroup.str()))
+                  {
+                     sendPollerMsg(_T("   Skipping \"%s\" - template \"%s\" from the same exclusion group \"%s\" already applied\r\n"), object->getName(), t->getName(), exclusionGroup.cstr());
+                     nxlog_debug_tag(DEBUG_TAG_AUTOBIND_POLL, 4, _T("Template::autobindPoll(): skipping binding of template \"%s\" [%u] to object \"%s\" [%u] - template \"%s\" [%u] from exclusion group \"%s\" already applied"),
+                           m_name, m_id, object->getName(), object->getId(), t->getName(), t->getId(), exclusionGroup.cstr());
+                     conflict = true;
+                     break;
+                  }
+               }
+               if (conflict)
+                  continue;
+            }
+
             sendPollerMsg(_T("   Applying to \"%s\"\r\n"), object->getName());
             nxlog_debug_tag(DEBUG_TAG_AUTOBIND_POLL, 4, _T("Template::autobindPoll(): binding object \"%s\" [%u] to template \"%s\" [%u]"), object->getName(), object->getId(), m_name, m_id);
             applyToTarget(static_pointer_cast<DataCollectionTarget>(object));

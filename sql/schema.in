@@ -827,6 +827,7 @@ CREATE TABLE cond_dci_map
 CREATE TABLE templates
 (
   id integer not null,
+  exclusion_group varchar(63),
   PRIMARY KEY(id)
 ) TABLE_TYPE;
 

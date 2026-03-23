@@ -200,6 +200,7 @@ public class NXCObjectModificationData
    private String instanceDiscoveryFilter;
    private String autoBindFilter2;
    private Integer autoBindFlags;
+   private String exclusionGroup;
    private Integer objectStatusThreshold;
    private Integer dciStatusThreshold;
    private Long sourceNode;
@@ -2522,6 +2523,26 @@ public class NXCObjectModificationData
    public void setAutoBindFlags(Integer autoBindFlags)
    {
       this.autoBindFlags = autoBindFlags;
+   }
+
+   /**
+    * Get exclusion group.
+    *
+    * @return exclusion group name or null if not set
+    */
+   public String getExclusionGroup()
+   {
+      return exclusionGroup;
+   }
+
+   /**
+    * Set exclusion group.
+    *
+    * @param exclusionGroup exclusion group name
+    */
+   public void setExclusionGroup(String exclusionGroup)
+   {
+      this.exclusionGroup = exclusionGroup;
    }
 
    /**

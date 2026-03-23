@@ -6808,15 +6808,54 @@ void ClientSession::changeObjectBinding(const NXCPMessage& request, bool bind)
                bool success = false;
                if (parent->getObjectClass() == OBJECT_TEMPLATE)
                {
-                  success = static_cast<Template&>(*parent).applyToTarget(static_pointer_cast<DataCollectionTarget>(child));
-                  if (success)
+                  // Check exclusion group
+                  Template &tmpl = static_cast<Template&>(*parent);
+                  SharedString exclusionGroup = tmpl.getExclusionGroup();
+                  shared_ptr<NetObj> conflictingTemplate;
+                  if (!exclusionGroup.isEmpty())
                   {
-                     static_cast<DataCollectionOwner&>(*child).applyDCIChanges(false);
-                     response.setField(VID_RCC, RCC_SUCCESS);
+                     unique_ptr<SharedObjectArray<NetObj>> parents = child->getParents(OBJECT_TEMPLATE);
+                     for (int i = 0; i < parents->size(); i++)
+                     {
+                        Template *t = static_cast<Template*>(parents->get(i));
+                        if ((t->getId() != parent->getId()) && t->getExclusionGroup().str().equals(exclusionGroup.str()))
+                        {
+                           conflictingTemplate = parents->getShared(i);
+                           break;
+                        }
+                     }
+                  }
+
+                  if (conflictingTemplate != nullptr && !request.getFieldAsBoolean(VID_FORCE_APPLY))
+                  {
+                     response.setField(VID_RCC, RCC_TEMPLATE_EXCLUSION_CONFLICT);
+                     response.setField(VID_ERROR_TEXT, conflictingTemplate->getName());
+                     nxlog_debug_tag(DEBUG_TAG_DC_TEMPLATES, 4, L"Binding of template %s [%u] to %s %s [%u] failed due to exclusion group conflict with template %s [%u]",
+                           tmpl.getName(), tmpl.getId(), child->getObjectClassName(), child->getName(), child->getId(),
+                           conflictingTemplate->getName(), conflictingTemplate->getId());
                   }
                   else
                   {
-                     response.setField(VID_RCC, RCC_DCI_COPY_ERRORS);
+                     if (conflictingTemplate != nullptr)
+                     {
+                        // Force apply - remove conflicting template first
+                        nxlog_debug_tag(DEBUG_TAG_DC_TEMPLATES, 4, L"Force applying template %s [%u] to %s %s [%u] - removing conflicting template %s [%u]",
+                              tmpl.getName(), tmpl.getId(), child->getObjectClassName(), child->getName(), child->getId(),
+                              conflictingTemplate->getName(), conflictingTemplate->getId());
+                        NetObj::unlinkObjects(conflictingTemplate.get(), child.get());
+                        conflictingTemplate->calculateCompoundStatus();
+                        static_cast<Template&>(*conflictingTemplate).queueRemoveFromTarget(child->getId(), true);
+                     }
+                     success = tmpl.applyToTarget(static_pointer_cast<DataCollectionTarget>(child));
+                     if (success)
+                     {
+                        static_cast<DataCollectionOwner&>(*child).applyDCIChanges(false);
+                        response.setField(VID_RCC, RCC_SUCCESS);
+                     }
+                     else
+                     {
+                        response.setField(VID_RCC, RCC_DCI_COPY_ERRORS);
+                     }
                   }
                }
                else

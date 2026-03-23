@@ -7213,6 +7213,11 @@ public class NXCSession
          msg.setFieldInt32(NXCPCodes.VID_VERSION, data.getVersion());
       }
 
+      if (data.getExclusionGroup() != null)
+      {
+         msg.setField(NXCPCodes.VID_EXCLUSION_GROUP, data.getExclusionGroup());
+      }
+
       if (data.getAgentPort() != null)
       {
          msg.setFieldInt16(NXCPCodes.VID_AGENT_PORT, data.getAgentPort());
@@ -8125,23 +8130,23 @@ public class NXCSession
    }
 
    /**
-    * Common internal implementation for bindObject, unbindObject, and
-    * removeTemplate
+    * Common internal implementation for bindObject, unbindObject, and removeTemplate
     *
-    * @param parentId  parent object's identifier
-    * @param childId   Child object's identifier
-    * @param bind      true if operation is "bind"
-    * @param removeDci true if DCIs created from template should be removed during
-    *                  unbind
-    * @throws IOException  if socket I/O error occurs
+    * @param parentId parent object's identifier
+    * @param childId Child object's identifier
+    * @param bind true if operation is "bind"
+    * @param removeDci true if DCIs created from template should be removed during unbind
+    * @param forceApply true to override exclusion group conflict when applying template
+    * @throws IOException if socket I/O error occurs
     * @throws NXCException if NetXMS server returns an error or operation was timed out
     */
-   private void changeObjectBinding(long parentId, long childId, boolean bind, boolean removeDci) throws IOException, NXCException
+   private void changeObjectBinding(long parentId, long childId, boolean bind, boolean removeDci, boolean forceApply) throws IOException, NXCException
    {
       NXCPMessage msg = newMessage(bind ? NXCPCodes.CMD_BIND_OBJECT : NXCPCodes.CMD_UNBIND_OBJECT);
       msg.setFieldUInt32(NXCPCodes.VID_PARENT_ID, parentId);
       msg.setFieldUInt32(NXCPCodes.VID_CHILD_ID, childId);
-      msg.setFieldInt16(NXCPCodes.VID_REMOVE_DCI, removeDci ? 1 : 0);
+      msg.setField(NXCPCodes.VID_REMOVE_DCI, removeDci);
+      msg.setField(NXCPCodes.VID_FORCE_APPLY, forceApply);
       sendMessage(msg);
       waitForRCC(msg.getMessageId());
    }
@@ -8156,7 +8161,7 @@ public class NXCSession
     */
    public void bindObject(final long parentId, final long childId) throws IOException, NXCException
    {
-      changeObjectBinding(parentId, childId, true, false);
+      changeObjectBinding(parentId, childId, true, false, false);
    }
 
    /**
@@ -8169,7 +8174,7 @@ public class NXCSession
     */
    public void unbindObject(final long parentId, final long childId) throws IOException, NXCException
    {
-      changeObjectBinding(parentId, childId, false, false);
+      changeObjectBinding(parentId, childId, false, false, false);
    }
 
    /**
@@ -8183,7 +8188,7 @@ public class NXCSession
     */
    public void removeTemplate(final long templateId, final long nodeId, final boolean removeDci) throws IOException, NXCException
    {
-      changeObjectBinding(templateId, nodeId, false, removeDci);
+      changeObjectBinding(templateId, nodeId, false, removeDci, false);
    }
 
    /**
@@ -8196,7 +8201,21 @@ public class NXCSession
     */
    public void applyTemplate(long templateId, long nodeId) throws IOException, NXCException
    {
-      changeObjectBinding(templateId, nodeId, true, false);
+      changeObjectBinding(templateId, nodeId, true, false, false);
+   }
+
+   /**
+    * Apply data collection template to node with option to force apply (override exclusion group conflict).
+    *
+    * @param templateId template object ID
+    * @param nodeId     node object ID
+    * @param forceApply true to override exclusion group conflict
+    * @throws IOException  if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void applyTemplate(long templateId, long nodeId, boolean forceApply) throws IOException, NXCException
+   {
+      changeObjectBinding(templateId, nodeId, true, false, forceApply);
    }
 
    /**
@@ -8226,7 +8245,7 @@ public class NXCSession
     */
    public void removeClusterNode(final long clusterId, final long nodeId) throws IOException, NXCException
    {
-      changeObjectBinding(clusterId, nodeId, false, true);
+      changeObjectBinding(clusterId, nodeId, false, true, false);
    }
 
    /**
@@ -12976,7 +12995,7 @@ public class NXCSession
     */
    public void removeWirelessDomainController(long wirelessDomainId, long nodeId) throws IOException, NXCException
    {
-      changeObjectBinding(wirelessDomainId, nodeId, false, false);
+      changeObjectBinding(wirelessDomainId, nodeId, false, false, false);
    }
 
    /**

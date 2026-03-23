@@ -1680,8 +1680,8 @@ typedef struct
 #define VID_REMOVAL_POLICY          ((uint32_t)951)
 #define VID_GRACE_PERIOD            ((uint32_t)952)
 #define VID_LINK_COLOR_SOURCE       ((uint32_t)953)
-// #define VID_AUTO_DISCOVER_CHILDREN  ((uint32_t)954)  -- removed, ID reserved
-// #define VID_AUTO_PROVISION_DCI      ((uint32_t)955)  -- removed, ID reserved
+#define VID_EXCLUSION_GROUP         ((uint32_t)954)
+#define VID_FORCE_APPLY             ((uint32_t)955)
 #define VID_LAST_DISCOVERY_STATUS   ((uint32_t)956)
 #define VID_LAST_DISCOVERY_TIME     ((uint32_t)957)
 #define VID_LAST_DISCOVERY_MESSAGE  ((uint32_t)958)
@@ -1699,8 +1699,8 @@ typedef struct
 #define VID_SNMP_TRAP_AUTH_OBJECT   ((uint32_t)970)
 #define VID_SNMP_TRAP_AUTH_PASSWORD ((uint32_t)971)
 #define VID_SNMP_TRAP_PRIV_PASSWORD ((uint32_t)972)
-#define VID_SNMP_TRAP_USM_METHODS  ((uint32_t)973)
-#define VID_SNMP_TRAP_VERSION      ((uint32_t)974)
+#define VID_SNMP_TRAP_USM_METHODS   ((uint32_t)973)
+#define VID_SNMP_TRAP_VERSION       ((uint32_t)974)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)

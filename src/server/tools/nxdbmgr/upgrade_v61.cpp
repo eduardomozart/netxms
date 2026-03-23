@@ -24,6 +24,16 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.23 to 61.24
+ */
+static bool H_UpgradeFromV23()
+{
+   CHK_EXEC(SQLQuery(L"ALTER TABLE templates ADD exclusion_group varchar(63)"));
+   CHK_EXEC(SetMinorSchemaVersion(24));
+   return true;
+}
+
+/**
  * Upgrade from 61.22 to 61.23
  */
 static bool H_UpgradeFromV22()
@@ -634,6 +644,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 23, 61, 24, H_UpgradeFromV23 },
    { 22, 61, 23, H_UpgradeFromV22 },
    { 21, 61, 22, H_UpgradeFromV21 },
    { 20, 61, 21, H_UpgradeFromV20 },

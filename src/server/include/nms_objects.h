@@ -2282,6 +2282,7 @@ private:
 protected:
    SharedObjectArray<GenericAgentPolicy> m_policyList;
    SharedObjectArray<GenericAgentPolicy> m_deletedPolicyList;
+   SharedString m_exclusionGroup;
    bool m_removeDCIOnDelete;
 
    virtual void prepareForDeletion() override;
@@ -2335,6 +2336,8 @@ public:
    void initiatePolicyValidation();
    void removeAllPolicies(Node *node);
    void setRemoveDCIOnDelete(bool removeDCI) { m_removeDCIOnDelete = removeDCI; }
+
+   SharedString getExclusionGroup() const { return GetAttributeWithLock(m_exclusionGroup, NetObj::m_mutexProperties); }
 };
 
 /**

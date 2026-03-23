@@ -5167,6 +5167,10 @@ NXSL_Value *NXSL_TemplateClass::getAttr(NXSL_Object *object, const NXSL_Identifi
    {
       value = vm->createValue(tmpl->isAutoUnbindEnabled());
    }
+   else if (NXSL_COMPARE_ATTRIBUTE_NAME("exclusionGroup"))
+   {
+      value = vm->createValue(tmpl->getExclusionGroup());
+   }
    else if (NXSL_COMPARE_ATTRIBUTE_NAME("version"))
    {
       value = vm->createValue(tmpl->getVersion());

@@ -1489,8 +1489,8 @@ public class NXCPCodes
    public static final long VID_REMOVAL_POLICY = 951;
    public static final long VID_GRACE_PERIOD = 952;
    public static final long VID_LINK_COLOR_SOURCE = 953;
-   // public static final long VID_AUTO_DISCOVER_CHILDREN = 954;  -- removed, ID reserved
-   // public static final long VID_AUTO_PROVISION_DCI = 955;  -- removed, ID reserved
+   public static final long VID_EXCLUSION_GROUP = 954;
+   public static final long VID_FORCE_APPLY = 955;
    public static final long VID_LAST_DISCOVERY_STATUS = 956;
    public static final long VID_LAST_DISCOVERY_TIME = 957;
    public static final long VID_LAST_DISCOVERY_MESSAGE = 958;
