@@ -60,6 +60,8 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
 {   
    private static final int FULL_UNIT_WIDTH = 482;
    private static final int FULL_UNIT_HEIGHT = 45;
+   private static final double CHASSIS_UNIT_HEIGHT_MM = 44.45;
+   private static final double CHASSIS_FULL_WIDTH_MM = 482.6;
    private static final int MARGIN_HEIGHT = 10;
    private static final int MARGIN_WIDTH = 10;
    private static final int TITLE_HEIGHT = 20;
@@ -174,31 +176,32 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
          gc.drawImage(imageBottom, 0, 0, r.width, r.height, rect.x, rect.y + oneUnitHeight * (chassis.getRackHeight() - 1), rect.width, oneUnitHeight);                 
       }
 
-      //Calculate inch to pixel proportion
-      double proportion = rect.height / (double)(FULL_UNIT_HEIGHT * chassis.getRackHeight());
+      // Calculate mm to pixel proportions separately for each axis
+      double hProportion = rect.width / CHASSIS_FULL_WIDTH_MM;
+      double vProportion = rect.height / (CHASSIS_UNIT_HEIGHT_MM * chassis.getRackHeight());
       final Color gray = gc.getDevice().getSystemColor(SWT.COLOR_GRAY);
       final Color black = gc.getDevice().getSystemColor(SWT.COLOR_BLACK);
-      
+
       //draw chassis nodes
       for (AbstractObject object : chassis.getChildrenAsArray())
       {
          if(object instanceof Node)
-         {           
+         {
             ChassisPlacement placemet = ((Node)object).getChassisPlacement();
-            if (placemet.getOritentaiton() != view.getValue())           
+            if (placemet.getOritentaiton() != view.getValue())
                continue;
 
-            final Rectangle unitRect = new Rectangle(rect.x + (int)(placemet.getPositionWidthInMm() * proportion),
-                  rect.y + (int)(placemet.getPositionHeightInMm() * proportion), (int)(placemet.getWidthInMm() * proportion), 
-                  (int)(placemet.getHeightInMm() * proportion));
+            final Rectangle unitRect = new Rectangle(rect.x + (int)(placemet.getPositionWidthInMm() * hProportion),
+                  rect.y + (int)(placemet.getPositionHeightInMm() * vProportion), (int)(placemet.getWidthInMm() * hProportion),
+                  (int)(placemet.getHeightInMm() * vProportion));
 
-            
+
             if ((unitRect.width <= 0) || (unitRect.height <= 0))
                continue;
 
             if(objectRegistration != null)
                objectRegistration.addObject(object, unitRect);
-            
+
             boolean imageMissing = true;
             imageGuid = placemet.getImage();
             if (!imageGuid.equals(NXCommon.EMPTY_GUID))
@@ -208,7 +211,7 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
                if(image != null)
                {
                   r = image.getBounds();
-                  gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);   
+                  gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
                   imageMissing = false;
                }
             }
@@ -219,10 +222,10 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
             }
 
             gc.setBackground(black);
-            gc.fillRectangle(unitRect.x + STATUS_INDECATOR_SHIFT, unitRect.y + STATUS_INDECATOR_SHIFT, (int)(STATUS_INDECATOR_WIDTH * proportion + STATUS_INDECATOR_BORDER * 2), (int)(STATUS_INDECATOR_HEIGHT * proportion + STATUS_INDECATOR_BORDER * 2));      
-            
+            gc.fillRectangle(unitRect.x + STATUS_INDECATOR_SHIFT, unitRect.y + STATUS_INDECATOR_SHIFT, (int)(STATUS_INDECATOR_WIDTH * hProportion + STATUS_INDECATOR_BORDER * 2), (int)(STATUS_INDECATOR_HEIGHT * vProportion + STATUS_INDECATOR_BORDER * 2));
+
             gc.setBackground(StatusDisplayInfo.getStatusColor(object.getStatus()));
-            gc.fillRectangle(unitRect.x + STATUS_INDECATOR_SHIFT + STATUS_INDECATOR_BORDER, unitRect.y + STATUS_INDECATOR_SHIFT + STATUS_INDECATOR_BORDER, (int)(STATUS_INDECATOR_WIDTH * proportion), (int)(STATUS_INDECATOR_HEIGHT * proportion));            
+            gc.fillRectangle(unitRect.x + STATUS_INDECATOR_SHIFT + STATUS_INDECATOR_BORDER, unitRect.y + STATUS_INDECATOR_SHIFT + STATUS_INDECATOR_BORDER, (int)(STATUS_INDECATOR_WIDTH * hProportion), (int)(STATUS_INDECATOR_HEIGHT * vProportion));
          }
       }
    }
