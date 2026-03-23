@@ -904,21 +904,11 @@ void NetObj::onCustomAttributeChange(const TCHAR *name, const TCHAR *value)
 }
 
 /**
- * Walker callback to call OnObjectDelete for each active object
- */
-EnumerationCallbackResult NetObj::onObjectDeleteCallback(NetObj *object, NetObj *context)
-{
-	if ((object->getId() != context->getId()) && !object->isDeleted())
-		object->onObjectDelete(*context);
-	return _CONTINUE;
-}
-
-/**
  * Prepare object for deletion - remove all references, etc.
  *
  * @param initiator pointer to parent object which causes recursive deletion or NULL
  */
-void NetObj::deleteObject(NetObj *initiator)
+void NetObj::deleteObject(NetObj *initiator, SharedObjectArray<NetObj> *accumulatedDeletions)
 {
    nxlog_debug_tag(DEBUG_TAG_OBJECT_LIFECYCLE, 4, _T("Deleting object %d [%s]"), m_id, m_name);
 
@@ -934,6 +924,12 @@ void NetObj::deleteObject(NetObj *initiator)
 	m_isDeleteInitiated = true;
    m_isUnpublished = true;
 	unlockProperties();
+
+   // Top-level call creates the accumulator for batching onObjectDelete notifications
+   bool isTopLevel = (accumulatedDeletions == nullptr);
+   SharedObjectArray<NetObj> localDeletions;
+   if (isTopLevel)
+      accumulatedDeletions = &localDeletions;
 
 	// Notify modules about object deletion
    CALL_ALL_MODULES(pfPreObjectDelete, (this));
@@ -1017,7 +1013,7 @@ void NetObj::deleteObject(NetObj *initiator)
       {
          NetObj *obj = deleteList->get(i);
          nxlog_debug_tag(DEBUG_TAG_OBJECT_RELATIONS, 5, _T("NetObj::deleteObject(): calling deleteObject() on %s [%d]"), obj->getName(), obj->getId());
-         obj->deleteObject(this);
+         obj->deleteObject(this, accumulatedDeletions);
       }
       delete deleteList;
    }
@@ -1040,11 +1036,31 @@ void NetObj::deleteObject(NetObj *initiator)
    setModified(MODIFY_ALL);
    unlockProperties();
 
-   // Notify all other objects about object deletion
-   nxlog_debug_tag(DEBUG_TAG_OBJECT_LIFECYCLE, 5, _T("NetObj::deleteObject(%s [%u]): calling onObjectDelete()"), m_name, m_id);
-	g_idxObjectById.forEach(onObjectDeleteCallback, this);
+   // Add this object to accumulated list for batched notification
+   accumulatedDeletions->add(self());
 
 	nxlog_debug_tag(DEBUG_TAG_OBJECT_LIFECYCLE, 4, _T("Object [%u] deleted successfully"), m_id);
+
+   // Top-level call does a single forEach pass notifying about all deletions
+   if (isTopLevel)
+   {
+      nxlog_debug_tag(DEBUG_TAG_OBJECT_LIFECYCLE, 5, _T("NetObj::deleteObject(%s [%u]): sending batched onObjectDelete notifications for %d objects"), m_name, m_id, accumulatedDeletions->size());
+      g_idxObjectById.forEach(
+         [accumulatedDeletions] (NetObj *object) -> EnumerationCallbackResult
+         {
+            if (!object->isDeleted())
+            {
+               for(int i = 0; i < accumulatedDeletions->size(); i++)
+               {
+                  NetObj *deleted = accumulatedDeletions->get(i);
+                  if (object->getId() != deleted->getId())
+                     object->onObjectDelete(*deleted);
+               }
+            }
+            return _CONTINUE;
+         }
+      );
+   }
 }
 
 /**

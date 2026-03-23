@@ -1387,8 +1387,6 @@ private:
    typedef NObject super;
    time_t m_creationTime; //Object creation time
 
-   static EnumerationCallbackResult onObjectDeleteCallback(NetObj *object, NetObj *context);
-
    void getFullChildListInternal(ObjectIndex *list, bool eventSourceOnly) const;
 
    bool saveTrustedObjects(DB_HANDLE hdb);
@@ -1561,7 +1559,7 @@ public:
 
    virtual void onCustomAttributeChange(const TCHAR *name, const TCHAR *value) override;
 
-   void deleteObject(NetObj *initiator = nullptr);     // Prepare object for deletion
+   void deleteObject(NetObj *initiator = nullptr, SharedObjectArray<NetObj> *accumulatedDeletions = nullptr);     // Prepare object for deletion
    void destroy();   // Destroy partially loaded object
 
    void updateObjectIndexes();
