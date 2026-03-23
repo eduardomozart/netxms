@@ -153,20 +153,45 @@ bool SSHSession::connect(const TCHAR *user, const TCHAR *password, const shared_
 
       if (!success)
       {
-         nxlog_debug_tag(DEBUG_TAG, 7, _T("SSHSession::connect: try to login with password"));
 #ifdef UNICODE
          char mbpassword[256];
          wchar_to_utf8(password, -1, mbpassword, 256);
-         if (ssh_userauth_password(m_session, NULL, mbpassword) == SSH_AUTH_SUCCESS)
+         const char *utf8password = mbpassword;
 #else
-         if (ssh_userauth_password(m_session, NULL, password) == SSH_AUTH_SUCCESS)
+         const char *utf8password = password;
 #endif
+
+         nxlog_debug_tag(DEBUG_TAG, 7, _T("SSHSession::connect: try to login with password"));
+         if (ssh_userauth_password(m_session, NULL, utf8password) == SSH_AUTH_SUCCESS)
          {
             success = true;
          }
          else
          {
             nxlog_debug_tag(DEBUG_TAG, 6, _T("SSHSession::connect: login with password as %s on %s:%d failed (%hs)"), user, m_addr.toString().cstr(), m_port, ssh_get_error(m_session));
+         }
+
+         if (!success)
+         {
+            nxlog_debug_tag(DEBUG_TAG, 7, _T("SSHSession::connect: try keyboard-interactive auth"));
+            int rc = ssh_userauth_kbdint(m_session, NULL, NULL);
+            while (rc == SSH_AUTH_INFO)
+            {
+               int nprompts = ssh_userauth_kbdint_getnprompts(m_session);
+               for (int i = 0; i < nprompts; i++)
+               {
+                  ssh_userauth_kbdint_setanswer(m_session, i, utf8password);
+               }
+               rc = ssh_userauth_kbdint(m_session, NULL, NULL);
+            }
+            if (rc == SSH_AUTH_SUCCESS)
+            {
+               success = true;
+            }
+            else
+            {
+               nxlog_debug_tag(DEBUG_TAG, 6, _T("SSHSession::connect: keyboard-interactive auth as %s on %s:%d failed (%hs)"), user, m_addr.toString().cstr(), m_port, ssh_get_error(m_session));
+            }
          }
       }
    }
