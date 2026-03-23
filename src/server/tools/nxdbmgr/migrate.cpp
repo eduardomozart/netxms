@@ -303,6 +303,30 @@ static bool ConnectToSource()
 }
 
 /**
+ * Get set of CLOB column names for given table on Oracle destination.
+ * Column names are stored in uppercase.
+ */
+static StringSet GetOracleClobColumns(DB_HANDLE hDest, const wchar_t *table)
+{
+   StringSet clobColumns;
+   TCHAR query[512];
+   _sntprintf(query, 512, _T("SELECT column_name FROM user_tab_columns WHERE table_name=UPPER('%s') AND data_type='CLOB'"), table);
+   DB_RESULT hResult = DBSelect(hDest, query);
+   if (hResult != nullptr)
+   {
+      int count = DBGetNumRows(hResult);
+      for (int i = 0; i < count; i++)
+      {
+         TCHAR name[256];
+         DBGetField(hResult, i, 0, name, 256);
+         clobColumns.add(name);
+      }
+      DBFreeResult(hResult);
+   }
+   return clobColumns;
+}
+
+/**
  * Migrate single database table
  */
 static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDest, int progressSlot = -1)
@@ -376,7 +400,13 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
    // Pre-compute column metadata
    bool *integerFixNeeded = MemAllocArray<bool>(columnCount);
    bool *tsdbTimestamp = MemAllocArray<bool>(columnCount);
+   bool *isTextColumn = MemAllocArray<bool>(columnCount);
    StringList columnNames;
+
+   StringSet clobColumns;
+   if (g_dbSyntax == DB_SYNTAX_ORACLE)
+      clobColumns = GetOracleClobColumns(hDest, table);
+
    for (int i = 0; i < columnCount; i++)
    {
       DBGetColumnName(hResult, i, buffer, 512);
@@ -385,6 +415,14 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
       DBGetColumnNameA(hResult, i, cname, 256);
       integerFixNeeded[i] = IsColumnIntegerFixNeeded(table, cname);
       tsdbTimestamp[i] = (g_dbSyntax == DB_SYNTAX_TSDB) && IsTimestampColumn(table, cname);
+
+      if (g_dbSyntax == DB_SYNTAX_ORACLE)
+      {
+         TCHAR ucName[256];
+         _tcslcpy(ucName, buffer, 256);
+         _tcsupr(ucName);
+         isTextColumn[i] = clobColumns.contains(ucName);
+      }
    }
 
    int totalRows = 0;
@@ -392,6 +430,17 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
    if (g_dbSyntax == DB_SYNTAX_ORACLE)
    {
       // Oracle path: prepared statement with batch API
+      // CLOB columns cannot be used in array binds, so fall back to row-by-row execution
+      bool hasTextColumns = false;
+      for (int i = 0; i < columnCount; i++)
+      {
+         if (isTextColumn[i])
+         {
+            hasTextColumns = true;
+            break;
+         }
+      }
+
       StringBuffer query = _T("INSERT INTO ");
       query.append(table);
       query.append(_T(" ("));
@@ -413,30 +462,47 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
       DB_STATEMENT hStmt = DBPrepareEx(hDest, query, true, errorText);
       if (hStmt != nullptr)
       {
-         DBOpenBatch(hStmt);
+         if (!hasTextColumns)
+            DBOpenBatch(hStmt);
          success = true;
          int rows = 0;
          while (DBFetch(hResult))
          {
-            DBAddBatchRow(hStmt);
+            if (!hasTextColumns)
+               DBAddBatchRow(hStmt);
             for (int i = 0; i < columnCount; i++)
             {
+               int sqlType = isTextColumn[i] ? DB_SQLTYPE_TEXT : DB_SQLTYPE_VARCHAR;
                TCHAR *value = DBGetField(hResult, i, nullptr, 0);
                if ((value == nullptr) || (*value == 0))
                {
-                  DBBind(hStmt, i + 1, DB_SQLTYPE_VARCHAR, integerFixNeeded[i] ? _T("0") : _T(""), DB_BIND_STATIC);
+                  DBBind(hStmt, i + 1, sqlType, integerFixNeeded[i] ? _T("0") : _T(""), DB_BIND_STATIC);
                   MemFree(value);
                }
                else
                {
-                  DBBind(hStmt, i + 1, DB_SQLTYPE_VARCHAR, value, DB_BIND_DYNAMIC);
+                  DBBind(hStmt, i + 1, sqlType, value, DB_BIND_DYNAMIC);
                }
             }
 
             rows++;
             totalRows++;
 
-            if (rows >= g_migrationTxnSize)
+            if (hasTextColumns)
+            {
+               if (!SQLExecute(hStmt))
+               {
+                  success = false;
+                  break;
+               }
+               if (rows >= g_migrationTxnSize)
+               {
+                  DBCommit(hDest);
+                  DBBegin(hDest);
+                  rows = 0;
+               }
+            }
+            else if (rows >= g_migrationTxnSize)
             {
                if (!SQLExecute(hStmt))
                {
@@ -453,7 +519,7 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
                UpdateProgress(progressSlot, table, totalRows, false);
          }
 
-         if (success && rows > 0)
+         if (success && !hasTextColumns && rows > 0)
          {
             if (!SQLExecute(hStmt))
                success = false;
@@ -572,6 +638,7 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
 
    MemFree(integerFixNeeded);
    MemFree(tsdbTimestamp);
+   MemFree(isTextColumn);
    DBFreeResult(hResult);
 
    if (progressSlot >= 0)
