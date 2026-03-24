@@ -337,7 +337,7 @@ static void ReadStorePackagesFromAllUsers(Table *table)
 
       if (hiveLoadedByUs)
       {
-         RegUnloadKey(HKEY_USERS, sidName);
+         RegUnLoadKey(HKEY_USERS, sidName);
          nxlog_debug_tag(DEBUG_TAG, 6, _T("Unloaded registry hive for %s"), sidName);
       }
    }
