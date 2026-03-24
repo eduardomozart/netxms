@@ -37,7 +37,7 @@ static NXCORE_LOG s_logs[] =
          { L"task_id", L"Task", LC_INTEGER, 0 },
          { L"task_description", L"Task Description", LC_TEXT, 0 },
          { L"user_id", L"User", LC_USER_ID, 0 },
-         { L"status", L"Status", LC_AI_TASK_STATUS, 0 },
+         { L"status", L"Status", LC_AI_TASK_STATUS, LCF_CHAR_COLUMN },
          { L"iteration", L"Iteration", LC_INTEGER, 0 },
          { L"explanation", L"Explanation", LC_TEXT_DETAILS, 0 },
          { nullptr, nullptr, 0, 0 }
@@ -114,13 +114,13 @@ static NXCORE_LOG s_logs[] =
       {
          { L"record_id", L"Record ID", LC_INTEGER, LCF_RECORD_ID },
          { L"event_timestamp", L"Time", LC_TIMESTAMP, LCF_TSDB_TIMESTAMPTZ },
-         { L"mac_address", L"MAC Address", LC_TEXT, 0 },
+         { L"mac_address", L"MAC Address", LC_MAC_ADDRESS, 0 },
          { L"ip_address", L"IP Address", LC_TEXT, 0 },
          { L"node_id", L"Node", LC_OBJECT_ID, 0 },
          { L"switch_id", L"Switch", LC_OBJECT_ID, 0 },
          { L"interface_id", L"Port", LC_OBJECT_ID, 0 },
          { L"vlan_id", L"VLAN", LC_INTEGER, 0 },
-         { L"event_type", L"Event Type", LC_INTEGER, 0 },
+         { L"event_type", L"Event Type", LC_CONNECTION_EVENT, 0 },
          { L"old_switch_id", L"Old Switch", LC_OBJECT_ID, 0 },
          { L"old_interface_id", L"Old Port", LC_OBJECT_ID, 0 },
          { nullptr, nullptr, 0, 0 }

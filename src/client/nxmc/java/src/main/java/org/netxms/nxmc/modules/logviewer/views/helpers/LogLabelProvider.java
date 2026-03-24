@@ -33,6 +33,7 @@ import org.netxms.client.log.LogColumn;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Zone;
 import org.netxms.client.users.AbstractUserObject;
+import org.netxms.base.MacAddress;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.localization.DateFormatFactory;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -53,6 +54,9 @@ public class LogLabelProvider extends LabelProvider implements ITableLabelProvid
    private final String[] ALARM_HD_STATE_TEXTS = getAlarmHDStateTexts(i18n);
    private final String[] EVENT_ORIGIN_TEXTS = getEventOriginTexts(i18n);
    private final String[] ASSET_OPERATION_TEXTS = getAssetOperationTexts(i18n);
+   private final String[] CONNECTION_EVENT_TEXTS = getConnectionEventTexts(i18n);
+   private final String[] DEPLOYMENT_STATUS_TEXTS = getDeploymentStatusTexts(i18n);
+   private static final String[] AI_TASK_STATUS_CHARS = { "S", "R", "C", "F", "U" };
 
 	private LogColumn[] columns;
 	private NXCSession session;
@@ -262,12 +266,43 @@ public class LogLabelProvider extends LabelProvider implements ITableLabelProvid
             try
             {
                int operation = Integer.parseInt(value);
-               return ASSET_OPERATION_TEXTS[operation];               
+               return ASSET_OPERATION_TEXTS[operation];
             }
             catch(Exception e)
             {
                return value;
             }
+         case LogColumn.LC_MAC_ADDRESS:
+            try
+            {
+               return MacAddress.parseMacAddress(value).toString();
+            }
+            catch(Exception e)
+            {
+               return value;
+            }
+         case LogColumn.LC_CONNECTION_EVENT:
+            try
+            {
+               int eventType = Integer.parseInt(value);
+               return CONNECTION_EVENT_TEXTS[eventType];
+            }
+            catch(Exception e)
+            {
+               return value;
+            }
+         case LogColumn.LC_DEPLOYMENT_STATUS:
+            try
+            {
+               int status = Integer.parseInt(value);
+               return DEPLOYMENT_STATUS_TEXTS[status];
+            }
+            catch(Exception e)
+            {
+               return value;
+            }
+         case LogColumn.LC_AI_TASK_STATUS:
+            return getAiTaskStatusText(value);
 			default:
 				return value;
 		}
@@ -336,5 +371,67 @@ public class LogLabelProvider extends LabelProvider implements ITableLabelProvid
       if (i18n == null)
          i18n = LocalizationHelper.getI18n(LogLabelProvider.class);
       return new String[] { i18n.tr("Create"), i18n.tr("Delete"), i18n.tr("Update"), i18n.tr("Link"), i18n.tr("Unlink") };
+   }
+
+   /**
+    * Get connection event type texts
+    *
+    * @param i18n i18n object or null
+    * @return connection event type texts
+    */
+   public static final String[] getConnectionEventTexts(I18n i18n)
+   {
+      if (i18n == null)
+         i18n = LocalizationHelper.getI18n(LogLabelProvider.class);
+      return new String[] { i18n.tr("Connect"), i18n.tr("Disconnect"), i18n.tr("Move") };
+   }
+
+   /**
+    * Get deployment status texts
+    *
+    * @param i18n i18n object or null
+    * @return deployment status texts
+    */
+   public static final String[] getDeploymentStatusTexts(I18n i18n)
+   {
+      if (i18n == null)
+         i18n = LocalizationHelper.getI18n(LogLabelProvider.class);
+      return new String[] {
+         i18n.tr("Scheduled"), i18n.tr("Pending"), i18n.tr("Initializing"), i18n.tr("Transferring file"),
+         i18n.tr("Installing"), i18n.tr("Waiting for agent"), i18n.tr("Completed"), i18n.tr("Failed"), i18n.tr("Cancelled")
+      };
+   }
+
+   /**
+    * Get AI task status texts
+    *
+    * @param i18n i18n object or null
+    * @return AI task status texts
+    */
+   public static final String[] getAiTaskStatusTexts(I18n i18n)
+   {
+      if (i18n == null)
+         i18n = LocalizationHelper.getI18n(LogLabelProvider.class);
+      return new String[] { i18n.tr("Scheduled"), i18n.tr("Running"), i18n.tr("Completed"), i18n.tr("Failed"), i18n.tr("Unknown") };
+   }
+
+   /**
+    * Get AI task status text from single-character status code
+    *
+    * @param value status character (S, R, C, F, U)
+    * @return human-readable status text
+    */
+   private String getAiTaskStatusText(String value)
+   {
+      if (value == null || value.isEmpty())
+         return value;
+
+      String[] texts = getAiTaskStatusTexts(i18n);
+      for(int i = 0; i < AI_TASK_STATUS_CHARS.length; i++)
+      {
+         if (AI_TASK_STATUS_CHARS[i].equals(value))
+            return texts[i];
+      }
+      return value;
    }
 }

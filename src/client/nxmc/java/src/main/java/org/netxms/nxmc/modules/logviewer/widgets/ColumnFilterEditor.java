@@ -209,6 +209,12 @@ public class ColumnFilterEditor extends DashboardComposite
          case LogColumn.LC_COMPLETION_STATUS:
             editor = new CompletionStatusConditionEditor(this);
             break;
+         case LogColumn.LC_CONNECTION_EVENT:
+            editor = new ConnectionEventConditionEditor(this);
+            break;
+         case LogColumn.LC_DEPLOYMENT_STATUS:
+            editor = new DeploymentStatusConditionEditor(this);
+            break;
 			case LogColumn.LC_EVENT_CODE:
             editor = new EventConditionEditor(this);
             break;

@@ -49,6 +49,8 @@
 #define LC_ASSET_OPERATION    16
 #define LC_DEPLOYMENT_STATUS  17
 #define LC_AI_TASK_STATUS     18
+#define LC_MAC_ADDRESS        19
+#define LC_CONNECTION_EVENT   20
 
 /**
  * Column filter types

@@ -43,6 +43,10 @@ public class LogColumn
    public static final int LC_ACTION_CODE       = 14;
    public static final int LC_ATM_TXN_CODE      = 15;
    public static final int LC_ASSET_OPERATION   = 16;
+   public static final int LC_DEPLOYMENT_STATUS = 17;
+   public static final int LC_AI_TASK_STATUS    = 18;
+   public static final int LC_MAC_ADDRESS       = 19;
+   public static final int LC_CONNECTION_EVENT  = 20;
 
    public static final int LCF_TSDB_TIMESTAMPTZ = 0x0001;   /* Column is of timestamptz data type in TimescaleDB */
    public static final int LCF_CHAR_COLUMN      = 0x0002;   /* Column is of char type */
