@@ -24,6 +24,26 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.25 to 61.26
+ */
+static bool H_UpgradeFromV25()
+{
+   static const wchar_t *batch =
+      L"UPDATE config SET data_type='C' WHERE var_name='NotificationChannels.RateLimit.ChannelRateUnit'\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.ChannelRateUnit','second','Second')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.ChannelRateUnit','minute','Minute')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.ChannelRateUnit','hour','Hour')\n"
+      L"UPDATE config SET data_type='C' WHERE var_name='NotificationChannels.RateLimit.RecipientRateUnit'\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.RecipientRateUnit','second','Second')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.RecipientRateUnit','minute','Minute')\n"
+      L"INSERT INTO config_values (var_name,var_value,var_description) VALUES ('NotificationChannels.RateLimit.RecipientRateUnit','hour','Hour')\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(SetMinorSchemaVersion(26));
+   return true;
+}
+
+/**
  * Upgrade from 61.24 to 61.25
  */
 static bool H_UpgradeFromV24()
@@ -654,6 +674,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 25, 61, 26, H_UpgradeFromV25 },
    { 24, 61, 25, H_UpgradeFromV24 },
    { 23, 61, 24, H_UpgradeFromV23 },
    { 22, 61, 23, H_UpgradeFromV22 },

@@ -266,6 +266,7 @@ private:
    time_t m_lastMessageTime;
    uint32_t m_messageCount;
    uint32_t m_failureCount;
+   uint32_t m_digestedCount;
    NXSL_Program *m_nxslScript;   // Compiled NXSL script for built-in NXSL driver
 
    // Throttling members
@@ -396,6 +397,58 @@ NotificationMessage::~NotificationMessage()
 }
 
 /**
+ * Strip trailing AI suggestion/question blocks from response.
+ * Many LLMs append unsolicited offers like "If you'd like, I can..." despite prompt instructions.
+ */
+static void StripTrailingSuggestions(char *text)
+{
+   if (text == nullptr)
+      return;
+
+   // Patterns that indicate start of an unwanted trailing block
+   static const char *markers[] =
+   {
+      "\nIf you'd like",
+      "\nIf you would like",
+      "\nWould you like",
+      "\nWant me to",
+      "\nLet me know if",
+      "\nI can also",
+      "\nI can:",
+      "\nShall I",
+      "\nWhat would you like",
+      "\nDo you want",
+      nullptr
+   };
+
+   // Find earliest marker in the last portion of the text
+   size_t len = strlen(text);
+   char *cutPoint = nullptr;
+   for (int i = 0; markers[i] != nullptr; i++)
+   {
+      char *p = strstr(text, markers[i]);
+      while (p != nullptr)
+      {
+         // Only consider markers in the last 30% of the text
+         if (static_cast<size_t>(p - text) > len * 7 / 10)
+         {
+            if (cutPoint == nullptr || p < cutPoint)
+               cutPoint = p;
+         }
+         p = strstr(p + 1, markers[i]);
+      }
+   }
+
+   if (cutPoint != nullptr)
+   {
+      // Trim trailing whitespace before the cut point
+      while (cutPoint > text && (*(cutPoint - 1) == '\n' || *(cutPoint - 1) == '\r' || *(cutPoint - 1) == ' '))
+         cutPoint--;
+      *cutPoint = 0;
+   }
+}
+
+/**
  * Generate digest message from accumulated notifications
  */
 static String GenerateDigestMessage(const wchar_t *channelName, const wchar_t *recipient, const ObjectArray<NotificationMessage> &messages)
@@ -447,6 +500,7 @@ static String GenerateDigestMessage(const wchar_t *channelName, const wchar_t *r
 
    if (response != nullptr)
    {
+      StripTrailingSuggestions(response);
       header.appendUtf8String(response);
       MemFree(response);
       return header;
@@ -485,6 +539,7 @@ NotificationChannel::NotificationChannel(NCDriver *driver, NCDriverServerStorage
    m_lastMessageTime = 0;
    m_messageCount = 0;
    m_failureCount = 0;
+   m_digestedCount = 0;
    m_nxslScript = nullptr;
 
    // Initialize throttling
@@ -526,14 +581,13 @@ void NotificationChannel::workerThread()
       if (notification == INVALID_POINTER_VALUE)
          break;
 
+      // Check for pending digests and periodic maintenance on every iteration
+      reloadThrottlingConfig();
+      checkAndSendDigests();
+      cleanupStaleRecipientBuckets();
+
       if (notification == nullptr)
-      {
-         // Timeout - reload config, check digest timer and cleanup stale buckets
-         reloadThrottlingConfig();
-         checkAndSendDigests();
-         cleanupStaleRecipientBuckets();
          continue;
-      }
 
       nxlog_debug_tag(DEBUG_TAG, 6, L"Message to \"%s\" via channel \"%s\" dequeued", notification->getRecipient(), m_name);
 
@@ -787,7 +841,7 @@ void NotificationChannel::absorbIntoDigest(NotificationMessage *msg)
    recipientDigest->add(msg);  // Ownership transferred to array
    m_digestLock.unlock();
 
-   m_failureCount++;
+   m_digestedCount++;
 }
 
 /**
@@ -1098,6 +1152,7 @@ void NotificationChannel::fillMessage(NXCPMessage *msg, uint32_t base) const
    msg->setField(base + 11, m_messageCount);
    msg->setField(base + 12, m_failureCount);
    msg->setField(base + 13, static_cast<uint32_t>(m_notificationQueue.size()));
+   msg->setField(base + 14, m_digestedCount);
 }
 
 /**
@@ -1128,6 +1183,7 @@ json_t *NotificationChannel::toJson() const
    json_object_set_new(root, "messageCount", json_integer(m_messageCount));
    json_object_set_new(root, "failureCount", json_integer(m_failureCount));
    json_object_set_new(root, "queueSize", json_integer(m_notificationQueue.size()));
+   json_object_set_new(root, "digestedCount", json_integer(m_digestedCount));
    return root;
 }
 
@@ -1303,6 +1359,7 @@ void NotificationChannel::writeNotificationLog(const NotificationMessage& notifi
 void NotificationChannel::getStatus(NotificationChannelStatus *status)
 {
    status->failedSendCount = m_failureCount;
+   status->digestedCount = m_digestedCount;
    status->healthCheckStatus = m_healthCheckStatus;
    status->lastMessageTime = m_lastMessageTime;
    status->messageCount = m_messageCount;

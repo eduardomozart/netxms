@@ -70,9 +70,10 @@ public class NotificationChannels extends ConfigurationView
    public static final int COLUMN_DRIVER = 2;
    public static final int COLUMN_TOTAL_MESSAGES = 3;
    public static final int COLUMN_FAILED_MESSAGES = 4;
-   public static final int COLUMN_QUEUE_SIZE = 5;
-   public static final int COLUMN_LAST_STATUS = 6;
-   public static final int COLUMN_ERROR_MESSAGE = 7;
+   public static final int COLUMN_DIGESTED_MESSAGES = 5;
+   public static final int COLUMN_QUEUE_SIZE = 6;
+   public static final int COLUMN_LAST_STATUS = 7;
+   public static final int COLUMN_ERROR_MESSAGE = 8;
 
    private NXCSession session;
    private SessionListener listener;
@@ -100,8 +101,8 @@ public class NotificationChannels extends ConfigurationView
    @Override
    protected void createContent(Composite parent)
    {
-      final int[] widths = { 160, 250, 100, 100, 100, 100, 80, 400 };
-      final String[] names = { i18n.tr("Name"), i18n.tr("Description"), i18n.tr("Driver"), i18n.tr("Messages"), i18n.tr("Failures"), i18n.tr("Queue"), i18n.tr("Status"), i18n.tr("Error message") };
+      final int[] widths = { 160, 250, 100, 100, 100, 100, 100, 80, 400 };
+      final String[] names = { i18n.tr("Name"), i18n.tr("Description"), i18n.tr("Driver"), i18n.tr("Messages"), i18n.tr("Failures"), i18n.tr("Digested"), i18n.tr("Queue"), i18n.tr("Status"), i18n.tr("Error message") };
       viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
       viewer.enableColumnReordering();
       WidgetHelper.restoreTableViewerSettings(viewer, "NotificationChannelList");

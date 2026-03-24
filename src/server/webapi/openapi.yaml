@@ -4368,6 +4368,9 @@ components:
         failureCount:
           type: integer
           description: Total send failures
+        digestedCount:
+          type: integer
+          description: Total messages absorbed into digest
         queueSize:
           type: integer
           description: Current message queue size

@@ -41,6 +41,7 @@ struct NotificationChannelStatus
    uint32_t queueSize;        // Current queue size
    uint32_t messageCount;     // Total number of sent messages
    uint32_t failedSendCount;  // Number of failed send operations
+   uint32_t digestedCount;    // Number of messages absorbed into digest
    time_t lastMessageTime;    // Timestamp of last message send attempt
 };
 

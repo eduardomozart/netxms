@@ -44,6 +44,7 @@ public class NotificationChannel
    private int messageCount;
    private int failureCount;
    private int queueSize;
+   private int digestedCount;
 
 	/**
 	 * Create notification channel object from NXCP message
@@ -66,6 +67,7 @@ public class NotificationChannel
       messageCount = msg.getFieldAsInt32(baseId + 11);
       failureCount = msg.getFieldAsInt32(baseId + 12);
       queueSize = msg.getFieldAsInt32(baseId + 13);
+      digestedCount = msg.getFieldAsInt32(baseId + 14);
 	}
 
 	/**
@@ -222,6 +224,14 @@ public class NotificationChannel
    public int getFailureCount()
    {
       return failureCount;
+   }
+
+   /**
+    * @return the digestedCount
+    */
+   public int getDigestedCount()
+   {
+      return digestedCount;
    }
 
    /**

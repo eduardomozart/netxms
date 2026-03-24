@@ -71,6 +71,8 @@ public class NotificationChannelLabelProvider extends LabelProvider implements I
             return ((NotificationChannel)element).getDriverName();
          case NotificationChannels.COLUMN_ERROR_MESSAGE:
             return ((NotificationChannel)element).getErrorMessage();
+         case NotificationChannels.COLUMN_DIGESTED_MESSAGES:
+            return Integer.toString(((NotificationChannel)element).getDigestedCount());
          case NotificationChannels.COLUMN_FAILED_MESSAGES:
             return Integer.toString(((NotificationChannel)element).getFailureCount());
          case NotificationChannels.COLUMN_LAST_STATUS:

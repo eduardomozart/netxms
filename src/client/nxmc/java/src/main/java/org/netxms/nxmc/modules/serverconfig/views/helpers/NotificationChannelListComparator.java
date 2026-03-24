@@ -51,6 +51,9 @@ public class NotificationChannelListComparator extends ViewerComparator
          case NotificationChannels.COLUMN_ERROR_MESSAGE:
             result = nc1.getErrorMessage().compareToIgnoreCase(nc2.getErrorMessage());
             break;
+         case NotificationChannels.COLUMN_DIGESTED_MESSAGES:
+            result = Integer.compare(nc1.getDigestedCount(), nc2.getDigestedCount());
+            break;
          case NotificationChannels.COLUMN_FAILED_MESSAGES:
             result = Integer.compare(nc1.getFailureCount(), nc2.getFailureCount());
             break;
