@@ -4024,6 +4024,23 @@ NetworkPathCheckResult Node::checkNetworkPathLayer2(uint32_t requestId, bool sec
    {
       nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 5, _T("Node::checkNetworkPath(%s [%d]): cannot find interface object for primary IP"), m_name, m_id);
    }
+
+   // If management server is on the same subnet as target node, do full L2 trace
+   shared_ptr<Node> mgmtNode = static_pointer_cast<Node>(FindObjectById(g_dwMgmtNode, OBJECT_NODE));
+   if (mgmtNode != nullptr)
+   {
+      shared_ptr<Interface> mgmtIface = mgmtNode->findInterfaceInSameSubnet(m_ipAddress);
+      if ((mgmtIface != nullptr) && (mgmtIface->getIfIndex() != 0))
+      {
+         nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 6, L"Node::checkNetworkPathLayer2(%s [%u]): management node is on the same subnet, starting full L2 trace from %s [%u] ifIndex=%u",
+                  m_name, m_id, mgmtNode->getName(), mgmtNode->getId(), mgmtIface->getIfIndex());
+         sendPollerMsg(L"Checking L2 path from management node %s...\r\n", mgmtNode->getName());
+         NetworkPathCheckResult result = checkNetworkPathLayer2Trace(mgmtNode, mgmtIface->getIfIndex(), requestId, secondPass);
+         if (result.rootCauseFound)
+            return result;
+      }
+   }
+
    return NetworkPathCheckResult();
 }
 
