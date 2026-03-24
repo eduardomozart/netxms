@@ -481,7 +481,7 @@ StringBuffer DCObject::expandMacros(const TCHAR *src, size_t dstLen)
 		macro.trim();
 
 		dst = head;
-		if (!_tcscmp(macro, _T("node_id")))
+		if (!wcscmp(macro, L"node_id"))
 		{
 			if (m_ownerId != 0)
 			{
@@ -489,10 +489,10 @@ StringBuffer DCObject::expandMacros(const TCHAR *src, size_t dstLen)
 			}
 			else
 			{
-            dst.append(_T("(error)"));
+            dst.append(L"(error)");
 			}
 		}
-		else if (!_tcscmp(macro, _T("node_name")))
+		else if (!wcscmp(macro, L"node_name"))
 		{
          auto owner = m_owner.lock();
 			if (owner != nullptr)
@@ -501,10 +501,10 @@ StringBuffer DCObject::expandMacros(const TCHAR *src, size_t dstLen)
 			}
 			else
 			{
-				dst.append(_T("(error)"));
+				dst.append(L"(error)");
 			}
 		}
-		else if (!_tcscmp(macro, _T("node_primary_ip")))
+		else if (!wcscmp(macro, L"node_primary_ip"))
 		{
 		   auto owner = m_owner.lock();
 			if ((owner != nullptr) && (owner->getObjectClass() == OBJECT_NODE))
@@ -541,6 +541,14 @@ StringBuffer DCObject::expandMacros(const TCHAR *src, size_t dstLen)
 			   nxlog_debug_tag(DEBUG_TAG_DC_CONFIG, 4, L"DCObject::expandMacros(%d,\"%s\"): Cannot find script %s", m_id, src, &macro[7]);
 			}
 		}
+		else if (!wcsncmp(macro, L"expand:", 7))
+      {
+		   shared_ptr<NetObj> owner = m_owner.lock();
+		   if (owner != nullptr)
+		   {
+		      dst.append(owner->expandText(&macro[7]));
+		   }
+      }
 		dst.append(rest);
 	}
 	if (dst.length() > dstLen)
