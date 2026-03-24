@@ -60,6 +60,7 @@ public class NXCObjectCreationData
 	private int agentPort;
 	private int snmpPort;
    private int etherNetIpPort;
+   private InetAddress etherNetIpAddress;
    private int modbusTcpPort;
    private short modbusUnitId;
    private int sshPort;
@@ -1111,6 +1112,22 @@ public class NXCObjectCreationData
    public void setEtherNetIpPort(int etherNetIpPort)
    {
       this.etherNetIpPort = etherNetIpPort;
+   }
+
+   /**
+    * @return the etherNetIpAddress (can be null if not set)
+    */
+   public InetAddress getEtherNetIpAddress()
+   {
+      return etherNetIpAddress;
+   }
+
+   /**
+    * @param etherNetIpAddress the etherNetIpAddress to set (null to clear)
+    */
+   public void setEtherNetIpAddress(InetAddress etherNetIpAddress)
+   {
+      this.etherNetIpAddress = etherNetIpAddress;
    }
 
    /**

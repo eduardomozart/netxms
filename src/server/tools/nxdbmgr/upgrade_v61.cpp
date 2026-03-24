@@ -24,6 +24,16 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.24 to 61.25
+ */
+static bool H_UpgradeFromV24()
+{
+   CHK_EXEC(SQLQuery(L"ALTER TABLE nodes ADD eip_address varchar(48)"));
+   CHK_EXEC(SetMinorSchemaVersion(25));
+   return true;
+}
+
+/**
  * Upgrade from 61.23 to 61.24
  */
 static bool H_UpgradeFromV23()
@@ -644,6 +654,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 24, 61, 25, H_UpgradeFromV24 },
    { 23, 61, 24, H_UpgradeFromV23 },
    { 22, 61, 23, H_UpgradeFromV22 },
    { 21, 61, 22, H_UpgradeFromV21 },

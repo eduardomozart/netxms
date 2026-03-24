@@ -215,6 +215,7 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
    protected int icmpPacketLoss;
    protected ChassisPlacement chassisPlacement;
    protected int etherNetIpPort;
+   protected InetAddress etherNetIpAddress;
    protected int cipDeviceType;
    protected String cipDeviceTypeName;
    protected int cipStatus;
@@ -350,6 +351,7 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
       icmpMinResponseTime = msg.getFieldAsInt32(NXCPCodes.VID_ICMP_MIN_RESPONSE_TIME);
       icmpPacketLoss = msg.getFieldAsInt32(NXCPCodes.VID_ICMP_PACKET_LOSS);
       etherNetIpPort = msg.getFieldAsInt32(NXCPCodes.VID_ETHERNET_IP_PORT);
+      etherNetIpAddress = msg.getFieldAsInetAddress(NXCPCodes.VID_ETHERNET_IP_ADDRESS);
       cipDeviceType = msg.getFieldAsInt32(NXCPCodes.VID_CIP_DEVICE_TYPE);
       cipDeviceTypeName = msg.getFieldAsString(NXCPCodes.VID_CIP_DEVICE_TYPE_NAME);
       cipStatus = msg.getFieldAsInt32(NXCPCodes.VID_CIP_STATUS);
@@ -1346,6 +1348,14 @@ public abstract class AbstractNode extends DataCollectionTarget implements Hardw
    public int getEtherNetIpPort()
    {
       return etherNetIpPort;
+   }
+
+   /**
+    * @return the etherNetIpAddress (can be null if not set)
+    */
+   public InetAddress getEtherNetIpAddress()
+   {
+      return etherNetIpAddress;
    }
 
    /**

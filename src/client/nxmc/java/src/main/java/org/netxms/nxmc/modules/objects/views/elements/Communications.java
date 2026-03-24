@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2022 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,6 +133,8 @@ public class Communications extends TableElement
                addPair(i18n.tr("Zone UIN"), getZoneName(node.getZoneId()));
             addPair(i18n.tr("Primary host name"), node.getPrimaryName());
             addPair(i18n.tr("Primary IP address"), node.getPrimaryIP().getHostAddress());
+            if (node.getEtherNetIpAddress() != null)
+               addPair(i18n.tr("EtherNet/IP address"), node.getEtherNetIpAddress().getHostAddress());
             if (node.isIcmpStatisticsCollected())
             {
                addPair(i18n.tr("ICMP average response time"), node.getIcmpAverageResponseTime() + " ms");

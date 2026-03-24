@@ -104,6 +104,7 @@ NewNodeData::NewNodeData(const NXCPMessage& msg, const InetAddress& ipAddress) :
    agentPort = msg.getFieldAsUInt16(VID_AGENT_PORT);
    snmpPort = msg.getFieldAsUInt16(VID_SNMP_PORT);
    eipPort = msg.getFieldAsUInt16(VID_ETHERNET_IP_PORT);
+   eipAddress = msg.getFieldAsInetAddress(VID_ETHERNET_IP_ADDRESS);
    modbusTcpPort = msg.getFieldAsUInt16(VID_MODBUS_TCP_PORT);
    modbusUnitId = msg.getFieldAsUInt16(VID_MODBUS_UNIT_ID);
    msg.getFieldAsString(VID_OBJECT_NAME, name, MAX_OBJECT_NAME);

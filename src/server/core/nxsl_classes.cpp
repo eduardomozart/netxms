@@ -2887,6 +2887,10 @@ NXSL_Value *NXSL_NodeClass::getAttr(NXSL_Object *object, const NXSL_Identifier& 
          value = vm->createValue();
       }
    }
+   else if (NXSL_COMPARE_ATTRIBUTE_NAME("etherNetIPAddress"))
+   {
+      value = NXSL_InetAddressClass::createObject(vm, node->getEffectiveEtherNetIPAddress());
+   }
    else if (NXSL_COMPARE_ATTRIBUTE_NAME("expectedCapabilities"))
    {
       value = vm->createValue(node->getExpectedCapabilities());

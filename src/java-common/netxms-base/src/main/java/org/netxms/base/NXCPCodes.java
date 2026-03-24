@@ -1510,6 +1510,7 @@ public class NXCPCodes
    public static final long VID_SNMP_TRAP_PRIV_PASSWORD = 972;
    public static final long VID_SNMP_TRAP_USM_METHODS = 973;
    public static final long VID_SNMP_TRAP_VERSION = 974;
+   public static final long VID_ETHERNET_IP_ADDRESS = 975;
 
    public static final long VID_RESOURCE_TAG_LIST_BASE = 0x7D000000L;
    public static final long VID_DELETED_RULE_LIST_BASE = 0x7A000000L;

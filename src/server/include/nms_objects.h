@@ -851,6 +851,7 @@ struct NXCORE_EXPORTABLE NewNodeData
    uint16_t agentPort;
    uint16_t snmpPort;
    uint16_t eipPort;
+   InetAddress eipAddress;
    uint16_t modbusTcpPort;
    uint16_t modbusUnitId;
    TCHAR name[MAX_OBJECT_NAME];
@@ -3987,6 +3988,7 @@ protected:
    InetAddressList m_icmpTargets;
    TCHAR *m_chassisPlacementConf;
    uint16_t m_eipPort;  // EtherNet/IP port
+   InetAddress m_eipAddress;  // EtherNet/IP address (if different from primary)
    uint16_t m_cipDeviceType;
    uint16_t m_cipStatus;
    uint8_t m_cipState;
@@ -4436,6 +4438,8 @@ public:
    shared_ptr<SSHInteractiveChannel> openInteractiveSSHChannel(const wchar_t *login, const wchar_t *password, uint32_t keyId);
 
    ModbusTransport *createModbusTransport();
+
+   InetAddress getEffectiveEtherNetIPAddress() const { return m_eipAddress.isValidUnicast() ? m_eipAddress : m_ipAddress; }
 
    uint32_t getEffectiveSnmpProxy(ProxySelection proxySelection = ProxySelection::AVAILABLE);
    uint32_t getEffectiveEtherNetIPProxy(ProxySelection proxySelection = ProxySelection::AVAILABLE);

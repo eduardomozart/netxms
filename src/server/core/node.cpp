@@ -358,6 +358,7 @@ Node::Node(const NewNodeData *newNodeData, uint32_t flags) : super(Pollable::STA
    setCreationTime();
    m_chassisPlacementConf = nullptr;
    m_eipPort = newNodeData->eipPort;
+   m_eipAddress = newNodeData->eipAddress;
    m_cipDeviceType = 0;
    m_cipState = 0;
    m_cipStatus = 0;
@@ -439,7 +440,7 @@ bool Node::loadFromDatabase(DB_HANDLE hdb, uint32_t id, DB_STATEMENT *preparedSt
       _T("agent_cert_mapping_data,snmp_engine_id,ssh_port,ssh_key_id,syslog_codepage,snmp_codepage,ospf_router_id,")
       _T("mqtt_proxy,modbus_proxy,modbus_tcp_port,modbus_unit_id,snmp_context_engine_id,vnc_password,vnc_port,")
       _T("vnc_proxy,path_check_reason,path_check_node_id,path_check_iface_id,expected_capabilities,last_events,decommission_time,")
-      _T("trap_snmp_version,trap_community,trap_usm_auth_password,trap_usm_priv_password,trap_usm_methods FROM nodes WHERE id=?"));
+      _T("eip_address,trap_snmp_version,trap_community,trap_usm_auth_password,trap_usm_priv_password,trap_usm_methods FROM nodes WHERE id=?"));
    if (hStmt == nullptr)
       return false;
 
@@ -631,16 +632,17 @@ bool Node::loadFromDatabase(DB_HANDLE hdb, uint32_t id, DB_STATEMENT *preparedSt
    for (i = 0; i < MIN(elements.size(), MAX_LAST_EVENTS); i++)
       m_lastEvents[i] = _tcstoul(elements.get(i), nullptr, 10);
    m_decommissionTime = static_cast<time_t>(DBGetFieldInt64(hResult, 0, 91));
+   m_eipAddress = DBGetFieldInetAddr(hResult, 0, 92);
 
    // SNMP trap credential columns (null = use polling credentials)
    char trapAuthObject[256], trapAuthPassword[256], trapPrivPassword[256];
-   DBGetFieldA(hResult, 0, 93, trapAuthObject, 256);
-   DBGetFieldA(hResult, 0, 94, trapAuthPassword, 256);
-   DBGetFieldA(hResult, 0, 95, trapPrivPassword, 256);
+   DBGetFieldA(hResult, 0, 94, trapAuthObject, 256);
+   DBGetFieldA(hResult, 0, 95, trapAuthPassword, 256);
+   DBGetFieldA(hResult, 0, 96, trapPrivPassword, 256);
    if (trapAuthObject[0] != 0)
    {
-      m_snmpTrapVersion = static_cast<SNMP_Version>(DBGetFieldLong(hResult, 0, 92));
-      int trapMethods = DBGetFieldLong(hResult, 0, 96);
+      m_snmpTrapVersion = static_cast<SNMP_Version>(DBGetFieldLong(hResult, 0, 93));
+      int trapMethods = DBGetFieldLong(hResult, 0, 97);
       delete m_snmpTrapSecurity;
       if (m_snmpTrapVersion == SNMP_VERSION_3)
       {
@@ -1107,9 +1109,10 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
          _T("cip_status"), _T("cip_state"), _T("eip_proxy"), _T("eip_port"), _T("hardware_id"), _T("cip_vendor_code"),
          _T("agent_cert_mapping_method"), _T("agent_cert_mapping_data"), _T("snmp_engine_id"), _T("snmp_context_engine_id"),
          _T("syslog_codepage"), _T("snmp_codepage"), _T("ospf_router_id"), _T("mqtt_proxy"), _T("modbus_proxy"), _T("modbus_tcp_port"),
-         _T("modbus_unit_id"), _T("vnc_password"), _T("vnc_port"), _T("vnc_proxy"), _T("path_check_reason"), _T("path_check_node_id"),
-         _T("path_check_iface_id"), L"expected_capabilities", L"last_events", L"decommission_time",
-         L"trap_snmp_version", L"trap_community", L"trap_usm_auth_password", L"trap_usm_priv_password", L"trap_usm_methods", nullptr
+         L"modbus_unit_id", L"vnc_password", L"vnc_port", L"vnc_proxy", L"path_check_reason", L"path_check_node_id",
+         L"path_check_iface_id", L"expected_capabilities", L"last_events", L"decommission_time",
+         L"trap_snmp_version", L"trap_community", L"trap_usm_auth_password", L"trap_usm_priv_password", L"trap_usm_methods",
+         L"eip_address", nullptr
       };
 
       DB_STATEMENT hStmt = DBPrepareMerge(hdb, L"nodes", L"id", m_id, columns);
@@ -1124,13 +1127,13 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
          switch(m_icmpStatCollectionMode)
          {
             case IcmpStatCollectionMode::ON:
-               icmpPollMode = _T("1");
+               icmpPollMode = L"1";
                break;
             case IcmpStatCollectionMode::OFF:
-               icmpPollMode = _T("2");
+               icmpPollMode = L"2";
                break;
             default:
-               icmpPollMode = _T("0");
+               icmpPollMode = L"0";
                break;
          }
 
@@ -1138,13 +1141,13 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
          switch(m_agentCertMappingMethod)
          {
             case MAP_CERTIFICATE_BY_CN:
-               agentCertMappingMethod = _T("2");
+               agentCertMappingMethod = L"2";
                break;
             case MAP_CERTIFICATE_BY_PUBKEY:
-               agentCertMappingMethod = _T("1");
+               agentCertMappingMethod = L"1";
                break;
             default:
-               agentCertMappingMethod = _T("0");
+               agentCertMappingMethod = L"0";
                break;
          }
 
@@ -1275,7 +1278,9 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
             DBBind(hStmt, 96, DB_SQLTYPE_VARCHAR, L"", DB_BIND_STATIC);
             DBBind(hStmt, 97, DB_SQLTYPE_INTEGER, static_cast<int32_t>(0));
          }
-         DBBind(hStmt, 98, DB_SQLTYPE_INTEGER, m_id);
+         wchar_t eipAddr[64];
+         DBBind(hStmt, 98, DB_SQLTYPE_VARCHAR, m_eipAddress.isValidUnicast() ? m_eipAddress.toString(eipAddr) : nullptr, DB_BIND_STATIC);
+         DBBind(hStmt, 99, DB_SQLTYPE_INTEGER, m_id);
 
          success = DBExecute(hStmt);
          DBFreeStatement(hStmt);
@@ -1295,14 +1300,14 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
 
    if (success && (m_modified & MODIFY_COMPONENTS))
    {
-      success = executeQueryOnObject(hdb, _T("DELETE FROM node_components WHERE node_id=?"));
+      success = executeQueryOnObject(hdb, L"DELETE FROM node_components WHERE node_id=?");
       lockProperties();
       if (success && (m_components != nullptr))
       {
          const Component *root = m_components->getRoot();
          if (root != nullptr)
          {
-            DB_STATEMENT hStmt = DBPrepare(hdb, _T("INSERT INTO node_components (node_id,component_index,parent_index,position,component_class,if_index,name,description,model,serial_number,vendor,firmware) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"));
+            DB_STATEMENT hStmt = DBPrepare(hdb, L"INSERT INTO node_components (node_id,component_index,parent_index,position,component_class,if_index,name,description,model,serial_number,vendor,firmware) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             if (hStmt != nullptr)
             {
                DBBind(hStmt, 1, DB_SQLTYPE_INTEGER, m_id);
@@ -1320,12 +1325,12 @@ bool Node::saveToDatabase(DB_HANDLE hdb)
 
    if (success && (m_modified & MODIFY_SOFTWARE_INVENTORY))
    {
-      success = executeQueryOnObject(hdb, _T("DELETE FROM software_inventory WHERE node_id=?"));
+      success = executeQueryOnObject(hdb, L"DELETE FROM software_inventory WHERE node_id=?");
       lockProperties();
       if ((m_softwarePackages != nullptr) && !m_softwarePackages->isEmpty())
       {
          DB_STATEMENT hStmt = DBPrepare(hdb,
-                  _T("INSERT INTO software_inventory (node_id,package_id,name,version,user_name,vendor,install_date,url,description,uninstall_key) VALUES (?,?,?,?,?,?,?,?,?,?)"),
+                  L"INSERT INTO software_inventory (node_id,package_id,name,version,user_name,vendor,install_date,url,description,uninstall_key) VALUES (?,?,?,?,?,?,?,?,?,?)",
                   m_softwarePackages->size() > 1);
          if (hStmt != nullptr)
          {
@@ -2228,7 +2233,7 @@ shared_ptr<Interface> Node::createInterfaceObject(const InterfaceInfo& info, boo
    iface->expandName(iface->getName(), expandedName);
    iface->setName(expandedName);
 
-   int defaultExpectedState = ConfigReadInt(_T("Objects.Interfaces.DefaultExpectedState"), IF_DEFAULT_EXPECTED_STATE_UP);
+   int defaultExpectedState = ConfigReadInt(L"Objects.Interfaces.DefaultExpectedState", IF_DEFAULT_EXPECTED_STATE_UP);
    switch(defaultExpectedState)
    {
       case IF_DEFAULT_EXPECTED_STATE_AUTO:
@@ -2245,7 +2250,7 @@ shared_ptr<Interface> Node::createInterfaceObject(const InterfaceInfo& info, boo
    // Call hook script if interface is automatically created
    if (!manuallyCreated)
    {
-      ScriptVMHandle vm = CreateServerScriptVM(_T("Hook::CreateInterface"), self());
+      ScriptVMHandle vm = CreateServerScriptVM(L"Hook::CreateInterface", self());
       if (!vm.isValid())
       {
          nxlog_debug_tag(DEBUG_TAG_NODE_INTERFACES, 7, _T("Node::createInterfaceObject(%s [%u]): hook script \"Hook::CreateInterface\" %s"), m_name, m_id, HookScriptLoadErrorToText(vm.failureReason()));
@@ -2575,7 +2580,7 @@ bool Node::lockForDiscoveryPoll()
        (m_status != STATUS_UNMANAGED) &&
        !(m_flags & NF_DISABLE_DISCOVERY_POLL) &&
        (m_runtimeFlags & ODF_CONFIGURATION_POLL_PASSED) &&
-       (static_cast<uint32_t>(time(nullptr) - m_discoveryPollState.getLastCompleted()) > getCustomAttributeAsUInt32(_T("SysConfig:NetworkDiscovery.PassiveDiscovery.Interval"), g_discoveryPollingInterval)) &&
+       (static_cast<uint32_t>(time(nullptr) - m_discoveryPollState.getLastCompleted()) > getCustomAttributeAsUInt32(L"SysConfig:NetworkDiscovery.PassiveDiscovery.Interval", g_discoveryPollingInterval)) &&
        !isAgentRestarting() && !isProxyAgentRestarting())
    {
       success = m_discoveryPollState.schedule();
@@ -2595,7 +2600,7 @@ bool Node::lockForRoutingTablePoll()
        (m_status != STATUS_UNMANAGED) &&
        !(m_flags & NF_DISABLE_ROUTE_POLL) &&
        (m_runtimeFlags & ODF_CONFIGURATION_POLL_PASSED) &&
-       (static_cast<uint32_t>(time(nullptr) - m_routingPollState.getLastCompleted()) > getCustomAttributeAsUInt32(_T("SysConfig:Topology.RoutingTable.UpdateInterval"), g_routingTableUpdateInterval)) &&
+       (static_cast<uint32_t>(time(nullptr) - m_routingPollState.getLastCompleted()) > getCustomAttributeAsUInt32(L"SysConfig:Topology.RoutingTable.UpdateInterval", g_routingTableUpdateInterval)) &&
        !isAgentRestarting() && !isProxyAgentRestarting())
    {
       success = m_routingPollState.schedule();
@@ -2636,7 +2641,7 @@ bool Node::lockForIcmpPoll()
        (m_status != STATUS_UNMANAGED) &&
        isIcmpStatCollectionEnabled() &&
        !(m_runtimeFlags & ODF_CONFIGURATION_POLL_PENDING) &&
-       (static_cast<uint32_t>(time(nullptr) - m_icmpPollState.getLastCompleted()) > getCustomAttributeAsUInt32(_T("SysConfig:ICMP.PollingInterval"), g_icmpPollingInterval)) &&
+       (static_cast<uint32_t>(time(nullptr) - m_icmpPollState.getLastCompleted()) > getCustomAttributeAsUInt32(L"SysConfig:ICMP.PollingInterval", g_icmpPollingInterval)) &&
        !isProxyAgentRestarting())
    {
       success = m_icmpPollState.schedule();
@@ -3034,7 +3039,7 @@ restart_status_poll:
       }
       else
       {
-         identity = EIP_ListIdentity(m_ipAddress, m_eipPort, 5000, &status);
+         identity = EIP_ListIdentity(getEffectiveEtherNetIPAddress(), m_eipPort, 5000, &status);
       }
 
       if (identity != nullptr)
@@ -3302,20 +3307,21 @@ restart_status_poll:
          if (m_state & NSF_ETHERNET_IP_UNREACHABLE)
          {
             // Use TCP ping to check if node actually unreachable if possible
-            if (m_ipAddress.isValidUnicast() && (getEffectiveEtherNetIPProxy() == 0))
+            InetAddress eipAddress = getEffectiveEtherNetIPAddress();
+            if (eipAddress.isValidUnicast() && (getEffectiveEtherNetIPProxy() == 0))
             {
-               nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 6, _T("StatusPoll(%s): using TCP ping on primary IP address"), m_name);
-               sendPollerMsg(_T("Checking primary IP address with TCP ping on EtherNet/IP port\r\n"));
-               TcpPingResult r = TcpPing(m_ipAddress, m_eipPort, 1000);
+               nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 6, _T("StatusPoll(%s): using TCP ping on EtherNet/IP address"), m_name);
+               sendPollerMsg(_T("Checking EtherNet/IP address with TCP ping on port %d\r\n"), m_eipPort);
+               TcpPingResult r = TcpPing(eipAddress, m_eipPort, 1000);
                if ((r == TCP_PING_SUCCESS) || (r == TCP_PING_REJECT))
                {
                   nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 6, _T("StatusPoll(%s): EtherNet/IP is unreachable but IP address is likely reachable (TCP ping returns %d)"), m_name, r);
-                  sendPollerMsg(POLLER_INFO _T("   Primary IP address is responding to TCP ping on port %d\r\n"), m_eipPort);
+                  sendPollerMsg(POLLER_INFO _T("   EtherNet/IP address is responding to TCP ping on port %d\r\n"), m_eipPort);
                   allDown = false;
                }
                else
                {
-                  sendPollerMsg(POLLER_ERROR _T("   Primary IP address is not responding to TCP ping on port %d\r\n"), m_eipPort);
+                  sendPollerMsg(POLLER_ERROR _T("   EtherNet/IP address is not responding to TCP ping on port %d\r\n"), m_eipPort);
                }
             }
          }
@@ -6101,7 +6107,43 @@ bool Node::confPollEthernetIP()
    }
    else
    {
-      identity = EIP_ListIdentity(m_ipAddress, m_eipPort, 5000, &status);
+      InetAddress effectiveAddress = getEffectiveEtherNetIPAddress();
+      identity = EIP_ListIdentity(effectiveAddress, m_eipPort, 5000, &status);
+
+      // If connection failed and no specific EtherNet/IP address is configured, scan all interface addresses
+      if ((identity == nullptr) && !m_eipAddress.isValidUnicast())
+      {
+         nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): EtherNet/IP not responding on primary address, scanning interface addresses"), m_name);
+         readLockChildList();
+         for (int i = 0; (i < getChildList().size()) && (identity == nullptr); i++)
+         {
+            if (getChildList().get(i)->getObjectClass() != OBJECT_INTERFACE)
+               continue;
+            auto iface = static_cast<Interface*>(getChildList().get(i));
+            InetAddressList addrList = iface->getIpAddressList();
+            for (int j = 0; j < addrList.size(); j++)
+            {
+               InetAddress addr = addrList.get(j);
+               if (!addr.isValidUnicast() || addr.equals(m_ipAddress))
+                  continue;
+
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 6, _T("ConfPoll(%s): trying EtherNet/IP on %s"), m_name, addr.toString().cstr());
+               identity = EIP_ListIdentity(addr, m_eipPort, 3000, &status);
+               if (identity != nullptr)
+               {
+                  TCHAR addrText[64];
+                  nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): EtherNet/IP device found on address %s"), m_name, addr.toString(addrText));
+                  sendPollerMsg(L"   EtherNet/IP device found on address %s\r\n", addrText);
+                  lockProperties();
+                  m_eipAddress = addr;
+                  hasChanges = true;
+                  unlockProperties();
+                  break;
+               }
+            }
+         }
+         unlockChildList();
+      }
    }
 
    if (identity != nullptr)
@@ -8874,7 +8916,7 @@ DataCollectionError Node::getMetricFromEtherNetIP(const TCHAR *metric, TCHAR *bu
       return DCE_COMM_ERROR;
    }
 
-   DataCollectionError result = GetEtherNetIPAttribute(m_ipAddress, m_eipPort, metric, 5000, buffer, size);
+   DataCollectionError result = GetEtherNetIPAttribute(getEffectiveEtherNetIPAddress(), m_eipPort, metric, 5000, buffer, size);
    nxlog_debug_tag(DEBUG_TAG_DC_MODBUS, 7, _T("Node(%s)->getMetricFromEtherNetIP(%s): result=%d"), m_name, metric, result);
    return result;
 }
@@ -9602,6 +9644,8 @@ void Node::fillMessageLocked(NXCPMessage *msg, uint32_t userId)
       msg->setField(fieldId++, m_icmpTargets.get(i));
 
    msg->setField(VID_ETHERNET_IP_PORT, m_eipPort);
+   if (m_eipAddress.isValidUnicast())
+      msg->setField(VID_ETHERNET_IP_ADDRESS, m_eipAddress);
    if (m_capabilities & NC_IS_ETHERNET_IP)
    {
       msg->setField(VID_CIP_DEVICE_TYPE, m_cipDeviceType);
@@ -9915,6 +9959,10 @@ uint32_t Node::modifyFromMessageInternal(const NXCPMessage& msg, ClientSession *
    // Change EtherNet/IP port
    if (msg.isFieldExist(VID_ETHERNET_IP_PORT))
       m_eipPort = msg.getFieldAsUInt16(VID_ETHERNET_IP_PORT);
+
+   // Change EtherNet/IP address
+   if (msg.isFieldExist(VID_ETHERNET_IP_ADDRESS))
+      m_eipAddress = msg.getFieldAsInetAddress(VID_ETHERNET_IP_ADDRESS);
 
    // Change proxy node
    if (msg.isFieldExist(VID_AGENT_PROXY))
@@ -14256,6 +14304,13 @@ json_t *Node::toJson()
    json_object_set_new(root, "icmpStatCollectionMode", json_integer((int)m_icmpStatCollectionMode));
    json_object_set_new(root, "icmpTargets", m_icmpTargets.toJson());
    json_object_set_new(root, "chassisPlacementConfig", json_string_t(m_chassisPlacementConf));
+   json_object_set_new(root, "eipPort", json_integer(m_eipPort));
+   json_object_set_new(root, "eipAddress", m_eipAddress.isValidUnicast() ? m_eipAddress.toJson() : json_null());
+   json_object_set_new(root, "eipProxy", json_integer(m_eipProxy));
+   json_object_set_new(root, "cipDeviceType", json_integer(m_cipDeviceType));
+   json_object_set_new(root, "cipVendorCode", json_integer(m_cipVendorCode));
+   json_object_set_new(root, "cipStatus", json_integer(m_cipStatus));
+   json_object_set_new(root, "cipState", json_integer(m_cipState));
    json_object_set_new(root, "syslogCodepage", json_string_a(m_syslogCodepage));
    json_object_set_new(root, "modbusUnitId", json_integer(m_modbusUnitId));
    json_object_set_new(root, "modbusTCPPort", json_integer(m_modbusTcpPort));

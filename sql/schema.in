@@ -508,6 +508,7 @@ CREATE TABLE nodes
   product_code varchar(31) null,
   serial_number varchar(127) null,
   eip_port integer not null,
+  eip_address varchar(48) null,
   cip_device_type integer not null,
   cip_status integer not null,
   cip_state integer not null,

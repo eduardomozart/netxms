@@ -6869,6 +6869,8 @@ public class NXCSession
             msg.setFieldInt16(NXCPCodes.VID_AGENT_PORT, data.getAgentPort());
             msg.setFieldInt16(NXCPCodes.VID_SNMP_PORT, data.getSnmpPort());
             msg.setFieldInt16(NXCPCodes.VID_ETHERNET_IP_PORT, data.getEtherNetIpPort());
+            if (data.getEtherNetIpAddress() != null)
+               msg.setField(NXCPCodes.VID_ETHERNET_IP_ADDRESS, data.getEtherNetIpAddress());
             msg.setFieldInt16(NXCPCodes.VID_MODBUS_TCP_PORT, data.getModbusTcpPort());
             msg.setFieldInt16(NXCPCodes.VID_MODBUS_UNIT_ID, data.getModbusUnitId());
             msg.setFieldInt32(NXCPCodes.VID_CREATION_FLAGS, data.getCreationFlags());
@@ -7810,6 +7812,11 @@ public class NXCSession
       if (data.getEtherNetIPPort() != null)
       {
          msg.setFieldInt16(NXCPCodes.VID_ETHERNET_IP_PORT, data.getEtherNetIPPort());
+      }
+
+      if (data.getEtherNetIPAddress() != null)
+      {
+         msg.setField(NXCPCodes.VID_ETHERNET_IP_ADDRESS, data.getEtherNetIPAddress());
       }
 
       if (data.getEtherNetIPProxy() != null)

@@ -186,6 +186,7 @@ public class NXCObjectModificationData
    private List<InetAddress> icmpTargets;
    private String chassisPlacement;
    private Integer etherNetIPPort;
+   private InetAddress etherNetIPAddress;
    private Long etherNetIPProxy;
    private Integer modbusTcpPort;
    private Short modbusUnitId;
@@ -2287,6 +2288,22 @@ public class NXCObjectModificationData
    public void setEtherNetIPPort(int etherNetIPPort)
    {
       this.etherNetIPPort = etherNetIPPort;
+   }
+
+   /**
+    * @return the etherNetIPAddress (can be null if not set)
+    */
+   public InetAddress getEtherNetIPAddress()
+   {
+      return etherNetIPAddress;
+   }
+
+   /**
+    * @param etherNetIPAddress the etherNetIPAddress to set (null to clear)
+    */
+   public void setEtherNetIPAddress(InetAddress etherNetIPAddress)
+   {
+      this.etherNetIPAddress = etherNetIPAddress;
    }
 
    /**
