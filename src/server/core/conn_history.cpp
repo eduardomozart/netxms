@@ -55,6 +55,8 @@ struct ConnectionHistoryChange
    uint16_t vlanId;
    uint32_t oldIfIndex;
    uint16_t oldVlanId;
+   uint32_t oldSwitchId;        // Old switch node ID for cross-switch moves (0 for same-switch)
+   uint32_t oldInterfaceObjId;  // Old interface object ID for cross-switch moves (from DB)
 };
 
 /**
@@ -101,6 +103,69 @@ static void ExtractConnectionPoints(const shared_ptr<ForwardingDatabase>& fdb, H
 }
 
 /**
+ * Check if CONNECT events are actually cross-switch moves by querying connection history.
+ * If the MAC was last seen connected on a different switch, upgrade to MOVE.
+ */
+static void DetectCrossSwitchMoves(ObjectArray<ConnectionHistoryChange> *changes, DB_HANDLE hdb, uint32_t switchId)
+{
+   const wchar_t *query;
+   switch(g_dbSyntax)
+   {
+      case DB_SYNTAX_MSSQL:
+         query = L"SELECT TOP 1 switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC";
+         break;
+      case DB_SYNTAX_ORACLE:
+         query = L"SELECT * FROM (SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC) WHERE ROWNUM<=1";
+         break;
+      default:
+         query = L"SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC LIMIT 1";
+         break;
+   }
+
+   DB_STATEMENT hStmt = DBPrepare(hdb, query);
+   if (hStmt == nullptr)
+      return;
+
+   int upgraded = 0;
+   for (int i = 0; i < changes->size(); i++)
+   {
+      ConnectionHistoryChange *change = changes->get(i);
+      if (change->eventType != CONN_EVENT_CONNECT)
+         continue;
+
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, change->macAddress);
+      DB_RESULT hResult = DBSelectPrepared(hStmt);
+      if (hResult != nullptr)
+      {
+         if (DBGetNumRows(hResult) > 0)
+         {
+            uint32_t prevSwitchId = DBGetFieldULong(hResult, 0, 0);
+            uint32_t prevInterfaceId = DBGetFieldULong(hResult, 0, 1);
+            int32_t prevEventType = DBGetFieldLong(hResult, 0, 2);
+
+            // If the most recent event was a connect or move on a different switch, this is a cross-switch move
+            if ((prevEventType != CONN_EVENT_DISCONNECT) && (prevSwitchId != switchId))
+            {
+               change->eventType = CONN_EVENT_MOVE;
+               change->oldSwitchId = prevSwitchId;
+               change->oldInterfaceObjId = prevInterfaceId;
+               upgraded++;
+
+               TCHAR macStr[64];
+               nxlog_debug_tag(DEBUG_TAG, 4, L"UpdateConnectionHistory(%u): CONNECT for %s upgraded to cross-switch MOVE (from switch %u port [%u])",
+                  switchId, change->macAddress.toString(macStr), prevSwitchId, prevInterfaceId);
+            }
+         }
+         DBFreeResult(hResult);
+      }
+   }
+   DBFreeStatement(hStmt);
+
+   if (upgraded > 0)
+      nxlog_debug_tag(DEBUG_TAG, 4, L"UpdateConnectionHistory(%u): %d CONNECT events upgraded to cross-switch MOVE", switchId, upgraded);
+}
+
+/**
  * Resolve IP address for a MAC address
  */
 static InetAddress ResolveIPForMAC(const MacAddress& mac)
@@ -136,12 +201,24 @@ static void WriteHistoryRecord(DB_STATEMENT hStmt, uint32_t switchId, const Conn
          interfaceObjId = iface->getId();
    }
 
+   // Resolve old interface and switch for MOVE events
+   uint32_t oldSwitchId = 0;
    uint32_t oldInterfaceObjId = 0;
-   if (change.eventType == CONN_EVENT_MOVE && change.oldIfIndex != 0 && switchObj != nullptr)
+   if (change.eventType == CONN_EVENT_MOVE)
    {
-      shared_ptr<Interface> oldIface = static_cast<Node*>(switchObj.get())->findInterfaceByIndex(change.oldIfIndex);
-      if (oldIface != nullptr)
-         oldInterfaceObjId = oldIface->getId();
+      if (change.oldSwitchId != 0)
+      {
+         // Cross-switch move - old interface object ID comes from DB lookup
+         oldSwitchId = change.oldSwitchId;
+         oldInterfaceObjId = change.oldInterfaceObjId;
+      }
+      else if (change.oldIfIndex != 0 && switchObj != nullptr)
+      {
+         // Same-switch move - resolve old ifIndex to object ID on current switch
+         shared_ptr<Interface> oldIface = static_cast<Node*>(switchObj.get())->findInterfaceByIndex(change.oldIfIndex);
+         if (oldIface != nullptr)
+            oldInterfaceObjId = oldIface->getId();
+      }
    }
 
    DBBind(hStmt, 1, DB_SQLTYPE_BIGINT, static_cast<int64_t>(recordId));
@@ -154,7 +231,7 @@ static void WriteHistoryRecord(DB_STATEMENT hStmt, uint32_t switchId, const Conn
    DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, interfaceObjId);
    DBBind(hStmt, 8, DB_SQLTYPE_INTEGER, static_cast<int32_t>(change.vlanId));
    DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, static_cast<int32_t>(change.eventType));
-   DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, static_cast<int32_t>(0)); // old_switch_id (same switch for MOVE)
+   DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, oldSwitchId);
    DBBind(hStmt, 11, DB_SQLTYPE_INTEGER, oldInterfaceObjId);
    DBExecute(hStmt);
 }
@@ -201,9 +278,29 @@ static void PostConnectionEvent(uint32_t switchId, const ConnectionHistoryChange
       case CONN_EVENT_MOVE:
       {
          wchar_t oldPortName[MAX_OBJECT_NAME] = L"";
-         shared_ptr<Interface> oldIface = static_cast<Node*>(switchObj.get())->findInterfaceByIndex(change.oldIfIndex);
-         if (oldIface != nullptr)
-            wcslcpy(oldPortName, oldIface->getName(), MAX_OBJECT_NAME);
+         const wchar_t *oldSwitchName = switchObj->getName();
+         shared_ptr<NetObj> oldSwitchObj;
+
+         if (change.oldSwitchId != 0)
+         {
+            // Cross-switch move - resolve old switch and interface from object IDs
+            oldSwitchObj = FindObjectById(change.oldSwitchId, OBJECT_NODE);
+            if (oldSwitchObj != nullptr)
+               oldSwitchName = oldSwitchObj->getName();
+            if (change.oldInterfaceObjId != 0)
+            {
+               shared_ptr<NetObj> oldIfaceObj = FindObjectById(change.oldInterfaceObjId, OBJECT_INTERFACE);
+               if (oldIfaceObj != nullptr)
+                  wcslcpy(oldPortName, oldIfaceObj->getName(), MAX_OBJECT_NAME);
+            }
+         }
+         else
+         {
+            // Same-switch move - resolve old interface by ifIndex on current switch
+            shared_ptr<Interface> oldIface = static_cast<Node*>(switchObj.get())->findInterfaceByIndex(change.oldIfIndex);
+            if (oldIface != nullptr)
+               wcslcpy(oldPortName, oldIface->getName(), MAX_OBJECT_NAME);
+         }
 
          EventBuilder(EVENT_MAC_MOVED, switchId)
             .param(L"macAddress", change.macAddress)
@@ -212,6 +309,8 @@ static void PostConnectionEvent(uint32_t switchId, const ConnectionHistoryChange
             .param(L"newPortName", portName)
             .param(L"ipAddress", ip)
             .param(L"vlanId", static_cast<int32_t>(change.vlanId))
+            .param(L"oldSwitchName", oldSwitchName)
+            .param(L"oldSwitchId", (change.oldSwitchId != 0) ? change.oldSwitchId : switchId)
             .post();
          break;
       }
@@ -266,7 +365,7 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
          ConnectionPoint *prevCp = prevConnections.get(mac);
          if (prevCp == nullptr)
          {
-            // New connection
+            // New connection (may be upgraded to cross-switch MOVE later)
             auto *change = new ConnectionHistoryChange();
             change->macAddress = mac;
             change->eventType = CONN_EVENT_CONNECT;
@@ -274,11 +373,13 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
             change->vlanId = cp->vlanId;
             change->oldIfIndex = 0;
             change->oldVlanId = 0;
+            change->oldSwitchId = 0;
+            change->oldInterfaceObjId = 0;
             changes.add(change);
          }
          else if (prevCp->ifIndex != cp->ifIndex)
          {
-            // MAC moved to different port
+            // MAC moved to different port on same switch
             auto *change = new ConnectionHistoryChange();
             change->macAddress = mac;
             change->eventType = CONN_EVENT_MOVE;
@@ -286,6 +387,8 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
             change->vlanId = cp->vlanId;
             change->oldIfIndex = prevCp->ifIndex;
             change->oldVlanId = prevCp->vlanId;
+            change->oldSwitchId = 0;
+            change->oldInterfaceObjId = 0;
             changes.add(change);
          }
          return _CONTINUE;
@@ -304,6 +407,8 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
             change->vlanId = cp->vlanId;
             change->oldIfIndex = 0;
             change->oldVlanId = 0;
+            change->oldSwitchId = 0;
+            change->oldInterfaceObjId = 0;
             changes.add(change);
          }
          return _CONTINUE;
@@ -317,8 +422,12 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
 
    nxlog_debug_tag(DEBUG_TAG, 4, L"UpdateConnectionHistory(%u): %d changes detected", switchId, changes.size());
 
-   // Write changes to database in a batch
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+
+   // Check if any CONNECT events are actually cross-switch moves
+   DetectCrossSwitchMoves(&changes, hdb, switchId);
+
+   // Write changes to database in a batch
    DB_STATEMENT hStmt = DBPrepare(hdb,
       (g_dbSyntax == DB_SYNTAX_TSDB) ?
          L"INSERT INTO connection_history (record_id,event_timestamp,mac_address,ip_address,"
