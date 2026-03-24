@@ -68,12 +68,17 @@ private:
    StructArray<Range> m_excludedEvents;
    uint32_t m_severityFilter;
    StructArray<Filter> m_filters;
+   bool m_processOfflineEvents;
+   uint32_t m_maxOfflineEventAge;  // in days
+   TCHAR m_registryKey[64];
 
    void run();
+   void processOfflineEvents();
+   void saveTimestamp(time_t timestamp);
    static DWORD WINAPI subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID context, EVT_HANDLE event);
 
 public:
-   EventLogReader(const TCHAR *name, Config *config);
+   EventLogReader(const TCHAR *name, Config *config, bool processOfflineEvents, uint32_t maxOfflineEventAge);
    ~EventLogReader();
 
    void start();

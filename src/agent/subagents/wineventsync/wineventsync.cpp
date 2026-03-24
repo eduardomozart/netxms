@@ -25,9 +25,13 @@
 
 static ObjectArray<EventLogReader> s_readers(0, 16, Ownership::True);
 static StringSet s_eventLogs;
+static bool s_processOfflineEvents = true;
+static uint32_t s_maxOfflineEventAge = 1;  // days
 static NX_CFG_TEMPLATE s_cfgTemplate[] =
 {
    { _T("EventLog"), CT_STRING_SET, 0, 0, 0, 0, &s_eventLogs, nullptr },
+   { _T("MaxOfflineEventAge"), CT_LONG, 0, 0, 0, 0, &s_maxOfflineEventAge, nullptr },
+   { _T("ProcessOfflineEvents"), CT_BOOLEAN, 0, 0, 1, 0, &s_processOfflineEvents, nullptr },
    { _T(""), CT_END_OF_LIST, 0, 0, 0, 0, nullptr, nullptr }
 };
 
@@ -46,7 +50,7 @@ static bool SubAgentInit(Config *config)
    while (it.hasNext())
    {
       const TCHAR *log = it.next();
-      auto reader = new EventLogReader(log, config);
+      auto reader = new EventLogReader(log, config, s_processOfflineEvents, s_maxOfflineEventAge);
       s_readers.add(reader);
       reader->start();
    }

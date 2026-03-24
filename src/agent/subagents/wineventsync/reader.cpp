@@ -163,11 +163,14 @@ static uint32_t ParseSeverityFilter(const wchar_t* severityFilter)
 /**
  * Create new reader
  */
-EventLogReader::EventLogReader(const TCHAR *name, Config *config) : m_stopCondition(true), m_filters(0, 32)
+EventLogReader::EventLogReader(const TCHAR *name, Config *config, bool processOfflineEvents, uint32_t maxOfflineEventAge) : m_stopCondition(true), m_filters(0, 32)
 {
    m_thread = INVALID_THREAD_HANDLE;
    m_name = MemCopyString(name);
    m_messageId = 1;
+   m_processOfflineEvents = processOfflineEvents;
+   m_maxOfflineEventAge = maxOfflineEventAge;
+   _sntprintf(m_registryKey, 64, _T("wineventsync.%s"), name);
 
    StringBuffer path(L"/WinEventSync/");
    path.append(m_name);
@@ -279,6 +282,72 @@ void EventLogReader::stop()
 }
 
 /**
+ * Save timestamp of last processed event for offline recovery
+ */
+void EventLogReader::saveTimestamp(time_t timestamp)
+{
+   WriteRegistry(m_registryKey, static_cast<int64_t>(timestamp));
+}
+
+/**
+ * Process events that occurred while agent was not running
+ */
+void EventLogReader::processOfflineEvents()
+{
+   int64_t savedTimestamp = ReadRegistryAsInt64(m_registryKey, 0);
+   time_t now = time(nullptr);
+
+   if (savedTimestamp == 0)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("No saved timestamp for \"%s\", skipping offline event recovery"), m_name);
+      saveTimestamp(now);
+      return;
+   }
+
+   time_t startTime = static_cast<time_t>(savedTimestamp);
+   time_t maxAge = static_cast<time_t>(m_maxOfflineEventAge) * 86400;
+   if (startTime < now - maxAge)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("Saved timestamp for \"%s\" is older than max offline age (%u days), capping"), m_name, m_maxOfflineEventAge);
+      startTime = now - maxAge;
+   }
+
+   if (startTime >= now)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("No offline events to process for \"%s\""), m_name);
+      return;
+   }
+
+   nxlog_debug_tag(DEBUG_TAG, 2, _T("Reading offline events for \"%s\" from ") INT64_FMT _T(" to ") INT64_FMT, m_name, static_cast<int64_t>(startTime), static_cast<int64_t>(now));
+
+   WCHAR query[256];
+   _snwprintf(query, 256, L"*[System/TimeCreated[timediff(@SystemTime) < %lld]]", static_cast<int64_t>(now - startTime) * 1000LL);
+   nxlog_debug_tag(DEBUG_TAG, 4, _T("Event log query: \"%s\""), query);
+
+   EVT_HANDLE handle = EvtQuery(nullptr, m_name, query, EvtQueryChannelPath | EvtQueryForwardDirection);
+   if (handle != nullptr)
+   {
+      EVT_HANDLE events[64];
+      DWORD count;
+      while (EvtNext(handle, 64, events, 5000, 0, &count))
+      {
+         for (DWORD i = 0; i < count; i++)
+         {
+            subscribeCallback(EvtSubscribeActionDeliver, this, events[i]);
+            EvtClose(events[i]);
+         }
+      }
+      EvtClose(handle);
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Offline event processing for \"%s\" completed"), m_name);
+   }
+   else
+   {
+      TCHAR buffer[1024];
+      nxlog_debug_tag(DEBUG_TAG, 1, _T("EvtQuery failed for \"%s\" (%s)"), m_name, GetSystemErrorText(GetLastError(), buffer, 1024));
+   }
+}
+
+/**
  * Main loop
  */
 void EventLogReader::run()
@@ -300,6 +369,11 @@ void EventLogReader::run()
       nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Cannot create event render context (%s)"),
             GetSystemErrorText(GetLastError(), buffer, 1024));
       return;
+   }
+
+   if (m_processOfflineEvents)
+   {
+      processOfflineEvents();
    }
 
    EVT_HANDLE handle = EvtSubscribe(nullptr, nullptr, m_name, nullptr, nullptr, this, subscribeCallback, EvtSubscribeToFutureEvents);
@@ -358,6 +432,7 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
    WCHAR buffer[4096], *messageText = buffer;
    void *renderBuffer = buffer;
    EVT_HANDLE pubMetadata = nullptr;
+   time_t timestamp = 0;
 
    // Get event values
    DWORD reqSize, propCount = 0;
@@ -389,6 +464,23 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
    else
    {
       nxlog_debug_tag(DEBUG_TAG, 7, _T("Unable to get publisher name from event"));
+   }
+
+   // Time created (extracted early for timestamp persistence)
+   if (values[4].Type == EvtVarTypeFileTime)
+   {
+      timestamp = FileTimeToUnixTime(values[4].FileTimeVal);
+   }
+   else if (values[4].Type == EvtVarTypeSysTime)
+   {
+      FILETIME ft;
+      SystemTimeToFileTime(values[4].SysTimeVal, &ft);
+      timestamp = FileTimeToUnixTime(ft);
+   }
+   else
+   {
+      timestamp = time(nullptr);
+      nxlog_debug_tag(DEBUG_TAG, 7, _T("Cannot get timestamp from event (values[4].Type == %d)"), values[4].Type);
    }
 
    // Check event source against filters
@@ -496,24 +588,6 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
       }
    }
 
-   // Time created
-   time_t timestamp;
-   if (values[4].Type == EvtVarTypeFileTime)
-   {
-      timestamp = FileTimeToUnixTime(values[4].FileTimeVal);
-   }
-   else if (values[4].Type == EvtVarTypeSysTime)
-   {
-      FILETIME ft;
-      SystemTimeToFileTime(values[4].SysTimeVal, &ft);
-      timestamp = FileTimeToUnixTime(ft);
-   }
-   else
-   {
-      timestamp = time(nullptr);
-      nxlog_debug_tag(DEBUG_TAG, 7, _T("Cannot get timestamp from event (values[5].Type == %d)"), values[4].Type);
-   }
-
    // Open publisher metadata
    pubMetadata = EvtOpenPublisherMetadata(NULL, values[0].StringVal, nullptr, MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), SORT_DEFAULT), 0);
    if (pubMetadata == nullptr)
@@ -594,6 +668,8 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
          reader->m_name, eventId, level, messageText);
 
 cleanup:
+   if (reader->m_processOfflineEvents && (timestamp > 0))
+      reader->saveTimestamp(timestamp);
    if (pubMetadata != nullptr)
       EvtClose(pubMetadata);
    if (messageText != buffer)
