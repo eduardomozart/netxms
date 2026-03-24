@@ -71,6 +71,155 @@ static bool IsEventExist(const TCHAR *name, json_t *root)
 }
 
 /**
+ * Check if given action exist either in server configuration or in configuration being imported
+ */
+static bool IsActionExist(json_t *actionRef, json_t *root)
+{
+   // Check by GUID first
+   uuid guid = json_object_get_uuid(actionRef, "guid");
+   if (!guid.isNull())
+   {
+      if (FindActionByGUID(guid) != 0)
+         return true;
+
+      // Check if action with this GUID exists in the import file
+      json_t *actions = json_object_get(root, "actions");
+      if (json_is_array(actions))
+      {
+         size_t index;
+         json_t *action;
+         json_array_foreach(actions, index, action)
+         {
+            if (json_is_object(action))
+            {
+               uuid actionGuid = json_object_get_uuid(action, "guid");
+               if (guid.equals(actionGuid))
+                  return true;
+            }
+         }
+      }
+   }
+
+   // Fall back to ID check
+   uint32_t actionId = json_object_get_uint32(actionRef, "id");
+   if (actionId != 0 && IsValidActionId(actionId))
+      return true;
+
+   return false;
+}
+
+/**
+ * Validate event processing policy rules from JSON
+ */
+static bool ValidateRules(json_t *root, uint32_t flags, ImportContext *context)
+{
+   json_t *rules = json_object_get(root, "rules");
+   if (!json_is_array(rules))
+      return true;
+
+   bool success = true;
+   bool ignoreMissingActions = (flags & CFG_IMPORT_IGNORE_MISSING_EPP_ACTIONS) != 0;
+
+   size_t ruleIndex;
+   json_t *rule;
+   json_array_foreach(rules, ruleIndex, rule)
+   {
+      if (!json_is_object(rule))
+         continue;
+
+      uuid ruleGuid = json_object_get_uuid(rule, "guid");
+      TCHAR ruleGuidStr[64];
+      ruleGuid.toString(ruleGuidStr);
+
+      // Validate actions
+      json_t *actionsArray = json_object_get(rule, "actions");
+      if (json_is_array(actionsArray))
+      {
+         size_t actionIndex;
+         json_t *actionRef;
+         json_array_foreach(actionsArray, actionIndex, actionRef)
+         {
+            if (!json_is_object(actionRef))
+               continue;
+
+            if (!IsActionExist(actionRef, root))
+            {
+               uuid actionGuid = json_object_get_uuid(actionRef, "guid");
+               uint32_t actionId = json_object_get_uint32(actionRef, "id");
+               if (ignoreMissingActions)
+               {
+                  context->log(NXLOG_WARNING, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references action that does not exist (GUID=%s, ID=%u) - action will be skipped"),
+                     ruleGuidStr, actionGuid.isNull() ? _T("N/A") : actionGuid.toString().cstr(), actionId);
+               }
+               else
+               {
+                  context->log(NXLOG_ERROR, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references action that does not exist (GUID=%s, ID=%u)"),
+                     ruleGuidStr, actionGuid.isNull() ? _T("N/A") : actionGuid.toString().cstr(), actionId);
+                  success = false;
+               }
+            }
+         }
+      }
+
+      // Validate source objects
+      json_t *sourcesArray = json_object_get(rule, "sources");
+      if (json_is_array(sourcesArray))
+      {
+         size_t sourceIndex;
+         json_t *sourceRef;
+         json_array_foreach(sourcesArray, sourceIndex, sourceRef)
+         {
+            if (!json_is_object(sourceRef))
+               continue;
+
+            uuid sourceGuid = json_object_get_uuid(sourceRef, "guid");
+            String sourceName = json_object_get_string(sourceRef, "name", _T(""));
+            if (!sourceGuid.isNull())
+            {
+               shared_ptr<NetObj> object = FindObjectByGUID(sourceGuid);
+               if (object == nullptr)
+               {
+                  context->log(NXLOG_WARNING, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references source object \"%s\" (GUID=%s) that does not exist - source will be skipped"),
+                     ruleGuidStr, sourceName.cstr(), sourceGuid.toString().cstr());
+               }
+            }
+         }
+      }
+
+      // Validate source exclusions
+      json_t *sourceExclusionsArray = json_object_get(rule, "sourceExclusions");
+      if (json_is_array(sourceExclusionsArray))
+      {
+         size_t sourceIndex;
+         json_t *sourceRef;
+         json_array_foreach(sourceExclusionsArray, sourceIndex, sourceRef)
+         {
+            if (!json_is_object(sourceRef))
+               continue;
+
+            uuid sourceGuid = json_object_get_uuid(sourceRef, "guid");
+            String sourceName = json_object_get_string(sourceRef, "name", _T(""));
+            if (!sourceGuid.isNull())
+            {
+               shared_ptr<NetObj> object = FindObjectByGUID(sourceGuid);
+               if (object == nullptr)
+               {
+                  context->log(NXLOG_WARNING, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references source exclusion object \"%s\" (GUID=%s) that does not exist - source exclusion will be skipped"),
+                     ruleGuidStr, sourceName.cstr(), sourceGuid.toString().cstr());
+               }
+            }
+         }
+      }
+   }
+
+   return success;
+}
+
+/**
  * Validate DCI thresholds from JSON template
  */
 static bool ValidateDci(json_t *root, json_t *dci, const TCHAR *templateName, ImportContext *context)
@@ -237,6 +386,10 @@ static bool ValidateConfig(json_t *root, uint32_t flags, ImportContext *context)
          }
       }
    }
+
+   // Validate event processing policy rules
+   if (!ValidateRules(root, flags, context))
+      success = false;
 
    context->log(NXLOG_INFO, _T("ValidateConfig()"), _T("Validation %s"), success ? _T("successfully finished") : _T("failed"));
    return success;

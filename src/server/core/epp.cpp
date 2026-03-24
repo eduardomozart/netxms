@@ -238,17 +238,26 @@ EPRule::EPRule(const ConfigEntry& config, ImportContext *context, bool nxslV5) :
          const TCHAR *blockingTimerKey = actions->get(i)->getSubEntryValue(_T("blockingTimerKey"));
          const TCHAR *snoozeTime = actions->get(i)->getSubEntryValue(_T("snoozeTime"));
          bool active = actions->get(i)->getSubEntryValueAsBoolean(_T("active"), 0, true);
+         uint32_t actionId = 0;
          if (!guid.isNull())
          {
-            uint32_t actionId = FindActionByGUID(guid);
-            if (actionId != 0)
-               m_actions.add(new ActionExecutionConfiguration(actionId, MemCopyString(timerDelay), MemCopyString(snoozeTime), MemCopyString(timerKey), MemCopyString(blockingTimerKey), active));
+            actionId = FindActionByGUID(guid);
+         }
+         if (actionId == 0)
+         {
+            uint32_t id = actions->get(i)->getId();
+            if (IsValidActionId(id))
+               actionId = id;
+         }
+         if (actionId != 0)
+         {
+            m_actions.add(new ActionExecutionConfiguration(actionId, MemCopyString(timerDelay), MemCopyString(snoozeTime), MemCopyString(timerKey), MemCopyString(blockingTimerKey), active));
          }
          else
          {
-            uint32_t actionId = actions->get(i)->getId();
-            if (IsValidActionId(actionId))
-               m_actions.add(new ActionExecutionConfiguration(actionId, MemCopyString(timerDelay), MemCopyString(snoozeTime), MemCopyString(timerKey), MemCopyString(blockingTimerKey), active));
+            context->log(NXLOG_WARNING, _T("EPRule::EPRule()"),
+               _T("Event processing policy rule import: rule \"%s\" references action that does not exist (GUID=%s, ID=%u)"),
+               m_guid.toString().cstr(), guid.isNull() ? _T("N/A") : guid.toString().cstr(), actions->get(i)->getId());
          }
       }
    }
@@ -325,8 +334,63 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
       }
    }
 
-   //TODO: Import sources
-   //TODO: Import source exclusions
+   // Import sources
+   json_t *sourcesArray = json_object_get(json, "sources");
+   if (json_is_array(sourcesArray))
+   {
+      size_t index;
+      json_t *sourceItem;
+      json_array_foreach(sourcesArray, index, sourceItem)
+      {
+         if (json_is_object(sourceItem))
+         {
+            uuid sourceGuid = json_object_get_uuid(sourceItem, "guid");
+            if (!sourceGuid.isNull())
+            {
+               shared_ptr<NetObj> object = FindObjectByGUID(sourceGuid);
+               if (object != nullptr)
+               {
+                  m_sources.add(object->getId());
+               }
+               else
+               {
+                  context->log(NXLOG_WARNING, _T("EPRule::EPRule()"),
+                     _T("Event processing policy rule import: rule \"%s\" references source object \"%s\" (GUID=%s) that does not exist"),
+                     m_guid.toString().cstr(), json_object_get_string(sourceItem, "name", _T("")).cstr(), sourceGuid.toString().cstr());
+               }
+            }
+         }
+      }
+   }
+
+   // Import source exclusions
+   json_t *sourceExclusionsArray = json_object_get(json, "sourceExclusions");
+   if (json_is_array(sourceExclusionsArray))
+   {
+      size_t index;
+      json_t *sourceItem;
+      json_array_foreach(sourceExclusionsArray, index, sourceItem)
+      {
+         if (json_is_object(sourceItem))
+         {
+            uuid sourceGuid = json_object_get_uuid(sourceItem, "guid");
+            if (!sourceGuid.isNull())
+            {
+               shared_ptr<NetObj> object = FindObjectByGUID(sourceGuid);
+               if (object != nullptr)
+               {
+                  m_sourceExclusions.add(object->getId());
+               }
+               else
+               {
+                  context->log(NXLOG_WARNING, _T("EPRule::EPRule()"),
+                     _T("Event processing policy rule import: rule \"%s\" references source exclusion object \"%s\" (GUID=%s) that does not exist"),
+                     m_guid.toString().cstr(), json_object_get_string(sourceItem, "name", _T("")).cstr(), sourceGuid.toString().cstr());
+               }
+            }
+         }
+      }
+   }
 
    // Import time frames
    json_t *timeFramesArray = json_object_get(json, "timeFrames");
@@ -355,19 +419,39 @@ EPRule::EPRule(json_t *json, ImportContext *context) : m_timeFrames(0, 16, Owner
       {
          if (json_is_object(action))
          {
-            uint32_t actionId = json_object_get_uint32(action, "id");
             String timerDelay = json_object_get_string(action, "timerDelay", _T(""));
             String timerKey = json_object_get_string(action, "timerKey", _T(""));
             String blockingTimerKey = json_object_get_string(action, "blockingTimerKey", _T(""));
             String snoozeTime = json_object_get_string(action, "snoozeTime", _T(""));
             bool active = json_object_get_boolean(action, "active", true);
-            if (IsValidActionId(actionId))
+
+            // Try GUID-based lookup first, then fall back to ID
+            uint32_t actionId = 0;
+            uuid actionGuid = json_object_get_uuid(action, "guid");
+            if (!actionGuid.isNull())
+               actionId = FindActionByGUID(actionGuid);
+            if (actionId == 0)
+            {
+               actionId = json_object_get_uint32(action, "id");
+               if (!IsValidActionId(actionId))
+                  actionId = 0;
+            }
+
+            if (actionId != 0)
+            {
                m_actions.add(new ActionExecutionConfiguration(actionId,
                   timerDelay.isEmpty() ? nullptr : MemCopyString(timerDelay),
                   snoozeTime.isEmpty() ? nullptr : MemCopyString(snoozeTime),
                   timerKey.isEmpty() ? nullptr : MemCopyString(timerKey),
                   blockingTimerKey.isEmpty() ? nullptr : MemCopyString(blockingTimerKey),
                   active));
+            }
+            else
+            {
+               context->log(NXLOG_WARNING, _T("EPRule::EPRule()"),
+                  _T("Event processing policy rule import: rule \"%s\" references action that does not exist (GUID=%s, ID=%u)"),
+                  m_guid.toString().cstr(), actionGuid.isNull() ? _T("N/A") : actionGuid.toString().cstr(), json_object_get_uint32(action, "id"));
+            }
          }
       }
    }

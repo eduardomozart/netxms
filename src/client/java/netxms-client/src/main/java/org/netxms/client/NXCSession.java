@@ -269,22 +269,23 @@ public class NXCSession
    public static final int OBJECT_SYNC_ALLOW_PARTIAL = 0x0004;
 
    // Configuration import options
-   public static final int CFG_IMPORT_REPLACE_EVENTS                    = 0x0001;
-   public static final int CFG_IMPORT_REPLACE_ACTIONS                   = 0x0002;
-   public static final int CFG_IMPORT_REPLACE_TEMPLATES                 = 0x0004;
-   public static final int CFG_IMPORT_REPLACE_TRAPS                     = 0x0008;
-   public static final int CFG_IMPORT_REPLACE_SCRIPTS                   = 0x0010;
-   public static final int CFG_IMPORT_REPLACE_SUMMARY_TABLES            = 0x0020;
-   public static final int CFG_IMPORT_REPLACE_OBJECT_TOOLS              = 0x0040;
-   public static final int CFG_IMPORT_REPLACE_EPP_RULES                 = 0x0080;
-   public static final int CFG_IMPORT_REPLACE_TEMPLATE_NAMES_LOCATIONS  = 0x0100;
-   public static final int CFG_IMPORT_DELETE_EMPTY_TEMPLATE_GROUPS      = 0x0200;
-   public static final int CFG_IMPORT_REPLACE_WEB_SVCERVICE_DEFINITIONS = 0x0400;
-   public static final int CFG_IMPORT_REPLACE_AM_DEFINITIONS            = 0x0800;
-   public static final int CFG_IMPORT_REPLACE_LOGPARSER_MACROS          = 0x1000;
-   public static final int CFG_IMPORT_REPLACE_SYSLOG_PARSERS            = 0x2000;
-   public static final int CFG_IMPORT_REPLACE_WINDOWS_LOG_PARSERS       = 0x4000;
-   public static final int CFG_IMPORT_REPLACE_MAPPING_TABLES           = 0x8000;
+   public static final int CFG_IMPORT_REPLACE_EVENTS                    = 0x00000001;
+   public static final int CFG_IMPORT_REPLACE_ACTIONS                   = 0x00000002;
+   public static final int CFG_IMPORT_REPLACE_TEMPLATES                 = 0x00000004;
+   public static final int CFG_IMPORT_REPLACE_TRAPS                     = 0x00000008;
+   public static final int CFG_IMPORT_REPLACE_SCRIPTS                   = 0x00000010;
+   public static final int CFG_IMPORT_REPLACE_SUMMARY_TABLES            = 0x00000020;
+   public static final int CFG_IMPORT_REPLACE_OBJECT_TOOLS              = 0x00000040;
+   public static final int CFG_IMPORT_REPLACE_EPP_RULES                 = 0x00000080;
+   public static final int CFG_IMPORT_REPLACE_TEMPLATE_NAMES_LOCATIONS  = 0x00000100;
+   public static final int CFG_IMPORT_DELETE_EMPTY_TEMPLATE_GROUPS      = 0x00000200;
+   public static final int CFG_IMPORT_REPLACE_WEB_SVCERVICE_DEFINITIONS = 0x00000400;
+   public static final int CFG_IMPORT_REPLACE_AM_DEFINITIONS            = 0x00000800;
+   public static final int CFG_IMPORT_REPLACE_LOGPARSER_MACROS          = 0x00001000;
+   public static final int CFG_IMPORT_REPLACE_SYSLOG_PARSERS            = 0x00002000;
+   public static final int CFG_IMPORT_REPLACE_WINDOWS_LOG_PARSERS       = 0x00004000;
+   public static final int CFG_IMPORT_REPLACE_MAPPING_TABLES            = 0x00008000;
+   public static final int CFG_IMPORT_IGNORE_MISSING_EPP_ACTIONS        = 0x00100000;
 
    // Address list IDs
    public static final int ADDRESS_LIST_DISCOVERY_TARGETS = 1;

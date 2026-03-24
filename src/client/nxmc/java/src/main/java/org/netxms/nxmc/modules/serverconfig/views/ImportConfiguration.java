@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,6 +145,7 @@ public class ImportConfiguration extends ConfigurationView
       addOptionCheckBox(i18n.tr("Replace syslog parser definitons"), NXCSession.CFG_IMPORT_REPLACE_SYSLOG_PARSERS);
       addOptionCheckBox(i18n.tr("Replace windows event log parser definitons"), NXCSession.CFG_IMPORT_REPLACE_WINDOWS_LOG_PARSERS);
       addOptionCheckBox(i18n.tr("Remove empty template &groups after import"), NXCSession.CFG_IMPORT_DELETE_EMPTY_TEMPLATE_GROUPS);
+      addOptionCheckBox(i18n.tr("&Ignore missing EPP rule actions"), NXCSession.CFG_IMPORT_IGNORE_MISSING_EPP_ACTIONS);
 
       Composite buttons = new Composite(options, SWT.NONE);
       layout = new GridLayout();

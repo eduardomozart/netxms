@@ -122,6 +122,93 @@ static bool ValidateTemplate(const Config& config, const ConfigEntry *root, Impo
 }
 
 /**
+ * Check if given action exist either in server configuration or in configuration being imported
+ */
+static bool IsActionExist(const uuid& guid, uint32_t id, const Config& config)
+{
+   // Check by GUID first
+   if (!guid.isNull())
+   {
+      if (FindActionByGUID(guid) != 0)
+         return true;
+
+      // Check if action with this GUID exists in the import file
+      ConfigEntry *actionsRoot = config.getEntry(_T("/actions"));
+      if (actionsRoot != nullptr)
+      {
+         unique_ptr<ObjectArray<ConfigEntry>> actions = actionsRoot->getSubEntries(_T("action#*"));
+         for (int i = 0; i < actions->size(); i++)
+         {
+            uuid actionGuid = actions->get(i)->getSubEntryValueAsUUID(_T("guid"));
+            if (guid.equals(actionGuid))
+               return true;
+         }
+      }
+   }
+
+   // Fall back to ID check
+   if (id != 0 && IsValidActionId(id))
+      return true;
+
+   return false;
+}
+
+/**
+ * Validate event processing policy rules from legacy XML configuration
+ */
+static bool ValidateRules(const Config& config, uint32_t flags, ImportContext *context)
+{
+   ConfigEntry *rulesRoot = config.getEntry(_T("/rules"));
+   if (rulesRoot == nullptr)
+      return true;
+
+   bool success = true;
+   bool ignoreMissingActions = (flags & CFG_IMPORT_IGNORE_MISSING_EPP_ACTIONS) != 0;
+
+   unique_ptr<ObjectArray<ConfigEntry>> rules = rulesRoot->getSubEntries(_T("rule#*"));
+   for (int i = 0; i < rules->size(); i++)
+   {
+      ConfigEntry *rule = rules->get(i);
+      uuid ruleGuid = rule->getSubEntryValueAsUUID(_T("guid"));
+      TCHAR ruleGuidStr[64];
+      if (!ruleGuid.isNull())
+         ruleGuid.toString(ruleGuidStr);
+      else
+         _tcscpy(ruleGuidStr, _T("N/A"));
+
+      // Validate actions
+      ConfigEntry *actionsRoot = rule->findEntry(L"actions");
+      if (actionsRoot != nullptr)
+      {
+         unique_ptr<ObjectArray<ConfigEntry>> actions = actionsRoot->getSubEntries(L"action#*");
+         for (int j = 0; j < actions->size(); j++)
+         {
+            uuid actionGuid = actions->get(j)->getSubEntryValueAsUUID(_T("guid"));
+            uint32_t actionId = actions->get(j)->getId();
+            if (!IsActionExist(actionGuid, actionId, config))
+            {
+               if (ignoreMissingActions)
+               {
+                  context->log(NXLOG_WARNING, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references action that does not exist (GUID=%s, ID=%u) - action will be skipped"),
+                     ruleGuidStr, actionGuid.isNull() ? _T("N/A") : actionGuid.toString().cstr(), actionId);
+               }
+               else
+               {
+                  context->log(NXLOG_ERROR, _T("ValidateRules()"),
+                     _T("Event processing policy rule \"%s\" references action that does not exist (GUID=%s, ID=%u)"),
+                     ruleGuidStr, actionGuid.isNull() ? _T("N/A") : actionGuid.toString().cstr(), actionId);
+                  success = false;
+               }
+            }
+         }
+      }
+   }
+
+   return success;
+}
+
+/**
  * Validate configuration before import
  */
 static bool ValidateConfig(const Config& config, uint32_t flags, ImportContext *context)
@@ -182,6 +269,10 @@ static bool ValidateConfig(const Config& config, uint32_t flags, ImportContext *
             success = false;
       }
    }
+
+   // Validate event processing policy rules
+   if (!ValidateRules(config, flags, context))
+      success = false;
 
 	context->log(NXLOG_INFO, _T("ValidateConfig()"), _T("Validation %s"), success ? _T("successfully finished") : _T("failed"));
    return success;
