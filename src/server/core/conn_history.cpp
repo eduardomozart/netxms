@@ -103,22 +103,31 @@ static void ExtractConnectionPoints(const shared_ptr<ForwardingDatabase>& fdb, H
 }
 
 /**
- * Check if CONNECT events are actually cross-switch moves by querying connection history.
- * If the MAC was last seen connected on a different switch, upgrade to MOVE.
+ * Reconcile detected changes with connection history database.
+ * The cached previous FDB on a switch can be stale when a MAC moved to another switch
+ * and back between polls, leading to three types of errors:
+ * - A CONNECT may actually be a cross-switch MOVE (MAC was on another switch)
+ * - A same-switch MOVE may actually be a cross-switch MOVE (stale prevFdb still had the MAC
+ *   on an old port, but the MAC was actually on a different switch)
+ * - A DISCONNECT may be spurious (the cross-switch move was already recorded by the other switch)
+ *
+ * This function queries the most recent history record for each affected MAC and corrects
+ * these cases when the record shows the MAC was last connected on a different switch.
  */
-static void DetectCrossSwitchMoves(ObjectArray<ConnectionHistoryChange> *changes, DB_HANDLE hdb, uint32_t switchId)
+static void ReconcileChangesWithHistory(ObjectArray<ConnectionHistoryChange> *changes, DB_HANDLE hdb, uint32_t switchId)
 {
+   // Secondary sort by record_id ensures deterministic ordering when timestamps are equal
    const wchar_t *query;
    switch(g_dbSyntax)
    {
       case DB_SYNTAX_MSSQL:
-         query = L"SELECT TOP 1 switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC";
+         query = L"SELECT TOP 1 switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC,record_id DESC";
          break;
       case DB_SYNTAX_ORACLE:
-         query = L"SELECT * FROM (SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC) WHERE ROWNUM<=1";
+         query = L"SELECT * FROM (SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC,record_id DESC) WHERE ROWNUM<=1";
          break;
       default:
-         query = L"SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC LIMIT 1";
+         query = L"SELECT switch_id,interface_id,event_type FROM connection_history WHERE mac_address=? ORDER BY event_timestamp DESC,record_id DESC LIMIT 1";
          break;
    }
 
@@ -127,42 +136,66 @@ static void DetectCrossSwitchMoves(ObjectArray<ConnectionHistoryChange> *changes
       return;
 
    int upgraded = 0;
+   int suppressed = 0;
    for (int i = 0; i < changes->size(); i++)
    {
       ConnectionHistoryChange *change = changes->get(i);
-      if (change->eventType != CONN_EVENT_CONNECT)
+      bool isConnect = (change->eventType == CONN_EVENT_CONNECT);
+      bool isSameSwitchMove = (change->eventType == CONN_EVENT_MOVE) && (change->oldSwitchId == 0);
+      bool isDisconnect = (change->eventType == CONN_EVENT_DISCONNECT);
+      if (!isConnect && !isSameSwitchMove && !isDisconnect)
          continue;
 
       DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, change->macAddress);
       DB_RESULT hResult = DBSelectPrepared(hStmt);
       if (hResult != nullptr)
       {
+         bool suppress = false;
          if (DBGetNumRows(hResult) > 0)
          {
-            uint32_t prevSwitchId = DBGetFieldULong(hResult, 0, 0);
-            uint32_t prevInterfaceId = DBGetFieldULong(hResult, 0, 1);
-            int32_t prevEventType = DBGetFieldLong(hResult, 0, 2);
+            uint32_t prevSwitchId = DBGetFieldUInt32(hResult, 0, 0);
+            uint32_t prevInterfaceId = DBGetFieldUInt32(hResult, 0, 1);
+            int32_t prevEventType = DBGetFieldInt32(hResult, 0, 2);
 
-            // If the most recent event was a connect or move on a different switch, this is a cross-switch move
+            // The MAC was last seen connected (not disconnected) on a different switch
             if ((prevEventType != CONN_EVENT_DISCONNECT) && (prevSwitchId != switchId))
             {
-               change->eventType = CONN_EVENT_MOVE;
-               change->oldSwitchId = prevSwitchId;
-               change->oldInterfaceObjId = prevInterfaceId;
-               upgraded++;
-
-               TCHAR macStr[64];
-               nxlog_debug_tag(DEBUG_TAG, 4, L"UpdateConnectionHistory(%u): CONNECT for %s upgraded to cross-switch MOVE (from switch %u port [%u])",
-                  switchId, change->macAddress.toString(macStr), prevSwitchId, prevInterfaceId);
+               wchar_t macStr[64];
+               if (isDisconnect)
+               {
+                  // MAC already recorded as connected on a different switch - this
+                  // disconnect is from a stale cached FDB and should be suppressed
+                  nxlog_debug_tag(DEBUG_TAG, 4, L"ReconcileChangesWithHistory(%u): DISCONNECT for %s suppressed (MAC already on switch %u)",
+                     switchId, change->macAddress.toString(macStr), prevSwitchId);
+                  suppress = true;
+               }
+               else
+               {
+                  // Upgrade CONNECT or stale same-switch MOVE to cross-switch MOVE
+                  change->eventType = CONN_EVENT_MOVE;
+                  change->oldSwitchId = prevSwitchId;
+                  change->oldInterfaceObjId = prevInterfaceId;
+                  change->oldIfIndex = 0;
+                  change->oldVlanId = 0;
+                  upgraded++;
+                  nxlog_debug_tag(DEBUG_TAG, 4, L"ReconcileChangesWithHistory(%u): %s for %s upgraded to cross-switch MOVE (from switch %u iface [%u])",
+                     switchId, isConnect ? L"CONNECT" : L"same-switch MOVE", change->macAddress.toString(macStr), prevSwitchId, prevInterfaceId);
+               }
             }
          }
          DBFreeResult(hResult);
+         if (suppress)
+         {
+            changes->remove(i);
+            i--;
+            suppressed++;
+         }
       }
    }
    DBFreeStatement(hStmt);
 
-   if (upgraded > 0)
-      nxlog_debug_tag(DEBUG_TAG, 4, L"UpdateConnectionHistory(%u): %d CONNECT events upgraded to cross-switch MOVE", switchId, upgraded);
+   if (upgraded > 0 || suppressed > 0)
+      nxlog_debug_tag(DEBUG_TAG, 4, L"ReconcileChangesWithHistory(%u): %d events upgraded to cross-switch MOVE, %d spurious DISCONNECTs suppressed", switchId, upgraded, suppressed);
 }
 
 /**
@@ -170,12 +203,8 @@ static void DetectCrossSwitchMoves(ObjectArray<ConnectionHistoryChange> *changes
  */
 static InetAddress ResolveIPForMAC(const MacAddress& mac)
 {
-   shared_ptr<NetObj> obj = MacDbFind(mac);
-   if (obj != nullptr && obj->getObjectClass() == OBJECT_INTERFACE)
-   {
-      return static_cast<Interface*>(obj.get())->getFirstIpAddress();
-   }
-   return InetAddress();
+   shared_ptr<Interface> iface = FindInterfaceByMAC(mac);
+   return (iface != nullptr) ? iface->getFirstIpAddress() : InetAddress();
 }
 
 /**
@@ -424,8 +453,8 @@ void UpdateConnectionHistory(uint32_t switchId, const shared_ptr<ForwardingDatab
 
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 
-   // Check if any CONNECT events are actually cross-switch moves
-   DetectCrossSwitchMoves(&changes, hdb, switchId);
+   // Reconcile changes with history to detect cross-switch moves and suppress stale events
+   ReconcileChangesWithHistory(&changes, hdb, switchId);
 
    // Write changes to database in a batch
    DB_STATEMENT hStmt = DBPrepare(hdb,
