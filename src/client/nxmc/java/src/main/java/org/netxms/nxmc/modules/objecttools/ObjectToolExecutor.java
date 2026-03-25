@@ -140,6 +140,10 @@ public final class ObjectToolExecutor
       final Map<String, String> inputValues;
       if (fields.length > 0)
       {
+         // Copy fields to avoid mutating tool's originals when expanding display name macros
+         for(int i = 0; i < fields.length; i++)
+            fields[i] = new InputField(fields[i]);
+
          Arrays.sort(fields, new Comparator<InputField>() {
             @Override
             public int compare(InputField f1, InputField f2)
@@ -148,9 +152,10 @@ public final class ObjectToolExecutor
             }
          });
 
-         // Build default values map, expanding macros if needed
+         // Build default values map, expanding macros in default values, display names, and dialog title if needed
          Map<String, String> defaultValues = new HashMap<String, String>();
-         boolean hasMacros = false;
+         String dialogTitle = tool.getDisplayName();
+         boolean hasMacros = dialogTitle.contains("%");
          for(InputField f : fields)
          {
             String dv = f.getDefaultValue();
@@ -160,6 +165,8 @@ public final class ObjectToolExecutor
                if (dv.contains("%"))
                   hasMacros = true;
             }
+            if (f.getDisplayName().contains("%"))
+               hasMacros = true;
          }
          if (hasMacros && !objects.isEmpty())
          {
@@ -168,28 +175,53 @@ public final class ObjectToolExecutor
                NXCSession session = Registry.getSession();
                ObjectContext ctx = objects.iterator().next();
                List<String> textsToExpand = new ArrayList<String>();
-               List<String> fieldNames = new ArrayList<String>();
+
+               // Collect default values with macros
+               List<String> defaultFieldNames = new ArrayList<String>();
                for(Map.Entry<String, String> e : defaultValues.entrySet())
                {
                   if (e.getValue().contains("%"))
                   {
-                     fieldNames.add(e.getKey());
+                     defaultFieldNames.add(e.getKey());
                      textsToExpand.add(e.getValue());
                   }
                }
-               List<String> expanded = session.substituteMacros(ctx, textsToExpand, null);
-               for(int i = 0; i < fieldNames.size(); i++)
+
+               // Collect field display names with macros
+               List<Integer> displayNameFieldIndices = new ArrayList<Integer>();
+               for(int i = 0; i < fields.length; i++)
                {
-                  defaultValues.put(fieldNames.get(i), expanded.get(i));
+                  if (fields[i].getDisplayName().contains("%"))
+                  {
+                     displayNameFieldIndices.add(i);
+                     textsToExpand.add(fields[i].getDisplayName());
+                  }
                }
+
+               // Collect dialog title if it has macros
+               boolean expandTitle = dialogTitle.contains("%");
+               if (expandTitle)
+                  textsToExpand.add(dialogTitle);
+
+               // Single server round-trip for all macro expansions
+               List<String> expanded = session.substituteMacros(ctx, textsToExpand, null);
+
+               // Distribute results
+               int idx = 0;
+               for(String fieldName : defaultFieldNames)
+                  defaultValues.put(fieldName, expanded.get(idx++));
+               for(int fi : displayNameFieldIndices)
+                  fields[fi].setDisplayName(expanded.get(idx++));
+               if (expandTitle)
+                  dialogTitle = expanded.get(idx);
             }
             catch(Exception e)
             {
-               // Use unexpanded defaults on error
+               // Use unexpanded values on error
             }
          }
 
-         inputValues = readInputFields(tool.getDisplayName(), fields, defaultValues);
+         inputValues = readInputFields(dialogTitle, fields, defaultValues);
          if (inputValues == null)
             return;  // cancelled
          for (int i = 0; i < fields.length; i++)

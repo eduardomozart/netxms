@@ -44,7 +44,7 @@ static bool H_UpgradeFromV26()
          _T("   7) oldSwitchName - Previous switch name\r\n")
          _T("   8) oldSwitchId - Previous switch object ID"), DB_BIND_STATIC);
       DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, EVENT_MAC_MOVED);
-      CHK_EXEC(DBExecute(hStmt));
+      CHK_EXEC(SQLExecute(hStmt));
       DBFreeStatement(hStmt);
    }
    else
