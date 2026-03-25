@@ -24,6 +24,53 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.27 to 61.28
+ */
+static bool H_UpgradeFromV27()
+{
+   DB_STATEMENT hStmt = DBPrepare(g_dbHandle, _T("UPDATE event_cfg SET description=? WHERE event_code=?"));
+   if (hStmt != nullptr)
+   {
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR,
+         _T("Generated when new software package is found.\r\n")
+         _T("Parameters:\r\n")
+         _T("   1) name - Package name\r\n")
+         _T("   2) version - Package version\r\n")
+         _T("   3) user - User name (empty for system-wide packages)"), DB_BIND_STATIC);
+      DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, EVENT_PACKAGE_INSTALLED);
+      CHK_EXEC(SQLExecute(hStmt));
+
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR,
+         _T("Generated when software package version change is detected.\r\n")
+         _T("Parameters:\r\n")
+         _T("   1) name - Package name\r\n")
+         _T("   2) version - New package version\r\n")
+         _T("   3) previousVersion - Old package version\r\n")
+         _T("   4) user - User name (empty for system-wide packages)"), DB_BIND_STATIC);
+      DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, EVENT_PACKAGE_UPDATED);
+      CHK_EXEC(SQLExecute(hStmt));
+
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR,
+         _T("Generated when software package removal is detected.\r\n")
+         _T("Parameters:\r\n")
+         _T("   1) name - Package name\r\n")
+         _T("   2) version - Last known package version\r\n")
+         _T("   3) user - User name (empty for system-wide packages)"), DB_BIND_STATIC);
+      DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, EVENT_PACKAGE_REMOVED);
+      CHK_EXEC(SQLExecute(hStmt));
+
+      DBFreeStatement(hStmt);
+   }
+   else
+   {
+      if (!g_ignoreErrors)
+         return false;
+   }
+   CHK_EXEC(SetMinorSchemaVersion(28));
+   return true;
+}
+
+/**
  * Upgrade from 61.26 to 61.27
  */
 static bool H_UpgradeFromV26()
@@ -707,6 +754,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 27, 61, 28, H_UpgradeFromV27 },
    { 26, 61, 27, H_UpgradeFromV26 },
    { 25, 61, 26, H_UpgradeFromV25 },
    { 24, 61, 25, H_UpgradeFromV24 },

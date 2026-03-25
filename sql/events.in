@@ -1121,7 +1121,8 @@ INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,descrip
 		'Generated when new software package is found.' CONCAT CRLF CONCAT
 		'Parameters:' CONCAT CRLF CONCAT
 		'   1) name - Package name' CONCAT CRLF CONCAT
-		'   2) version - Package version'
+		'   2) version - Package version' CONCAT CRLF CONCAT
+		'   3) user - User name (empty for system-wide packages)'
 	);
 
 INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES
@@ -1133,7 +1134,8 @@ INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,descrip
 		'Parameters:' CONCAT CRLF CONCAT
 		'   1) name - Package name' CONCAT CRLF CONCAT
 		'   2) version - New package version' CONCAT CRLF CONCAT
-		'   3) previousVersion - Old package version'
+		'   3) previousVersion - Old package version' CONCAT CRLF CONCAT
+		'   4) user - User name (empty for system-wide packages)'
 	);
 
 INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES
@@ -1144,7 +1146,8 @@ INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,descrip
 		'Generated when software package removal is detected.' CONCAT CRLF CONCAT
 		'Parameters:' CONCAT CRLF CONCAT
 		'   1) name - Package name' CONCAT CRLF CONCAT
-		'   2) version - Last known package version'
+		'   2) version - Last known package version' CONCAT CRLF CONCAT
+		'   3) user - User name (empty for system-wide packages)'
 	);
 
 INSERT INTO event_cfg (event_code,event_name,guid,severity,flags,message,description) VALUES

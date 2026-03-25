@@ -4657,7 +4657,7 @@ bool Node::updateSoftwarePackages(PollerInfo *poller, uint32_t requestId)
       for(int j = i + 1; j < packages->size(); j++)
       {
          SoftwarePackage *next = packages->get(j);
-         if (_tcscmp(curr->getName(), next->getName()))
+         if (_tcscmp(curr->getName(), next->getName()) || wcscmp(CHECK_NULL_EX(curr->getUser()), CHECK_NULL_EX(next->getUser())))
             break;
          if (!_tcscmp(curr->getVersion(), next->getVersion()))
          {
@@ -4682,30 +4682,39 @@ bool Node::updateSoftwarePackages(PollerInfo *poller, uint32_t requestId)
             case CHANGE_NONE:
                break;
             case CHANGE_ADDED:
-               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): new package %s version %s"), m_name, p->getName(), p->getVersion());
-               sendPollerMsg(_T("   New package %s version %s\r\n"), p->getName(), p->getVersion());
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): new package %s version %s%s%s"), m_name, p->getName(), p->getVersion(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()));
+               sendPollerMsg(_T("   New package %s version %s%s%s\r\n"), p->getName(), p->getVersion(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()));
                EventBuilder(EVENT_PACKAGE_INSTALLED, m_id)
                   .param(_T("name"), p->getName())
                   .param(_T("version"), p->getVersion())
+                  .param(_T("user"), CHECK_NULL_EX(p->getUser()))
                   .post();
 
                break;
             case CHANGE_REMOVED:
-               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): package %s version %s removed"), m_name, p->getName(), p->getVersion());
-               sendPollerMsg(_T("   Package %s version %s removed\r\n"), p->getName(), p->getVersion());
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): package %s version %s%s%s removed"), m_name, p->getName(), p->getVersion(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()));
+               sendPollerMsg(_T("   Package %s version %s%s%s removed\r\n"), p->getName(), p->getVersion(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()));
                EventBuilder(EVENT_PACKAGE_REMOVED, m_id)
                   .param(_T("name"), p->getName())
                   .param(_T("version"), p->getVersion())
+                  .param(_T("user"), CHECK_NULL_EX(p->getUser()))
                   .post();
                break;
             case CHANGE_UPDATED:
                SoftwarePackage *prev = changes->get(++i);   // next entry contains previous package version
-               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): package %s updated (%s -> %s)"), m_name, p->getName(), prev->getVersion(), p->getVersion());
-               sendPollerMsg(_T("   Package %s updated (%s -> %s)\r\n"), p->getName(), prev->getVersion(), p->getVersion());
+               nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, _T("ConfPoll(%s): package %s%s%s updated (%s -> %s)"), m_name, p->getName(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()), prev->getVersion(), p->getVersion());
+               sendPollerMsg(_T("   Package %s%s%s updated (%s -> %s)\r\n"), p->getName(),
+                  (p->getUser() != nullptr) ? L" for user " : L"", CHECK_NULL_EX(p->getUser()), prev->getVersion(), p->getVersion());
                EventBuilder(EVENT_PACKAGE_UPDATED, m_id)
                   .param(_T("name"), p->getName())
                   .param(_T("version"), p->getVersion())
                   .param(_T("previousVersion"), prev->getVersion())
+                  .param(_T("user"), CHECK_NULL_EX(p->getUser()))
                   .post();
                break;
          }

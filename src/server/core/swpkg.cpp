@@ -29,18 +29,21 @@ int PackageNameVersionComparator(const SoftwarePackage **p1, const SoftwarePacka
 {
    int rc = wcscmp((*p1)->getName(), (*p2)->getName());
    if (rc == 0)
-      rc = wcscmp((*p1)->getVersion(), (*p2)->getVersion());
-   if (rc == 0)
       rc = wcscmp(CHECK_NULL_EX((*p1)->getUser()), CHECK_NULL_EX((*p2)->getUser()));
+   if (rc == 0)
+      rc = wcscmp((*p1)->getVersion(), (*p2)->getVersion());
    return rc;
 }
 
 /**
- * Comparator for package names
+ * Comparator for package name and user
  */
-static int PackageNameComparator(const SoftwarePackage **p1, const SoftwarePackage **p2)
+static int PackageNameUserComparator(const SoftwarePackage **p1, const SoftwarePackage **p2)
 {
-   return wcscmp((*p1)->getName(), (*p2)->getName());
+   int rc = wcscmp((*p1)->getName(), (*p2)->getName());
+   if (rc == 0)
+      rc = wcscmp(CHECK_NULL_EX((*p1)->getUser()), CHECK_NULL_EX((*p2)->getUser()));
+   return rc;
 }
 
 /**
@@ -52,7 +55,7 @@ ObjectArray<SoftwarePackage> *CalculatePackageChanges(ObjectArray<SoftwarePackag
    for(int i = 0; i < oldSet->size(); i++)
    {
       SoftwarePackage *p = oldSet->get(i);
-      SoftwarePackage *np = newSet->bsearch(p, PackageNameComparator);
+      SoftwarePackage *np = newSet->bsearch(p, PackageNameUserComparator);
       if (np == nullptr)
       {
          p->setChangeCode(CHANGE_REMOVED);
@@ -73,8 +76,8 @@ ObjectArray<SoftwarePackage> *CalculatePackageChanges(ObjectArray<SoftwarePackag
       SoftwarePackage *prev = oldSet->get(i - 1);
       SoftwarePackage *next = oldSet->get(i + 1);
       bool multipleVersions =
-               ((prev != nullptr) && !_tcscmp(prev->getName(), p->getName())) ||
-               ((next != nullptr) && !_tcscmp(next->getName(), p->getName()));
+               ((prev != nullptr) && !wcscmp(prev->getName(), p->getName()) && !wcscmp(CHECK_NULL_EX(prev->getUser()), CHECK_NULL_EX(p->getUser()))) ||
+               ((next != nullptr) && !wcscmp(next->getName(), p->getName()) && !wcscmp(CHECK_NULL_EX(next->getUser()), CHECK_NULL_EX(p->getUser())));
 
       if (multipleVersions)
       {
