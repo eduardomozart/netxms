@@ -24,6 +24,21 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.28 to 61.29
+ */
+static bool H_UpgradeFromV28()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE server_action_execution_log ADD rule_guid varchar(36)\n"
+      L"ALTER TABLE server_action_execution_log ADD rule_description varchar(255)\n"
+      L"ALTER TABLE notification_log ADD rule_description varchar(255)\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(SetMinorSchemaVersion(29));
+   return true;
+}
+
+/**
  * Upgrade from 61.27 to 61.28
  */
 static bool H_UpgradeFromV27()
@@ -754,6 +769,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 28, 61, 29, H_UpgradeFromV28 },
    { 27, 61, 28, H_UpgradeFromV27 },
    { 26, 61, 27, H_UpgradeFromV26 },
    { 25, 61, 26, H_UpgradeFromV25 },

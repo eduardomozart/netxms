@@ -59,7 +59,7 @@ class ImportContext;
 //
 bool LoadActions();
 void CleanupActions();
-void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, const uuid& ruleId);
+void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, const uuid& ruleId, const TCHAR *ruleDescription);
 uint32_t NXCORE_EXPORTABLE CreateAction(const TCHAR *name, uint32_t *id);
 uint32_t NXCORE_EXPORTABLE DeleteAction(uint32_t actionId);
 uint32_t ModifyActionFromMessage(const NXCPMessage& msg);

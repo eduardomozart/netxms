@@ -1213,7 +1213,7 @@ bool EPRule::processEvent(Event *event) const
             uint64_t timerDelay = _tcstoul(event->expandText(a->timerDelay, alarm).cstr(), nullptr, 10);
             if (timerDelay == 0)
             {
-               ExecuteAction(a->actionId, *event, alarm, m_guid);
+               ExecuteAction(a->actionId, *event, alarm, m_guid, m_comments);
             }
             else
             {
@@ -1223,7 +1223,7 @@ bool EPRule::processEvent(Event *event) const
                _sntprintf(comments, 256, L"Delayed action execution for event %s", event->getName());
                String key = ((a->timerKey != nullptr) && (*a->timerKey != 0)) ? event->expandText(a->timerKey, alarm) : String();
                AddOneTimeScheduledTask(L"Execute.Action", time(nullptr) + timerDelay, parameters,
-                        new ActionExecutionTransientData(event, alarm, m_guid), 0, event->getSourceId(), SYSTEM_ACCESS_FULL,
+                        new ActionExecutionTransientData(event, alarm, m_guid, m_comments), 0, event->getSourceId(), SYSTEM_ACCESS_FULL,
                         comments, key.isEmpty() ? nullptr : key.cstr(), true);
             }
 

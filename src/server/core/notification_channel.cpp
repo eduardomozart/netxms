@@ -81,12 +81,13 @@ class NotificationMessage
    uint32_t m_eventCode;
    uint64_t m_eventId;
    uuid m_ruleId;
+   wchar_t *m_ruleDescription;
    Event *m_event;                    // Event context for NXSL driver (can be nullptr)
    shared_ptr<NetObj> m_sourceObject; // Source object for NXSL driver (can be nullptr)
 
 public:
    NotificationMessage(const wchar_t *recipient, const wchar_t *subject, const wchar_t *body,
-                       uint32_t eventCode, uint64_t eventId, const uuid& ruleId,
+                       uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const wchar_t *ruleDescription = nullptr,
                        const Event *event = nullptr, const shared_ptr<NetObj>& sourceObject = shared_ptr<NetObj>());
    ~NotificationMessage();
 
@@ -96,6 +97,7 @@ public:
    uint32_t getEventCode() const { return m_eventCode; }
    uint64_t getEventId() const { return m_eventId; }
    const uuid& getRuleId() const { return m_ruleId; }
+   const wchar_t *getRuleDescription() const { return m_ruleDescription; }
    const Event *getEvent() const { return m_event; }
    const shared_ptr<NetObj>& getSourceObject() const { return m_sourceObject; }
 };
@@ -318,9 +320,9 @@ public:
             const wchar_t *description, const wchar_t *driverName, char *config, const NCConfigurationTemplate *confTemplate, const wchar_t *errorMessage);
    ~NotificationChannel();
 
-   void send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, uint32_t eventCode, uint64_t eventId, const uuid& ruleId);
+   void send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const TCHAR *ruleDescription);
    void send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body,
-             const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId);
+             const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId, const TCHAR *ruleDescription);
    void clearQueue();
 
    const wchar_t *getName() const { return m_name; }
@@ -374,7 +376,7 @@ int64_t GetLastNotificationId()
  * Notification message constructor
  */
 NotificationMessage::NotificationMessage(const wchar_t *recipient, const wchar_t *subject, const wchar_t *body,
-      uint32_t eventCode, uint64_t eventId, const uuid& ruleId,
+      uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const wchar_t *ruleDescription,
       const Event *event, const shared_ptr<NetObj>& sourceObject) : m_ruleId(ruleId), m_sourceObject(sourceObject)
 {
    m_recipient = MemCopyStringW(recipient);
@@ -382,6 +384,7 @@ NotificationMessage::NotificationMessage(const wchar_t *recipient, const wchar_t
    m_body = MemCopyStringW(body);
    m_eventCode = eventCode;
    m_eventId = eventId;
+   m_ruleDescription = MemCopyStringW(ruleDescription);
    m_event = (event != nullptr) ? new Event(*event) : nullptr;
 }
 
@@ -393,6 +396,7 @@ NotificationMessage::~NotificationMessage()
    MemFree(m_recipient);
    MemFree(m_subject);
    MemFree(m_body);
+   MemFree(m_ruleDescription);
    delete m_event;
 }
 
@@ -1025,7 +1029,7 @@ void NotificationChannel::reloadThrottlingConfig()
 /**
  * Public method to send notification. It adds notification to the queue.
  */
-void NotificationChannel::send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, uint32_t eventCode, uint64_t eventId, const uuid& ruleId)
+void NotificationChannel::send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const TCHAR *ruleDescription)
 {
    if (((m_confTemplate == nullptr) || m_confTemplate->needRecipient) && ((recipient == nullptr) || IsBlankString(recipient)))
    {
@@ -1060,18 +1064,18 @@ void NotificationChannel::send(const TCHAR *recipient, const TCHAR *subject, con
    // Absorb into digest if throttling is enabled and queue is above digest threshold
    if ((m_channelBucket != nullptr) && shouldDigest())
    {
-      absorbIntoDigest(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId));
+      absorbIntoDigest(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, ruleDescription));
       return;
    }
 
-   m_notificationQueue.put(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId));
+   m_notificationQueue.put(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, ruleDescription));
 }
 
 /**
  * Public method to send notification with event/object context. It adds notification to the queue.
  */
 void NotificationChannel::send(const TCHAR *recipient, const TCHAR *subject, const TCHAR *body,
-                               const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId)
+                               const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId, const TCHAR *ruleDescription)
 {
    if (((m_confTemplate == nullptr) || m_confTemplate->needRecipient) && ((recipient == nullptr) || IsBlankString(recipient)))
    {
@@ -1109,11 +1113,11 @@ void NotificationChannel::send(const TCHAR *recipient, const TCHAR *subject, con
    // Absorb into digest if throttling is enabled and queue is above digest threshold
    if ((m_channelBucket != nullptr) && shouldDigest())
    {
-      absorbIntoDigest(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, event, sourceObject));
+      absorbIntoDigest(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, ruleDescription, event, sourceObject));
       return;
    }
 
-   m_notificationQueue.put(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, event, sourceObject));
+   m_notificationQueue.put(new NotificationMessage(recipient, subject, body, eventCode, eventId, ruleId, ruleDescription, event, sourceObject));
 }
 
 /**
@@ -1332,8 +1336,8 @@ void NotificationChannel::writeNotificationLog(const NotificationMessage& notifi
 
    DB_STATEMENT hStmt = DBPrepare(hdb,
          (g_dbSyntax == DB_SYNTAX_TSDB) ?
-            _T("INSERT INTO notification_log (id,notification_timestamp,notification_channel,recipient,subject,message,event_code,event_id,rule_id,success) VALUES (?,to_timestamp(?),?,?,?,?,?,?,?,?)") :
-            _T("INSERT INTO notification_log (id,notification_timestamp,notification_channel,recipient,subject,message,event_code,event_id,rule_id,success) VALUES (?,?,?,?,?,?,?,?,?,?)"));
+            _T("INSERT INTO notification_log (id,notification_timestamp,notification_channel,recipient,subject,message,event_code,event_id,rule_id,rule_description,success) VALUES (?,to_timestamp(?),?,?,?,?,?,?,?,?,?)") :
+            _T("INSERT INTO notification_log (id,notification_timestamp,notification_channel,recipient,subject,message,event_code,event_id,rule_id,rule_description,success) VALUES (?,?,?,?,?,?,?,?,?,?,?)"));
    if (hStmt != nullptr)
    {
       DBBind(hStmt, 1, DB_SQLTYPE_BIGINT, InterlockedIncrement64(&s_notificationId));
@@ -1345,7 +1349,8 @@ void NotificationChannel::writeNotificationLog(const NotificationMessage& notifi
       DBBind(hStmt, 7, DB_SQLTYPE_INTEGER, notification.getEventCode());
       DBBind(hStmt, 8, DB_SQLTYPE_BIGINT, notification.getEventId());
       DBBind(hStmt, 9, DB_SQLTYPE_VARCHAR, notification.getRuleId());
-      DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, success ? 1 : 0);
+      DBBind(hStmt, 10, DB_SQLTYPE_VARCHAR, notification.getRuleDescription(), DB_BIND_STATIC, 255);
+      DBBind(hStmt, 11, DB_SQLTYPE_INTEGER, success ? 1 : 0);
       DBExecute(hStmt);
       DBFreeStatement(hStmt);
    }
@@ -1773,7 +1778,7 @@ char NXCORE_EXPORTABLE *GetNotificationChannelConfiguration(const TCHAR *name)
 /**
  * Send notification
  */
-void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, const TCHAR *subject, const TCHAR *message, uint32_t eventCode, uint64_t eventId, const uuid& ruleId)
+void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, const TCHAR *subject, const TCHAR *message, uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const TCHAR *ruleDescription)
 {
    s_channelListLock.lock();
    NotificationChannel *nc = s_channelList.get(name);
@@ -1789,13 +1794,13 @@ void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, con
                *next = 0;
             Trim(curr);
             nxlog_debug_tag(DEBUG_TAG, 5, _T("SendNotification: sending message to \"%s\" via channel \"%s\""), curr, name);
-            nc->send(curr, subject, message, eventCode, eventId, ruleId);
+            nc->send(curr, subject, message, eventCode, eventId, ruleId, ruleDescription);
             curr = next + 1;
          } while(next != nullptr);
       }
       else
       {
-         nc->send(recipient, subject, message, eventCode, eventId, ruleId);
+         nc->send(recipient, subject, message, eventCode, eventId, ruleId, ruleDescription);
       }
    }
    else
@@ -1809,7 +1814,7 @@ void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, con
  * Send notification with event/object context (for NXSL notification channels)
  */
 void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, const TCHAR *subject, const TCHAR *message,
-                                         const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId)
+                                         const Event *event, const shared_ptr<NetObj>& sourceObject, const uuid& ruleId, const TCHAR *ruleDescription)
 {
    s_channelListLock.lock();
    NotificationChannel *nc = s_channelList.get(name);
@@ -1825,13 +1830,13 @@ void NXCORE_EXPORTABLE SendNotification(const TCHAR *name, TCHAR *recipient, con
                *next = 0;
             Trim(curr);
             nxlog_debug_tag(DEBUG_TAG, 5, _T("SendNotification: sending message to \"%s\" via channel \"%s\""), curr, name);
-            nc->send(curr, subject, message, event, sourceObject, ruleId);
+            nc->send(curr, subject, message, event, sourceObject, ruleId, ruleDescription);
             curr = next + 1;
          } while(next != nullptr);
       }
       else
       {
-         nc->send(recipient, subject, message, event, sourceObject, ruleId);
+         nc->send(recipient, subject, message, event, sourceObject, ruleId, ruleDescription);
       }
    }
    else

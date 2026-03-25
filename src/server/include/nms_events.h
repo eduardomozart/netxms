@@ -512,14 +512,16 @@ private:
    Event *m_event;
    Alarm *m_alarm;
    uuid m_ruleId;
+   String m_ruleDescription;
 
 public:
-   ActionExecutionTransientData(const Event *e, const Alarm *a, const uuid& ruleId);
+   ActionExecutionTransientData(const Event *e, const Alarm *a, const uuid& ruleId, const TCHAR *ruleDescription);
    virtual ~ActionExecutionTransientData();
 
    const Event *getEvent() const { return m_event; }
    const Alarm *getAlarm() const { return m_alarm; }
    const uuid& getRuleId() const { return m_ruleId; }
+   const TCHAR *getRuleDescription() const { return m_ruleDescription; }
 };
 
 /**

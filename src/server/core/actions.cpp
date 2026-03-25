@@ -202,13 +202,13 @@ int64_t GetLastActionExecutionLogId()
 /**
  * Saves server action execution log record to DB
  */
-static void WriteServerActionExecutionLog(uint64_t eventId, uint32_t eventCode, uint32_t actionId, const TCHAR *actionName, const TCHAR *channelName, const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, bool success)
+static void WriteServerActionExecutionLog(uint64_t eventId, uint32_t eventCode, uint32_t actionId, const TCHAR *actionName, const TCHAR *channelName, const TCHAR *recipient, const TCHAR *subject, const TCHAR *body, const uuid& ruleGuid, const TCHAR *ruleDescription, bool success)
 {
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
    DB_STATEMENT hStmt = DBPrepare(hdb,
          g_dbSyntax == DB_SYNTAX_TSDB ?
-            _T("INSERT INTO server_action_execution_log (id,action_timestamp,action_id,action_name,channel_name,recipient,subject,action_data,event_id,event_code,success) VALUES (?,to_timestamp(?),?,?,?,?,?,?,?,?,?)") :
-            _T("INSERT INTO server_action_execution_log (id,action_timestamp,action_id,action_name,channel_name,recipient,subject,action_data,event_id,event_code,success) VALUES (?,?,?,?,?,?,?,?,?,?,?)"));
+            _T("INSERT INTO server_action_execution_log (id,action_timestamp,action_id,action_name,channel_name,recipient,subject,action_data,event_id,event_code,rule_guid,rule_description,success) VALUES (?,to_timestamp(?),?,?,?,?,?,?,?,?,?,?,?)") :
+            _T("INSERT INTO server_action_execution_log (id,action_timestamp,action_id,action_name,channel_name,recipient,subject,action_data,event_id,event_code,rule_guid,rule_description,success) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"));
 
    if (hStmt != nullptr)
    {
@@ -222,7 +222,9 @@ static void WriteServerActionExecutionLog(uint64_t eventId, uint32_t eventCode, 
       DBBind(hStmt, 8, DB_SQLTYPE_VARCHAR, body, DB_BIND_STATIC, 2000);
       DBBind(hStmt, 9, DB_SQLTYPE_BIGINT, eventId);
       DBBind(hStmt, 10, DB_SQLTYPE_INTEGER, eventCode);
-      DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, success ? _T("1") : _T("0"), DB_BIND_STATIC);
+      DBBind(hStmt, 11, DB_SQLTYPE_VARCHAR, ruleGuid);
+      DBBind(hStmt, 12, DB_SQLTYPE_VARCHAR, ruleDescription, DB_BIND_STATIC, 255);
+      DBBind(hStmt, 13, DB_SQLTYPE_VARCHAR, success ? _T("1") : _T("0"), DB_BIND_STATIC);
       DBExecute(hStmt);
       DBFreeStatement(hStmt);
    }
@@ -242,12 +244,15 @@ struct ServerActionExecutionContext
    uint64_t eventId;
    uint32_t eventCode;
    Event *eventObject;  // Copy of event object
+   uuid ruleGuid;
+   String ruleDescription;
    bool success;
 
-   ServerActionExecutionContext(const shared_ptr<Action>& _action, const Event& event, const Alarm *alarm)
+   ServerActionExecutionContext(const shared_ptr<Action>& _action, const Event& event, const Alarm *alarm, const uuid& _ruleGuid, const TCHAR *_ruleDescription)
       : action(_action), recipient(event.expandText(action->rcptAddr, alarm)),
         subject(event.expandText(action->emailSubject, alarm)),
-        data(event.expandText(CHECK_NULL_EX(action->data), alarm))
+        data(event.expandText(CHECK_NULL_EX(action->data), alarm)),
+        ruleGuid(_ruleGuid), ruleDescription(CHECK_NULL_EX(_ruleDescription))
    {
       data.trim();
       recipient.trim();
@@ -259,7 +264,7 @@ struct ServerActionExecutionContext
 
    ~ServerActionExecutionContext()
    {
-      WriteServerActionExecutionLog(eventId, eventCode, action->id, action->name, action->channelName, recipient, subject, data, success);
+      WriteServerActionExecutionLog(eventId, eventCode, action->id, action->name, action->channelName, recipient, subject, data, ruleGuid, ruleDescription, success);
       delete eventObject;
    }
 };
@@ -593,7 +598,7 @@ static bool ExecuteActionScript(const TCHAR *script, const Event *event)
 /**
  * Execute action on specific event
  */
-void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, const uuid& ruleId)
+void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, const uuid& ruleId, const TCHAR *ruleDescription)
 {
    static const TCHAR *actionType[] = { _T("EXEC"), _T("REMOTE"), _T("SEND EMAIL"), _T("SEND NOTIFICATION"), _T("FORWARD EVENT"), _T("NXSL SCRIPT"), _T("XMPP MESSAGE"), _T("SSH") };
 
@@ -611,7 +616,7 @@ void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, co
    nxlog_debug_tag(DEBUG_TAG, 3, _T("Executing action \"%s\" [%u] of type %s triggered by rule %s"),
          action->name, actionId, actionType[static_cast<int>(action->type)], ruleId.toString().cstr());
 
-   ServerActionExecutionContext *context = new ServerActionExecutionContext(action, event, alarm);
+   ServerActionExecutionContext *context = new ServerActionExecutionContext(action, event, alarm, ruleId, ruleDescription);
 
    switch(action->type)
    {
@@ -635,7 +640,7 @@ void ExecuteAction(uint32_t actionId, const Event& event, const Alarm *alarm, co
                nxlog_debug_tag(DEBUG_TAG, 3, _T("Sending notification using channel %s to %s: \"%s\""), action->channelName, context->recipient.cstr(), context->data.cstr());
             // Pass event and source object for NXSL notification channels
             shared_ptr<NetObj> sourceObject = FindObjectById(event.getSourceId());
-            SendNotification(action->channelName, context->recipient.getBuffer(), context->subject, context->data, &event, sourceObject, ruleId);
+            SendNotification(action->channelName, context->recipient.getBuffer(), context->subject, context->data, &event, sourceObject, ruleId, ruleDescription);
          }
          else
          {
@@ -1195,11 +1200,14 @@ void ExecuteScheduledAction(const shared_ptr<ScheduledTaskParameters>& parameter
    const Event *event;
    const Alarm *alarm;
    uuid ruleId;
+   const TCHAR *ruleDescription = nullptr;
+   TCHAR *restoredRuleDescription = nullptr;
    if (parameters->m_transientData != nullptr)
    {
       event = static_cast<ActionExecutionTransientData*>(parameters->m_transientData)->getEvent();
       alarm = static_cast<ActionExecutionTransientData*>(parameters->m_transientData)->getAlarm();
       ruleId = static_cast<ActionExecutionTransientData*>(parameters->m_transientData)->getRuleId();
+      ruleDescription = static_cast<ActionExecutionTransientData*>(parameters->m_transientData)->getRuleDescription();
    }
    else
    {
@@ -1220,13 +1228,34 @@ void ExecuteScheduledAction(const shared_ptr<ScheduledTaskParameters>& parameter
       event = restoredEvent;
       alarm = restoredAlarm;
       ruleId = ExtractNamedOptionValueAsGUIDW(parameters->m_persistentData, L"rule", uuid::NULL_UUID);
+
+      // Try to look up rule description from event policy table
+      if (!ruleId.isNull())
+      {
+         DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+         DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT comments FROM event_policy WHERE rule_guid=?"));
+         if (hStmt != nullptr)
+         {
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleId);
+            DB_RESULT hResult = DBSelectPrepared(hStmt);
+            if (hResult != nullptr)
+            {
+               if (DBGetNumRows(hResult) > 0)
+                  restoredRuleDescription = DBGetField(hResult, 0, 0, nullptr, 0);
+               DBFreeResult(hResult);
+            }
+            DBFreeStatement(hStmt);
+         }
+         DBConnectionPoolReleaseConnection(hdb);
+         ruleDescription = restoredRuleDescription;
+      }
    }
 
    if (event != nullptr)
    {
       nxlog_debug_tag(DEBUG_TAG, 4, _T("Executing scheduled action [%u] for event %s on node [%u]"),
                actionId, event->getName(), parameters->m_objectId);
-      ExecuteAction(actionId, *event, alarm, ruleId);
+      ExecuteAction(actionId, *event, alarm, ruleId, ruleDescription);
    }
    else
    {
@@ -1235,12 +1264,13 @@ void ExecuteScheduledAction(const shared_ptr<ScheduledTaskParameters>& parameter
    }
    delete restoredEvent;
    delete restoredAlarm;
+   MemFree(restoredRuleDescription);
 }
 
 /**
  * Constructor for scheduled action execution transient data
  */
-ActionExecutionTransientData::ActionExecutionTransientData(const Event *e, const Alarm *a, const uuid& ruleId) : m_ruleId(ruleId)
+ActionExecutionTransientData::ActionExecutionTransientData(const Event *e, const Alarm *a, const uuid& ruleId, const TCHAR *ruleDescription) : m_ruleId(ruleId), m_ruleDescription(CHECK_NULL_EX(ruleDescription))
 {
    m_event = new Event(*e);
    m_alarm = (a != nullptr) ? new Alarm(a, false) : nullptr;

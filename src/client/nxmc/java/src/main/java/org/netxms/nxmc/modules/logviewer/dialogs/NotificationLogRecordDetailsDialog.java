@@ -52,6 +52,7 @@ public class NotificationLogRecordDetailsDialog extends Dialog
    private LabeledText eventCode;
    private LabeledText eventId;
    private LabeledText ruleId;
+   private LabeledText ruleDescription;
    private LabeledText message;
    private LogLabelProvider labelProvider;
 
@@ -187,6 +188,16 @@ public class NotificationLogRecordDetailsDialog extends Dialog
       gd.grabExcessHorizontalSpace = true;
       gd.horizontalSpan = 3;
       ruleId.setLayoutData(gd);
+
+      ruleDescription = new LabeledText(dialogArea, SWT.NONE);
+      ruleDescription.setLabel(i18n.tr("Rule description"));
+      ruleDescription.setText(labelProvider.getColumnText(record, logHandle.getColumnIndex("rule_description")));
+      ruleDescription.setEditable(false);
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      gd.horizontalSpan = 3;
+      ruleDescription.setLayoutData(gd);
 
       message = new LabeledText(dialogArea, SWT.NONE, SWT.BORDER | SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
       message.setLabel(i18n.tr("Message"));
