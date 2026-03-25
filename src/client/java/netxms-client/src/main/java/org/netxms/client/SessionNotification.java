@@ -115,8 +115,9 @@ public class SessionNotification
    public static final int RECONNECT_ATTEMPT_FAILED = 2005;
    public static final int INACTIVITY_TIMEOUT = 2006;
 
-   // Reporting server notification
+   // Reporting server notifications
    public static final int RS_RESULTS_MODIFIED = 3001;
+   public static final int RS_DEFINITIONS_MODIFIED = 3002;
 
 	// Subcodes for user database changes
 	public static final int USER_DB_OBJECT_CREATED = 0;

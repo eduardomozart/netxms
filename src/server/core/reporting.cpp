@@ -458,3 +458,46 @@ void ExecuteReport(const shared_ptr<ScheduledTaskParameters>& parameters)
       }
    }
 }
+
+/**
+ * Stream file from local storage to reporting server
+ */
+uint32_t StreamFileToReportingServer(const TCHAR *localFilePath, const TCHAR *remoteFileName)
+{
+   if ((s_connector == nullptr) || !s_connector->connected())
+      return RCC_COMM_FAILURE;
+
+   uint32_t rqId = s_connector->generateMessageId();
+
+   // Send deploy command with filename
+   NXCPMessage request(CMD_RS_DEPLOY_REPORT_PACKAGE, rqId);
+   request.setField(VID_FILE_NAME, remoteFileName);
+   if (!s_connector->sendMessage(&request))
+      return RCC_COMM_FAILURE;
+
+   // Wait for acknowledgment that reporting server is ready to receive
+   NXCPMessage *response = s_connector->waitForMessage(CMD_REQUEST_COMPLETED, rqId, 30000);
+   if (response == nullptr)
+      return RCC_TIMEOUT;
+
+   uint32_t rcc = response->getFieldAsUInt32(VID_RCC);
+   delete response;
+   if (rcc != RCC_SUCCESS)
+      return rcc;
+
+   // Stream file data using ISC::sendFile
+   if (!s_connector->sendFile(rqId, localFilePath))
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Failed to stream file %s to reporting server", localFilePath);
+      return RCC_COMM_FAILURE;
+   }
+
+   // Wait for final confirmation from reporting server
+   response = s_connector->waitForMessage(CMD_REQUEST_COMPLETED, rqId, 60000);
+   if (response == nullptr)
+      return RCC_TIMEOUT;
+
+   rcc = response->getFieldAsUInt32(VID_RCC);
+   delete response;
+   return rcc;
+}

@@ -204,6 +204,7 @@ import org.netxms.client.objecttools.ObjectToolFolder;
 import org.netxms.client.packages.PackageDeploymentJob;
 import org.netxms.client.packages.PackageInfo;
 import org.netxms.client.reporting.ReportDefinition;
+import org.netxms.client.reporting.ReportPackageInfo;
 import org.netxms.client.reporting.ReportRenderFormat;
 import org.netxms.client.reporting.ReportResult;
 import org.netxms.client.reporting.ReportingJob;
@@ -13563,6 +13564,67 @@ public class NXCSession
       sendMessage(msg);
       final NXCPMessage response = waitForRCC(msg.getMessageId());
       return new Table(response);
+   }
+
+   /**
+    * List report definition packages on reporting server.
+    *
+    * @return array of report package info objects
+    * @throws IOException  if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public ReportPackageInfo[] listReportPackages() throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_RS_LIST_REPORT_PACKAGES);
+      sendMessage(msg);
+      final NXCPMessage response = waitForRCC(msg.getMessageId());
+      int count = response.getFieldAsInt32(NXCPCodes.VID_INSTANCE_COUNT);
+      ReportPackageInfo[] packages = new ReportPackageInfo[count];
+      long fieldId = NXCPCodes.VID_INSTANCE_LIST_BASE;
+      for(int i = 0; i < count; i++)
+      {
+         packages[i] = new ReportPackageInfo(response, fieldId);
+         fieldId += 10;
+      }
+      return packages;
+   }
+
+   /**
+    * Upload report definition package to reporting server.
+    *
+    * @param localFile local JAR/ZIP file to upload
+    * @param serverFileName name under which file will be stored on reporting server
+    * @param listener progress listener (can be null)
+    * @throws IOException  if socket or file I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void uploadReportDefinition(File localFile, String serverFileName, ProgressListener listener) throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_RS_DEPLOY_REPORT_PACKAGE);
+      if ((serverFileName == null) || serverFileName.isEmpty())
+      {
+         serverFileName = localFile.getName();
+      }
+      msg.setField(NXCPCodes.VID_FILE_NAME, serverFileName);
+      msg.setField(NXCPCodes.VID_MODIFICATION_TIME, new Date(localFile.lastModified()));
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
+      sendFile(msg.getMessageId(), localFile, listener, allowCompression, 0);
+   }
+
+   /**
+    * Delete report definition package from reporting server.
+    *
+    * @param packageName name of the package file to delete
+    * @throws IOException  if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void deleteReportPackage(String packageName) throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_RS_DELETE_REPORT_PACKAGE);
+      msg.setField(NXCPCodes.VID_FILE_NAME, packageName);
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
    }
 
    /**

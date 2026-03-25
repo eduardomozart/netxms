@@ -542,6 +542,9 @@ public class NXCPCodes
 	public static final int CMD_RS_RENDER_RESULT = 0x1104;
 	public static final int CMD_RS_DELETE_RESULT = 0x1105;
    public static final int CMD_RS_NOTIFY = 0x1106;
+   public static final int CMD_RS_LIST_REPORT_PACKAGES = 0x1107;
+   public static final int CMD_RS_DELETE_REPORT_PACKAGE = 0x1108;
+   public static final int CMD_RS_DEPLOY_REPORT_PACKAGE = 0x1109;
 
 	// Variable codes
 	public static final long VID_LOGIN_NAME = 1;

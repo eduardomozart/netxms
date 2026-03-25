@@ -570,14 +570,17 @@ TCHAR LIBNETXMS_EXPORTABLE *NXCPMessageCodeName(uint16_t code, TCHAR *buffer)
       _T("CMD_RS_LIST_RESULTS"),
       _T("CMD_RS_RENDER_RESULT"),
       _T("CMD_RS_DELETE_RESULT"),
-      _T("CMD_RS_NOTIFY")
+      _T("CMD_RS_NOTIFY"),
+      _T("CMD_RS_LIST_REPORT_PACKAGES"),
+      _T("CMD_RS_DELETE_REPORT_PACKAGE"),
+      _T("CMD_RS_DEPLOY_REPORT_PACKAGE")
    };
 
    if ((code >= CMD_LOGIN) && (code <= CMD_GET_CONNECTION_HISTORY))
    {
       _tcscpy(buffer, messageNames[code - CMD_LOGIN]);
    }
-   else if ((code >= CMD_RS_LIST_REPORTS) && (code <= CMD_RS_NOTIFY))
+   else if ((code >= CMD_RS_LIST_REPORTS) && (code <= CMD_RS_DEPLOY_REPORT_PACKAGE))
    {
       _tcscpy(buffer, reportingMessageNames[code - CMD_RS_LIST_REPORTS]);
    }

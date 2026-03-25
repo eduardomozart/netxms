@@ -865,6 +865,7 @@ private:
 	void closeConsole(const NXCPMessage& request);
 	void getVlans(const NXCPMessage& request);
 	void receiveFile(const NXCPMessage& request);
+   void uploadReportDefinition(const NXCPMessage& request);
    void renameFile(const NXCPMessage& request);
 	void deleteFile(const NXCPMessage& request);
 	void getNetworkPath(const NXCPMessage& request);

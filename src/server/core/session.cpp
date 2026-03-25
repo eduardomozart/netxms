@@ -95,6 +95,7 @@ void UnregisterClientSession(session_id_t id);
 void ResetDiscoveryPoller();
 NXCPMessage *ForwardMessageToReportingServer(NXCPMessage *request, ClientSession *session);
 void RemovePendingFileTransferRequests(ClientSession *session);
+uint32_t StreamFileToReportingServer(const TCHAR *localFilePath, const TCHAR *remoteFileName);
 bool UpdateAddressListFromMessage(const NXCPMessage& msg);
 void FillComponentsMessage(NXCPMessage *msg);
 void GetClientConfigurationHints(NXCPMessage *msg, uint32_t userId);
@@ -2134,6 +2135,9 @@ void ClientSession::processRequest(NXCPMessage *request)
          break;
       case CMD_GET_CONNECTION_HISTORY:
          getConnectionHistory(*request);
+         break;
+      case CMD_RS_DEPLOY_REPORT_PACKAGE:
+         uploadReportDefinition(*request);
          break;
       default:
          if ((code >> 8) == 0x11)
@@ -14080,6 +14084,78 @@ void ClientSession::receiveFile(const NXCPMessage& request)
    else
    {
       writeAuditLog(AUDIT_SYSCFG, false, 0, _T("Access denied on upload file to server"));
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+
+   sendMessage(response);
+}
+
+/**
+ * Upload report definition package to reporting server
+ */
+void ClientSession::uploadReportDefinition(const NXCPMessage& request)
+{
+   NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+
+   if (m_systemAccessRights & SYSTEM_ACCESS_REPORTING_SERVER)
+   {
+      TCHAR fileName[MAX_PATH];
+      request.getFieldAsString(VID_FILE_NAME, fileName, MAX_PATH);
+      const TCHAR *cleanFileName = GetCleanFileName(fileName);
+
+      // Validate file extension
+      size_t len = _tcslen(cleanFileName);
+      if (len < 5 || (_tcsicmp(&cleanFileName[len - 4], L".jar") && _tcsicmp(&cleanFileName[len - 4], L".zip")))
+      {
+         response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
+         sendMessage(response);
+         return;
+      }
+
+      // Create temp file path
+      TCHAR tempPath[MAX_PATH];
+      _sntprintf(tempPath, MAX_PATH, L"%s" DDIR_FILES FS_PATH_SEPARATOR L"_rpt_%u.tmp", g_netxmsdDataDir, request.getId());
+
+      String originalName(cleanFileName);
+      ServerDownloadFileInfo *fInfo = new ServerDownloadFileInfo(tempPath,
+         [originalName] (const TCHAR *name, uint32_t uploadData, bool success) -> void
+         {
+            if (success)
+            {
+               String localPath(name);
+               ThreadPoolExecute(g_mainThreadPool,
+                  [localPath, originalName] () -> void
+                  {
+                     uint32_t rcc = StreamFileToReportingServer(localPath, originalName);
+                     if (rcc != RCC_SUCCESS)
+                        nxlog_debug_tag(L"reporting", 4, L"Failed to stream report definition \"%s\" to reporting server (RCC=%u)", originalName.cstr(), rcc);
+                     else
+                        nxlog_debug_tag(L"reporting", 4, L"Report definition \"%s\" successfully deployed to reporting server", originalName.cstr());
+                     _tremove(localPath);
+                  });
+            }
+            else
+            {
+               _tremove(name);
+            }
+         },
+         request.getFieldAsTime(VID_MODIFICATION_TIME));
+
+      if (fInfo->open())
+      {
+         m_downloadFileMap.set(request.getId(), fInfo);
+         response.setField(VID_RCC, RCC_SUCCESS);
+         writeAuditLog(AUDIT_SYSCFG, true, 0, L"Started upload of report definition \"%s\"", cleanFileName);
+      }
+      else
+      {
+         delete fInfo;
+         response.setField(VID_RCC, RCC_IO_ERROR);
+      }
+   }
+   else
+   {
+      writeAuditLog(AUDIT_SYSCFG, false, 0, L"Access denied on upload report definition");
       response.setField(VID_RCC, RCC_ACCESS_DENIED);
    }
 

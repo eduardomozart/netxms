@@ -723,6 +723,9 @@ typedef struct
 #define CMD_RS_RENDER_RESULT              0x1104
 #define CMD_RS_DELETE_RESULT              0x1105
 #define CMD_RS_NOTIFY                     0x1106
+#define CMD_RS_LIST_REPORT_PACKAGES      0x1107
+#define CMD_RS_DELETE_REPORT_PACKAGE     0x1108
+#define CMD_RS_DEPLOY_REPORT_PACKAGE     0x1109
 
 /**
  * Variable identifiers

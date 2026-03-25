@@ -35,6 +35,8 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
+import org.netxms.client.SessionListener;
+import org.netxms.client.SessionNotification;
 import org.netxms.client.constants.RCC;
 import org.netxms.client.reporting.ReportDefinition;
 import org.netxms.nxmc.Registry;
@@ -48,7 +50,7 @@ import org.xnap.commons.i18n.I18n;
 /**
  * Report navigation view
  */
-public class ReportNavigationView extends NavigationView
+public class ReportNavigationView extends NavigationView implements SessionListener
 {
    private final I18n i18n = LocalizationHelper.getI18n(ReportNavigationView.class);
 
@@ -106,6 +108,7 @@ public class ReportNavigationView extends NavigationView
    protected void postContentCreate()
    {
       super.postContentCreate();
+      Registry.getSession().addListener(this);
       refresh();
    }
 
@@ -128,11 +131,24 @@ public class ReportNavigationView extends NavigationView
    }
 
    /**
+    * @see org.netxms.client.SessionListener#notificationHandler(org.netxms.client.SessionNotification)
+    */
+   @Override
+   public void notificationHandler(final SessionNotification n)
+   {
+      if (n.getCode() == SessionNotification.RS_DEFINITIONS_MODIFIED)
+      {
+         getDisplay().asyncExec(() -> refresh());
+      }
+   }
+
+   /**
     * @see org.netxms.nxmc.base.views.View#dispose()
     */
    @Override
    public void dispose()
    {
+      Registry.getSession().removeListener(this);
       if (validReportIcon != null)
          validReportIcon.dispose();
       if (invalidReportIcon != null)

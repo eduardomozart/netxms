@@ -20,6 +20,7 @@ package org.netxms.reporting.services;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -58,6 +59,10 @@ public class CommunicationManager
    private Server server;
    private Socket socket;
    private Thread receiverThread;
+   private FileOutputStream pendingFileStream;
+   private File pendingTempFile;
+   private String pendingFinalName;
+   private long pendingFileRequestId;
 
    /**
     * Create communication manager on given socket
@@ -233,6 +238,14 @@ public class CommunicationManager
                {
                   logger.debug("RECV: " + message.toString());
                }
+
+               // Handle incoming file data for report package upload
+               if ((message.getMessageCode() == NXCPCodes.CMD_FILE_DATA || message.getMessageCode() == NXCPCodes.CMD_ABORT_FILE_TRANSFER) && pendingFileStream != null)
+               {
+                  processIncomingFileData(message);
+                  continue;
+               }
+
                final MessageProcessingResult result = processMessage(message);
                if (result.response != null)
                {
@@ -317,6 +330,15 @@ public class CommunicationManager
             break;
          case NXCPCodes.CMD_RS_DELETE_RESULT:
             deleteResult(request, reply);
+            break;
+         case NXCPCodes.CMD_RS_LIST_REPORT_PACKAGES:
+            listPackages(reply);
+            break;
+         case NXCPCodes.CMD_RS_DELETE_REPORT_PACKAGE:
+            deletePackage(request, reply);
+            break;
+         case NXCPCodes.CMD_RS_DEPLOY_REPORT_PACKAGE:
+            prepareFileReceive(request, reply);
             break;
          default:
             reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.NOT_IMPLEMENTED);
@@ -501,6 +523,189 @@ public class CommunicationManager
       reply.setFieldInt32(NXCPCodes.VID_RCC,
             server.getReportManager().deleteResult(reportId, jobId) ? RCC.SUCCESS : RCC.IO_ERROR);
       sendNotification(SessionNotification.RS_RESULTS_MODIFIED, 0);
+   }
+
+   /**
+    * List report packages in definitions directory with metadata.
+    *
+    * @param reply response message
+    */
+   private void listPackages(NXCPMessage reply)
+   {
+      List<Object[]> packages = server.getReportManager().listPackagesWithMetadata();
+      reply.setFieldInt32(NXCPCodes.VID_INSTANCE_COUNT, packages.size());
+      long fieldId = NXCPCodes.VID_INSTANCE_LIST_BASE;
+      for(Object[] pkg : packages)
+      {
+         File f = (File)pkg[0];
+         UUID guid = (UUID)pkg[1];
+         String reportName = (String)pkg[2];
+         boolean deployed = (Boolean)pkg[3];
+
+         reply.setField(fieldId, f.getName());
+         reply.setFieldInt64(fieldId + 1, f.length());
+         reply.setFieldInt64(fieldId + 2, f.lastModified() / 1000);
+         if (guid != null)
+            reply.setField(fieldId + 3, guid);
+         if (reportName != null)
+            reply.setField(fieldId + 4, reportName);
+         reply.setField(fieldId + 5, deployed);
+         fieldId += 10;
+      }
+      reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.SUCCESS);
+   }
+
+   /**
+    * Delete report package from definitions directory.
+    *
+    * @param request request message
+    * @param reply response message
+    */
+   private void deletePackage(NXCPMessage request, NXCPMessage reply)
+   {
+      String fileName = request.getFieldAsString(NXCPCodes.VID_FILE_NAME);
+      if (fileName == null || fileName.contains("/") || fileName.contains("\\") || fileName.contains(".."))
+      {
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.INVALID_ARGUMENT);
+         return;
+      }
+
+      File file = new File(server.getReportManager().getDefinitionsDirectory(), fileName);
+      if (file.exists() && file.delete())
+      {
+         logger.info("Report package " + fileName + " deleted");
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.SUCCESS);
+         sendNotification(SessionNotification.RS_DEFINITIONS_MODIFIED, 0);
+      }
+      else
+      {
+         logger.error("Failed to delete report package " + fileName);
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.IO_ERROR);
+      }
+   }
+
+   /**
+    * Prepare to receive report package file data.
+    *
+    * @param request request message
+    * @param reply response message
+    */
+   private void prepareFileReceive(NXCPMessage request, NXCPMessage reply)
+   {
+      String fileName = request.getFieldAsString(NXCPCodes.VID_FILE_NAME);
+      if (fileName == null || fileName.contains("/") || fileName.contains("\\") || fileName.contains(".."))
+      {
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.INVALID_ARGUMENT);
+         return;
+      }
+
+      String lc = fileName.toLowerCase();
+      if (!lc.endsWith(".jar") && !lc.endsWith(".zip"))
+      {
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.INVALID_ARGUMENT);
+         return;
+      }
+
+      try
+      {
+         File defDir = server.getReportManager().getDefinitionsDirectory();
+         pendingTempFile = new File(defDir, fileName + ".tmp");
+         pendingFinalName = fileName;
+         pendingFileRequestId = request.getMessageId();
+         pendingFileStream = new FileOutputStream(pendingTempFile);
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.SUCCESS);
+         logger.info("Ready to receive report package " + fileName);
+      }
+      catch(IOException e)
+      {
+         logger.error("Cannot create file for report package upload", e);
+         pendingFileStream = null;
+         pendingTempFile = null;
+         pendingFinalName = null;
+         reply.setFieldInt32(NXCPCodes.VID_RCC, RCC.IO_ERROR);
+      }
+   }
+
+   /**
+    * Process incoming file data for report package upload.
+    *
+    * @param msg incoming file data message
+    */
+   private void processIncomingFileData(NXCPMessage msg)
+   {
+      if (msg.getMessageCode() == NXCPCodes.CMD_ABORT_FILE_TRANSFER)
+      {
+         logger.warn("Report package upload aborted");
+         try
+         {
+            pendingFileStream.close();
+         }
+         catch(IOException e)
+         {
+         }
+         pendingTempFile.delete();
+         pendingFileStream = null;
+         pendingTempFile = null;
+         pendingFinalName = null;
+         return;
+      }
+
+      try
+      {
+         byte[] data = msg.getBinaryData();
+         if (data != null && data.length > 0)
+         {
+            pendingFileStream.write(data);
+         }
+
+         if (msg.isEndOfFile())
+         {
+            pendingFileStream.close();
+            pendingFileStream = null;
+
+            // Rename from .tmp to final name to trigger FileMonitor
+            File finalFile = new File(pendingTempFile.getParentFile(), pendingFinalName);
+            if (finalFile.exists())
+               finalFile.delete();
+            if (pendingTempFile.renameTo(finalFile))
+            {
+               logger.info("Report package " + pendingFinalName + " received and deployed");
+               NXCPMessage response = new NXCPMessage(NXCPCodes.CMD_REQUEST_COMPLETED, msg.getMessageId());
+               response.setFieldInt32(NXCPCodes.VID_RCC, RCC.SUCCESS);
+               sendMessage(response);
+               sendNotification(SessionNotification.RS_DEFINITIONS_MODIFIED, 0);
+            }
+            else
+            {
+               logger.error("Failed to rename temp file to " + pendingFinalName);
+               pendingTempFile.delete();
+               NXCPMessage response = new NXCPMessage(NXCPCodes.CMD_REQUEST_COMPLETED, msg.getMessageId());
+               response.setFieldInt32(NXCPCodes.VID_RCC, RCC.IO_ERROR);
+               sendMessage(response);
+            }
+            pendingTempFile = null;
+            pendingFinalName = null;
+         }
+      }
+      catch(IOException e)
+      {
+         logger.error("Error writing report package file data", e);
+         try
+         {
+            pendingFileStream.close();
+         }
+         catch(IOException e2)
+         {
+         }
+         pendingTempFile.delete();
+         pendingFileStream = null;
+         pendingTempFile = null;
+         pendingFinalName = null;
+
+         NXCPMessage response = new NXCPMessage(NXCPCodes.CMD_REQUEST_COMPLETED, msg.getMessageId());
+         response.setFieldInt32(NXCPCodes.VID_RCC, RCC.IO_ERROR);
+         sendMessage(response);
+      }
    }
 
    /**

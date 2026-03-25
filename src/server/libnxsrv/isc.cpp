@@ -375,6 +375,16 @@ uint32_t ISC::waitForRCC(uint32_t rqId, uint32_t timeOut)
 }
 
 /**
+ * Send file to remote end over NXCP
+ */
+bool ISC::sendFile(uint32_t requestId, const TCHAR *fileName)
+{
+   if (!(m_flags & ISCF_IS_CONNECTED))
+      return false;
+   return SendFileOverNXCP(m_socket, requestId, fileName, m_ctx.get(), 0, nullptr, nullptr, &m_socketLock);
+}
+
+/**
  * Setup encryption
  */
 uint32_t ISC::setupEncryption(RSA_KEY serverKey)

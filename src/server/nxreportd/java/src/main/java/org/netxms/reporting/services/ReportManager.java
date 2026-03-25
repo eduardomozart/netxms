@@ -486,6 +486,73 @@ public class ReportManager
    }
 
    /**
+    * List report package files (.jar/.zip) in definitions directory with metadata.
+    * Returns arrays of: [file, guid, reportName, deployed] for each package.
+    *
+    * @return list of package info arrays (File, UUID, String, Boolean)
+    */
+   public List<Object[]> listPackagesWithMetadata()
+   {
+      File dir = getDefinitionsDirectory();
+      File[] files = dir.listFiles(new FilenameFilter() {
+         @Override
+         public boolean accept(File dir, String name)
+         {
+            String lc = name.toLowerCase();
+            return lc.endsWith(".jar") || lc.endsWith(".zip");
+         }
+      });
+
+      List<Object[]> result = new ArrayList<>();
+      if (files == null)
+         return result;
+
+      for(File f : files)
+      {
+         UUID guid = null;
+         String reportName = null;
+         boolean deployed = false;
+
+         try (JarFile jarFile = new JarFile(f))
+         {
+            Manifest manifest = jarFile.getManifest();
+            if (manifest != null)
+            {
+               String buildId = manifest.getMainAttributes().getValue("Build-Id");
+               if (buildId != null)
+               {
+                  guid = UUID.fromString(buildId);
+                  synchronized(reportMap)
+                  {
+                     deployed = reportMap.containsKey(guid);
+                  }
+                  if (deployed)
+                  {
+                     try
+                     {
+                        JasperReport report = loadReport(guid);
+                        if (report != null)
+                           reportName = report.getName();
+                     }
+                     catch(Exception e)
+                     {
+                        logger.debug("Cannot load report name for " + guid, e);
+                     }
+                  }
+               }
+            }
+         }
+         catch(Exception e)
+         {
+            logger.debug("Cannot read manifest from " + f.getName(), e);
+         }
+
+         result.add(new Object[] { f, guid, reportName, deployed });
+      }
+      return result;
+   }
+
+   /**
     * Get directory for report with given GUID.
     *
     * @param reportId report GUID

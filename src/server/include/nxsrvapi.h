@@ -1684,6 +1684,7 @@ public:
    uint32_t generateMessageId() { return static_cast<uint32_t>(InterlockedIncrement(&m_requestId)); }
 
    uint32_t nop();
+   bool sendFile(uint32_t requestId, const TCHAR *fileName);
 };
 
 /**
