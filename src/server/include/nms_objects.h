@@ -4154,6 +4154,11 @@ public:
    SharedString getProductVersion() const { return GetAttributeWithLock(m_productVersion, m_mutexProperties); }
    SharedString getProductCode() const { return GetAttributeWithLock(m_productCode, m_mutexProperties); }
    SharedString getSerialNumber() const { return GetAttributeWithLock(m_serialNumber, m_mutexProperties); }
+   void setVendor(const TCHAR *vendor) { lockProperties(); m_vendor = vendor; setModified(MODIFY_NODE_PROPERTIES); unlockProperties(); }
+   void setProductName(const TCHAR *name) { lockProperties(); m_productName = name; setModified(MODIFY_NODE_PROPERTIES); unlockProperties(); }
+   void setProductVersion(const TCHAR *version) { lockProperties(); m_productVersion = version; setModified(MODIFY_NODE_PROPERTIES); unlockProperties(); }
+   void setProductCode(const TCHAR *code) { lockProperties(); m_productCode = code; setModified(MODIFY_NODE_PROPERTIES); unlockProperties(); }
+   void setSerialNumber(const TCHAR *serialNumber) { lockProperties(); m_serialNumber = serialNumber; setModified(MODIFY_NODE_PROPERTIES); unlockProperties(); }
 
    uint64_t getCapabilities() const { return m_capabilities; }
    void setCapability(uint64_t flag)

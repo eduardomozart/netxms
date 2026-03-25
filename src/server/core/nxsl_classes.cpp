@@ -2588,6 +2588,101 @@ NXSL_METHOD_DEFINITION(Node, setPollCountForStatusChange)
 }
 
 /**
+ * Node::setProductCode(code) method
+ */
+NXSL_METHOD_DEFINITION(Node, setProductCode)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   static_cast<shared_ptr<Node>*>(object->getData())->get()->setProductCode(argv[0]->getValueAsCString());
+   *result = vm->createValue();
+   return 0;
+}
+
+/**
+ * Node::setProductName(name) method
+ */
+NXSL_METHOD_DEFINITION(Node, setProductName)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   static_cast<shared_ptr<Node>*>(object->getData())->get()->setProductName(argv[0]->getValueAsCString());
+   *result = vm->createValue();
+   return 0;
+}
+
+/**
+ * Node::setProductVersion(version) method
+ */
+NXSL_METHOD_DEFINITION(Node, setProductVersion)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   static_cast<shared_ptr<Node>*>(object->getData())->get()->setProductVersion(argv[0]->getValueAsCString());
+   *result = vm->createValue();
+   return 0;
+}
+
+/**
+ * Node::setSerialNumber(serialNumber) method
+ */
+NXSL_METHOD_DEFINITION(Node, setSerialNumber)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   static_cast<shared_ptr<Node>*>(object->getData())->get()->setSerialNumber(argv[0]->getValueAsCString());
+   *result = vm->createValue();
+   return 0;
+}
+
+/**
+ * Node::setVendor(vendor) method
+ */
+NXSL_METHOD_DEFINITION(Node, setVendor)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   static_cast<shared_ptr<Node>*>(object->getData())->get()->setVendor(argv[0]->getValueAsCString());
+   *result = vm->createValue();
+   return 0;
+}
+
+/**
  * Node::isPortBlocked(port, protocol) method
  */
 NXSL_METHOD_DEFINITION(Node, isPortBlocked)
@@ -2703,6 +2798,11 @@ NXSL_NodeClass::NXSL_NodeClass() : NXSL_DCTargetClass()
    NXSL_REGISTER_METHOD(Node, setExpectedCapabilities, 1);
    NXSL_REGISTER_METHOD(Node, setIfXTableUsageMode, 1);
    NXSL_REGISTER_METHOD(Node, setPollCountForStatusChange, 1);
+   NXSL_REGISTER_METHOD(Node, setProductCode, 1);
+   NXSL_REGISTER_METHOD(Node, setProductName, 1);
+   NXSL_REGISTER_METHOD(Node, setProductVersion, 1);
+   NXSL_REGISTER_METHOD(Node, setSerialNumber, 1);
+   NXSL_REGISTER_METHOD(Node, setVendor, 1);
 }
 
 /**
