@@ -23,6 +23,14 @@
 #include "wineventsync.h"
 
 /**
+ * Convert Windows FILETIME (as uint64_t) to milliseconds since Unix epoch
+ */
+static inline int64_t FileTimeToUnixTimeMs(uint64_t ft)
+{
+   return (ft > 0) ? static_cast<int64_t>((ft - EPOCHFILETIME) / 10000) : 0;
+}
+
+/**
  * Request ID
  */
 static VolatileCounter64 s_requestId = static_cast<int64_t>(time(nullptr)) << 24;
@@ -284,9 +292,9 @@ void EventLogReader::stop()
 /**
  * Save timestamp of last processed event for offline recovery
  */
-void EventLogReader::saveTimestamp(time_t timestamp)
+void EventLogReader::saveTimestamp(int64_t timestampMs)
 {
-   WriteRegistry(m_registryKey, static_cast<int64_t>(timestamp));
+   WriteRegistry(m_registryKey, timestampMs);
 }
 
 /**
@@ -294,34 +302,46 @@ void EventLogReader::saveTimestamp(time_t timestamp)
  */
 void EventLogReader::processOfflineEvents()
 {
-   int64_t savedTimestamp = ReadRegistryAsInt64(m_registryKey, 0);
-   time_t now = time(nullptr);
+   int64_t savedValue = ReadRegistryAsInt64(m_registryKey, 0);
+   int64_t nowMs = static_cast<int64_t>(time(nullptr)) * 1000;
 
-   if (savedTimestamp == 0)
+   if (savedValue == 0)
    {
       nxlog_debug_tag(DEBUG_TAG, 3, _T("No saved timestamp for \"%s\", skipping offline event recovery"), m_name);
-      saveTimestamp(now);
+      saveTimestamp(nowMs);
       return;
    }
 
-   time_t startTime = static_cast<time_t>(savedTimestamp);
-   time_t maxAge = static_cast<time_t>(m_maxOfflineEventAge) * 86400;
-   if (startTime < now - maxAge)
+   // Backward compatibility: values < 100,000,000,000 are seconds (year ~5138 max),
+   // values >= 100,000,000,000 are milliseconds
+   int64_t startMs;
+   if (savedValue < 100000000000LL)
    {
-      nxlog_debug_tag(DEBUG_TAG, 3, _T("Saved timestamp for \"%s\" is older than max offline age (%u days), capping"), m_name, m_maxOfflineEventAge);
-      startTime = now - maxAge;
+      startMs = savedValue * 1000;
+      nxlog_debug_tag(DEBUG_TAG, 4, _T("Converting legacy seconds timestamp to milliseconds for \"%s\""), m_name);
+   }
+   else
+   {
+      startMs = savedValue;
    }
 
-   if (startTime >= now)
+   int64_t maxAgeMs = static_cast<int64_t>(m_maxOfflineEventAge) * 86400000LL;
+   if (startMs < nowMs - maxAgeMs)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("Saved timestamp for \"%s\" is older than max offline age (%u days), capping"), m_name, m_maxOfflineEventAge);
+      startMs = nowMs - maxAgeMs;
+   }
+
+   if (startMs >= nowMs)
    {
       nxlog_debug_tag(DEBUG_TAG, 3, _T("No offline events to process for \"%s\""), m_name);
       return;
    }
 
-   nxlog_debug_tag(DEBUG_TAG, 2, _T("Reading offline events for \"%s\" from ") INT64_FMT _T(" to ") INT64_FMT, m_name, static_cast<int64_t>(startTime), static_cast<int64_t>(now));
+   nxlog_debug_tag(DEBUG_TAG, 2, _T("Reading offline events for \"%s\" from ") INT64_FMT _T(" ms to ") INT64_FMT _T(" ms"), m_name, startMs, nowMs);
 
    WCHAR query[256];
-   _snwprintf(query, 256, L"*[System/TimeCreated[timediff(@SystemTime) < %lld]]", static_cast<int64_t>(now - startTime) * 1000LL);
+   _snwprintf(query, 256, L"*[System/TimeCreated[timediff(@SystemTime) < %lld]]", nowMs - startMs);
    nxlog_debug_tag(DEBUG_TAG, 4, _T("Event log query: \"%s\""), query);
 
    EVT_HANDLE handle = EvtQuery(nullptr, m_name, query, EvtQueryChannelPath | EvtQueryForwardDirection);
@@ -371,19 +391,24 @@ void EventLogReader::run()
       return;
    }
 
-   if (m_processOfflineEvents)
+   EVT_HANDLE handle = nullptr;
+   while (true)
    {
-      processOfflineEvents();
-   }
+      if (m_processOfflineEvents)
+         processOfflineEvents();
 
-   EVT_HANDLE handle = EvtSubscribe(nullptr, nullptr, m_name, nullptr, nullptr, this, subscribeCallback, EvtSubscribeToFutureEvents);
-   if (handle == nullptr)
-   {
+      handle = EvtSubscribe(nullptr, nullptr, m_name, nullptr, nullptr, this, subscribeCallback, EvtSubscribeToFutureEvents);
+      if (handle != nullptr)
+         break;
+
       TCHAR buffer[1024];
-      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Cannot open event log \"%s\" (%s)"),
+      nxlog_debug_tag(DEBUG_TAG, 2, _T("Cannot open event log \"%s\" (%s), will retry in 30 seconds"),
          m_name, GetSystemErrorText(GetLastError(), buffer, 1024));
-      EvtClose(m_renderContext);
-      return;
+      if (m_stopCondition.wait(30000))
+      {
+         EvtClose(m_renderContext);
+         return;
+      }
    }
 
    nxlog_debug_tag(DEBUG_TAG, 2, _T("Event log reader \"%s\" started"), m_name);
@@ -433,6 +458,7 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
    void *renderBuffer = buffer;
    EVT_HANDLE pubMetadata = nullptr;
    time_t timestamp = 0;
+   int64_t timestampMs = 0;
 
    // Get event values
    DWORD reqSize, propCount = 0;
@@ -469,17 +495,21 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
    // Time created (extracted early for timestamp persistence)
    if (values[4].Type == EvtVarTypeFileTime)
    {
-      timestamp = FileTimeToUnixTime(values[4].FileTimeVal);
+      timestampMs = FileTimeToUnixTimeMs(values[4].FileTimeVal);
+      timestamp = static_cast<time_t>(timestampMs / 1000);
    }
    else if (values[4].Type == EvtVarTypeSysTime)
    {
       FILETIME ft;
       SystemTimeToFileTime(values[4].SysTimeVal, &ft);
-      timestamp = FileTimeToUnixTime(ft);
+      uint64_t ftVal = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+      timestampMs = FileTimeToUnixTimeMs(ftVal);
+      timestamp = static_cast<time_t>(timestampMs / 1000);
    }
    else
    {
       timestamp = time(nullptr);
+      timestampMs = static_cast<int64_t>(timestamp) * 1000;
       nxlog_debug_tag(DEBUG_TAG, 7, _T("Cannot get timestamp from event (values[4].Type == %d)"), values[4].Type);
    }
 
@@ -590,86 +620,95 @@ DWORD WINAPI EventLogReader::subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION actio
 
    // Open publisher metadata
    pubMetadata = EvtOpenPublisherMetadata(NULL, values[0].StringVal, nullptr, MAKELCID(MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), SORT_DEFAULT), 0);
-   if (pubMetadata == nullptr)
+   if (pubMetadata != nullptr)
+   {
+      // Format message text
+      success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageEvent, 4096, buffer, &reqSize);
+      if (!success)
+      {
+         DWORD error = GetLastError();
+         if ((error != ERROR_INSUFFICIENT_BUFFER) && (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT))
+         {
+            nxlog_debug_tag(DEBUG_TAG, 5, _T("Call to EvtFormatMessage failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
+            LogMetadataProperty(pubMetadata, EvtPublisherMetadataMessageFilePath, _T("message file"));
+            LogMetadataProperty(pubMetadata, EvtPublisherMetadataParameterFilePath, _T("parameter file"));
+            LogMetadataProperty(pubMetadata, EvtPublisherMetadataResourceFilePath, _T("resource file"));
+            messageText[0] = 0;
+         }
+         else if (error == ERROR_INSUFFICIENT_BUFFER)
+         {
+            messageText = MemAllocStringW(reqSize);
+            success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageEvent, reqSize, messageText, &reqSize);
+            if (!success)
+            {
+               error = GetLastError();
+               if (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT)
+               {
+                  nxlog_debug_tag(DEBUG_TAG, 5, _T("Retry call to EvtFormatMessage failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
+                  LogMetadataProperty(pubMetadata, EvtPublisherMetadataMessageFilePath, _T("message file"));
+                  LogMetadataProperty(pubMetadata, EvtPublisherMetadataParameterFilePath, _T("parameter file"));
+                  LogMetadataProperty(pubMetadata, EvtPublisherMetadataResourceFilePath, _T("resource file"));
+                  MemFree(messageText);
+                  messageText = buffer;
+                  messageText[0] = 0;
+               }
+            }
+         }
+      }
+
+      // Get message XML
+      success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageXml, 8192, xmlBuffer, &reqSize);
+      if (!success)
+      {
+         DWORD error = GetLastError();
+         if ((error != ERROR_INSUFFICIENT_BUFFER) && (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT))
+         {
+            nxlog_debug_tag(DEBUG_TAG, 5, _T("Call to EvtFormatMessage(XML) failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
+            xmlBuffer[0] = 0;
+         }
+         else if (error == ERROR_INSUFFICIENT_BUFFER)
+         {
+            xml = MemAllocStringW(reqSize);
+            success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageXml, reqSize, xml, &reqSize);
+            if (!success)
+            {
+               error = GetLastError();
+               if (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT)
+               {
+                  nxlog_debug_tag(DEBUG_TAG, 5, _T("Retry call to EvtFormatMessage(XML) failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
+                  MemFree(xml);
+                  xml = xmlBuffer;
+                  xmlBuffer[0] = 0;
+               }
+            }
+         }
+      }
+   }
+   else
    {
       nxlog_debug_tag(DEBUG_TAG, 5, _T("Call to EvtOpenPublisherMetadata failed: %s"), GetSystemErrorText(GetLastError(), (TCHAR *)buffer, 4096));
-      goto cleanup;
+      messageText[0] = 0;
+      xmlBuffer[0] = 0;
    }
 
-   // Format message text
-   success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageEvent, 4096, buffer, &reqSize);
-   if (!success)
    {
-      DWORD error = GetLastError();
-      if ((error != ERROR_INSUFFICIENT_BUFFER) && (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT))
-      {
-         nxlog_debug_tag(DEBUG_TAG, 5, _T("Call to EvtFormatMessage failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
-         LogMetadataProperty(pubMetadata, EvtPublisherMetadataMessageFilePath, _T("message file"));
-         LogMetadataProperty(pubMetadata, EvtPublisherMetadataParameterFilePath, _T("parameter file"));
-         LogMetadataProperty(pubMetadata, EvtPublisherMetadataResourceFilePath, _T("resource file"));
-         goto cleanup;
-      }
-      if (error == ERROR_INSUFFICIENT_BUFFER)
-      {
-         messageText = MemAllocStringW(reqSize);
-         success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageEvent, reqSize, messageText, &reqSize);
-         if (!success)
-         {
-            error = GetLastError();
-            if (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT)
-            {
-               nxlog_debug_tag(DEBUG_TAG, 5, _T("Retry call to EvtFormatMessage failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
-               LogMetadataProperty(pubMetadata, EvtPublisherMetadataMessageFilePath, _T("message file"));
-               LogMetadataProperty(pubMetadata, EvtPublisherMetadataParameterFilePath, _T("parameter file"));
-               LogMetadataProperty(pubMetadata, EvtPublisherMetadataResourceFilePath, _T("resource file"));
-               goto cleanup;
-            }
-         }
-      }
+      NXCPMessage *msg = new NXCPMessage(CMD_WINDOWS_EVENT, reader->m_messageId++);
+      msg->setField(VID_REQUEST_ID, InterlockedIncrement64(&s_requestId));
+      msg->setField(VID_LOG_NAME, reader->m_name);
+      msg->setFieldFromTime(VID_TIMESTAMP, timestamp);
+      msg->setField(VID_EVENT_SOURCE, publisherName);
+      msg->setField(VID_SEVERITY, level);
+      msg->setField(VID_EVENT_CODE, eventId);
+      msg->setField(VID_MESSAGE, messageText);
+      msg->setField(VID_RAW_DATA, xml);
+      AgentQueueNotificationMessage(msg);  // Takes ownership of message object
+      nxlog_debug_tag(DEBUG_TAG, 7, _T("New event from \"%s\" sent to notification queue: %u(%u): \"%s\""),
+            reader->m_name, eventId, level, messageText);
    }
-
-   // Get message XML
-   success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageXml, 8192, xmlBuffer, &reqSize);
-   if (!success)
-   {
-      DWORD error = GetLastError();
-      if ((error != ERROR_INSUFFICIENT_BUFFER) && (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT))
-      {
-         nxlog_debug_tag(DEBUG_TAG, 5, _T("Call to EvtFormatMessage(XML) failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
-         goto cleanup;
-      }
-      if (error == ERROR_INSUFFICIENT_BUFFER)
-      {
-         xml = MemAllocStringW(reqSize);
-         success = EvtFormatMessage(pubMetadata, event, 0, 0, nullptr, EvtFormatMessageXml, reqSize, xml, &reqSize);
-         if (!success)
-         {
-            error = GetLastError();
-            if (error != ERROR_EVT_UNRESOLVED_VALUE_INSERT)
-            {
-               nxlog_debug_tag(DEBUG_TAG, 5, _T("Retry call to EvtFormatMessage(XML) failed: error %u (%s)"), error, GetSystemErrorText(error, (TCHAR *)buffer, 4096));
-               goto cleanup;
-            }
-         }
-      }
-   }
-
-   NXCPMessage *msg = new NXCPMessage(CMD_WINDOWS_EVENT, reader->m_messageId++);
-   msg->setField(VID_REQUEST_ID, InterlockedIncrement64(&s_requestId));
-   msg->setField(VID_LOG_NAME, reader->m_name);
-   msg->setFieldFromTime(VID_TIMESTAMP, timestamp);
-   msg->setField(VID_EVENT_SOURCE, publisherName);
-   msg->setField(VID_SEVERITY, level);
-   msg->setField(VID_EVENT_CODE, eventId);
-   msg->setField(VID_MESSAGE, messageText);
-   msg->setField(VID_RAW_DATA, xml);
-   AgentQueueNotificationMessage(msg);  // Takes ownership of message object
-   nxlog_debug_tag(DEBUG_TAG, 7, _T("New event from \"%s\" sent to notification queue: %u(%u): \"%s\""),
-         reader->m_name, eventId, level, messageText);
 
 cleanup:
-   if (reader->m_processOfflineEvents && (timestamp > 0))
-      reader->saveTimestamp(timestamp);
+   if (reader->m_processOfflineEvents && (timestampMs > 0))
+      reader->saveTimestamp(timestampMs);
    if (pubMetadata != nullptr)
       EvtClose(pubMetadata);
    if (messageText != buffer)

@@ -74,7 +74,7 @@ private:
 
    void run();
    void processOfflineEvents();
-   void saveTimestamp(time_t timestamp);
+   void saveTimestamp(int64_t timestampMs);
    static DWORD WINAPI subscribeCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID context, EVT_HANDLE event);
 
 public:
