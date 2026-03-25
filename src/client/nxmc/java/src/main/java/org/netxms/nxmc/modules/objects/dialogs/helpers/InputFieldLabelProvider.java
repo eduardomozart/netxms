@@ -31,7 +31,7 @@ import org.xnap.commons.i18n.I18n;
 public class InputFieldLabelProvider extends LabelProvider implements ITableLabelProvider
 {
    private final I18n i18n = LocalizationHelper.getI18n(InputFieldLabelProvider.class);
-   private final String[] typeNames = { i18n.tr("Text"), i18n.tr("Password"), i18n.tr("Number") };
+   private final String[] typeNames = { i18n.tr("Text"), i18n.tr("Password"), i18n.tr("Number"), i18n.tr("Date & Time") };
    
    /**
     * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnImage(java.lang.Object, int)

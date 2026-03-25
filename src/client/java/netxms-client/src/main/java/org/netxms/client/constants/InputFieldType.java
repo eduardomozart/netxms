@@ -30,7 +30,8 @@ public enum InputFieldType
 {
    TEXT(0),
    PASSWORD(1),
-   NUMBER(2);
+   NUMBER(2),
+   DATETIME(3);
 
    private static final Logger logger = LoggerFactory.getLogger(InputFieldType.class);
    private static Map<Integer, InputFieldType> lookupTable = new HashMap<Integer, InputFieldType>();

@@ -42,7 +42,7 @@ import org.xnap.commons.i18n.I18n;
 public class InputFieldEditDialog extends Dialog
 {
    private final I18n i18n = LocalizationHelper.getI18n(InputFieldEditDialog.class);
-   private final String[] typeNames = { i18n.tr("Text"), i18n.tr("Password"), i18n.tr("Number") };
+   private final String[] typeNames = { i18n.tr("Text"), i18n.tr("Password"), i18n.tr("Number"), i18n.tr("Date & Time") };
 
 	private boolean create;
 	private InputField field;
@@ -107,7 +107,9 @@ public class InputFieldEditDialog extends Dialog
          @Override
          public void widgetSelected(SelectionEvent e)
          {
-            checkValidatePassword.setVisible(InputFieldType.getByValue(type.getSelectionIndex()) == InputFieldType.PASSWORD);
+            InputFieldType selectedType = InputFieldType.getByValue(type.getSelectionIndex());
+            checkValidatePassword.setVisible(selectedType == InputFieldType.PASSWORD);
+            defaultValue.setVisible(selectedType != InputFieldType.DATETIME);
          }
       });
 
@@ -128,6 +130,7 @@ public class InputFieldEditDialog extends Dialog
 		gd.grabExcessHorizontalSpace = true;
 		gd.widthHint = 350;
 		defaultValue.setLayoutData(gd);
+      defaultValue.setVisible(field.getType() != InputFieldType.DATETIME);
 
 		checkValidatePassword = new Button(dialogArea, SWT.CHECK);
       checkValidatePassword.setText(i18n.tr("Validate password after entry"));

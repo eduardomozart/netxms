@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2022 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 import org.netxms.client.InputField;
 import org.netxms.nxmc.base.widgets.LabeledControl;
+import org.netxms.nxmc.base.widgets.LabeledDateTimeSelector;
 import org.netxms.nxmc.base.widgets.LabeledSpinner;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.tools.WidgetHelper;
@@ -110,6 +111,9 @@ public class InputFieldEntryDialog extends Dialog
          LabeledControl c;
          switch(fields[i].getType())
          {
+            case DATETIME:
+               c = new LabeledDateTimeSelector(dialogArea, SWT.NONE);
+               break;
             case NUMBER:
                c = new LabeledSpinner(dialogArea, SWT.NONE);
                break;
