@@ -51,14 +51,14 @@ static void ResolveIndirectString(TCHAR *str, size_t strSize)
 /**
  * Resolve SID string to username
  */
-static bool ResolveSidToUsername(const TCHAR *sidString, TCHAR *userName, size_t userNameSize)
+static bool ResolveSidToUsername(const wchar_t *sidString, wchar_t *userName, size_t userNameSize)
 {
    PSID pSid = nullptr;
-   if (!ConvertStringSidToSid(sidString, &pSid))
+   if (!ConvertStringSidToSidW(sidString, &pSid))
       return false;
 
-   TCHAR name[256] = _T("");
-   TCHAR domain[256] = _T("");
+   wchar_t name[256] = L"";
+   wchar_t domain[256] = L"";
    DWORD nameSize = 256;
    DWORD domainSize = 256;
    SID_NAME_USE sidType;
@@ -170,18 +170,20 @@ static void ReadStorePackageInfo(HKEY hKey, const TCHAR *packageFullName, const 
       }
    }
 
-   // Check if package already known (duplicate detection)
+   // Check if package already known (duplicate detection - same name, version, and user)
    for(int i = 0; i < table->getNumRows(); i++)
-      if (!_tcsicmp(table->getAsString(i, 0), displayName) && !_tcsicmp(table->getAsString(i, 1), version))
+      if (!_tcsicmp(table->getAsString(i, 0), displayName) &&
+          !_tcsicmp(table->getAsString(i, 1), version) &&
+          !_tcsicmp(table->getAsString(i, 7, L""), CHECK_NULL_EX(userName)))
          return;
 
    table->addRow();
    table->set(0, displayName);   // NAME
    table->set(1, version);       // VERSION
 
-   TCHAR publisher[256] = _T("");
+   wchar_t publisher[256] = L"";
    size = sizeof(publisher);
-   if (RegQueryValueEx(hKey, _T("Publisher"), nullptr, &type, reinterpret_cast<BYTE*>(publisher), &size) == ERROR_SUCCESS)
+   if (RegQueryValueExW(hKey, L"Publisher", nullptr, &type, reinterpret_cast<BYTE*>(publisher), &size) == ERROR_SUCCESS)
       ResolveIndirectString(publisher, 256);
    table->set(2, publisher);     // VENDOR
 
@@ -283,9 +285,9 @@ static void ReadStorePackagesFromAllUsers(Table *table)
    DWORD index = 0;
    while(true)
    {
-      TCHAR sidName[256];
+      wchar_t sidName[256];
       DWORD sidNameLen = 256;
-      if (RegEnumKeyEx(hProfileList, index++, sidName, &sidNameLen, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
+      if (RegEnumKeyExW(hProfileList, index++, sidName, &sidNameLen, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
          break;
 
       // Skip well-known short SIDs (e.g., S-1-5-18, S-1-5-19, S-1-5-20)
@@ -293,52 +295,57 @@ static void ReadStorePackagesFromAllUsers(Table *table)
          continue;
 
       // Resolve SID to username
-      TCHAR userName[512];
-      const TCHAR *userNamePtr = nullptr;
+      wchar_t userName[512];
+      const wchar_t *userNamePtr = nullptr;
       if (ResolveSidToUsername(sidName, userName, 512))
          userNamePtr = userName;
 
-      bool hiveLoadedByUs = false;
-      if (!IsHiveLoaded(sidName))
+      // Windows Store package data is in the UsrClass.dat hive (Software\Classes subtree),
+      // not in NTUSER.DAT. When a user is logged in, Windows mounts UsrClass.dat automatically
+      // as HKEY_USERS\<SID>_Classes. For logged-out users, we need to load it manually.
+      StringBuffer classesKeyName(sidName);
+      classesKeyName.append(_T("_Classes"));
+
+      bool classesHiveLoadedByUs = false;
+      if (!IsHiveLoaded(classesKeyName))
       {
-         // Hive is not loaded - load it from the user's profile directory
+         // Classes hive is not loaded - load UsrClass.dat from the user's profile directory
          HKEY hProfileKey;
-         if (RegOpenKeyEx(hProfileList, sidName, 0, KEY_READ, &hProfileKey) == ERROR_SUCCESS)
+         if (RegOpenKeyExW(hProfileList, sidName, 0, KEY_READ, &hProfileKey) == ERROR_SUCCESS)
          {
-            TCHAR profilePath[MAX_PATH];
+            wchar_t profilePath[MAX_PATH];
             DWORD type, size = sizeof(profilePath);
-            if (RegQueryValueEx(hProfileKey, _T("ProfileImagePath"), nullptr, &type, reinterpret_cast<BYTE*>(profilePath), &size) == ERROR_SUCCESS)
+            if (RegQueryValueExW(hProfileKey, L"ProfileImagePath", nullptr, &type, reinterpret_cast<BYTE*>(profilePath), &size) == ERROR_SUCCESS)
             {
                // Expand environment variables in profile path
-               TCHAR expandedPath[MAX_PATH];
-               ExpandEnvironmentStrings(profilePath, expandedPath, MAX_PATH);
+               wchar_t expandedPath[MAX_PATH];
+               ExpandEnvironmentStringsW(profilePath, expandedPath, MAX_PATH);
 
-               StringBuffer ntUserDat(expandedPath);
-               ntUserDat.append(_T("\\NTUSER.DAT"));
+               StringBuffer usrClassDat(expandedPath);
+               usrClassDat.append(L"\\AppData\\Local\\Microsoft\\Windows\\UsrClass.dat");
 
-               if (RegLoadKey(HKEY_USERS, sidName, ntUserDat) == ERROR_SUCCESS)
+               if (RegLoadKeyW(HKEY_USERS, classesKeyName, usrClassDat) == ERROR_SUCCESS)
                {
-                  hiveLoadedByUs = true;
-                  nxlog_debug_tag(DEBUG_TAG, 6, _T("Loaded registry hive for user %s (%s)"),
-                     (userNamePtr != nullptr) ? userNamePtr : _T("unknown"), sidName);
+                  classesHiveLoadedByUs = true;
+                  nxlog_debug_tag(DEBUG_TAG, 6, L"Loaded classes registry hive for user %s (%s)", (userNamePtr != nullptr) ? userNamePtr : L"unknown", sidName);
                }
                else
                {
-                  nxlog_debug_tag(DEBUG_TAG, 6, _T("Cannot load registry hive for %s from %s"), sidName, ntUserDat.cstr());
+                  nxlog_debug_tag(DEBUG_TAG, 6, L"Cannot load classes registry hive for %s from %s", sidName, usrClassDat.cstr());
                }
             }
             RegCloseKey(hProfileKey);
          }
       }
 
-      StringBuffer path(sidName);
-      path.append(_T("\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"));
+      StringBuffer path(classesKeyName);
+      path.append(L"\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages");
       ReadStorePackagesFromRegistryPath(HKEY_USERS, path, userNamePtr, table);
 
-      if (hiveLoadedByUs)
+      if (classesHiveLoadedByUs)
       {
-         RegUnLoadKey(HKEY_USERS, sidName);
-         nxlog_debug_tag(DEBUG_TAG, 6, _T("Unloaded registry hive for %s"), sidName);
+         RegUnLoadKey(HKEY_USERS, classesKeyName);
+         nxlog_debug_tag(DEBUG_TAG, 6, L"Unloaded classes registry hive for %s", sidName);
       }
    }
 
