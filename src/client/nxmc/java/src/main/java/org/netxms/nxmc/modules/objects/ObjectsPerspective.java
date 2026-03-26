@@ -55,6 +55,7 @@ import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.netxms.client.NXCSession;
 import org.netxms.client.ObjectFilter;
+import org.netxms.client.ObjectUrl;
 import org.netxms.client.SessionNotification;
 import org.netxms.client.constants.ObjectStatus;
 import org.netxms.client.objects.AbstractNode;
@@ -154,6 +155,7 @@ import org.netxms.nxmc.modules.worldmap.views.ObjectGeoLocationView;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
+import org.netxms.nxmc.tools.ExternalWebBrowser;
 import org.netxms.nxmc.services.ObjectActionDescriptor;
 import org.netxms.nxmc.services.ObjectViewDescriptor;
 import org.netxms.nxmc.tools.WidgetHelper;
@@ -778,6 +780,24 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       addObjectMenu(i18n.tr("Dashboards"), ObjectMenuFactory.createDashboardsMenu(new StructuredSelection(object), object.getObjectId(), null, objectToolBar, new ViewPlacement(this)));
       addObjectMenu(i18n.tr("Create"), new ObjectCreateMenuManager(getWindow().getShell(), null, object));
       addObjectMenu(i18n.tr("Logs"), new ObjectLogMenuManager(object, 0, new ViewPlacement(this)));
+
+      if (object.hasUrls())
+      {
+         Menu linksMenu = new Menu(objectMenuBar);
+         for(ObjectUrl url : object.getUrls())
+         {
+            MenuItem mi = new MenuItem(linksMenu, SWT.PUSH);
+            mi.setText(url.getDescription().isEmpty() ? url.getUrl().toExternalForm() : url.getDescription());
+            mi.addSelectionListener(new SelectionAdapter() {
+               @Override
+               public void widgetSelected(SelectionEvent e)
+               {
+                  ExternalWebBrowser.open(url.getUrl());
+               }
+            });
+         }
+         addObjectMenu(i18n.tr("Links"), linksMenu);
+      }
    }
 
    /**
