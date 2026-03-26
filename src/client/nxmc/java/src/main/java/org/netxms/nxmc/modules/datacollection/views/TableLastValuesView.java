@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.datacollection.widgets.TableValueViewer;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.tools.ViewRefreshController;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -47,6 +48,7 @@ public class TableLastValuesView extends ObjectView
 	private long dciId;
    private String fullName;
    private TableValueViewer viewer;
+   private ViewRefreshController refreshController;
    private Action actionExportAllToCsv;
 
    /**
@@ -132,7 +134,17 @@ public class TableLastValuesView extends ObjectView
 		createActions();
 
 		viewer.setObject(ownerId, dciId);
-	}
+
+      refreshController = new ViewRefreshController(this, 30, () -> {
+         if (viewer.isDisposed())
+            return;
+
+         viewer.refresh(() -> {
+            setName(viewer.getTitle());
+            fullName = viewer.getObjectName() + ": " + viewer.getTitle();
+         });
+      });
+   }
 
 	/**
 	 * Create actions
@@ -194,6 +206,17 @@ public class TableLastValuesView extends ObjectView
          return;
 
       refresh();
+   }
+
+   /**
+    * @see org.netxms.nxmc.base.views.View#dispose()
+    */
+   @Override
+   public void dispose()
+   {
+      if (refreshController != null)
+         refreshController.dispose();
+      super.dispose();
    }
 
    /**

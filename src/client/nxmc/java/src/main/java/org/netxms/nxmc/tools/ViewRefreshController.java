@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2020 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,8 +66,7 @@ public class ViewRefreshController implements ViewStateListener
          @Override
          public void run()
          {
-            if (view.isVisible() &&
-                ((ViewRefreshController.this.validator == null) || ViewRefreshController.this.validator.isVisible()))
+            if (view.isVisible() && ((ViewRefreshController.this.validator == null) || ViewRefreshController.this.validator.isVisible()))
             {
                ViewRefreshController.this.handler.run();
             }

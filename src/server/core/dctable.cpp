@@ -911,7 +911,7 @@ void DCTable::fillLastValueSummaryMessage(NXCPMessage *msg, uint32_t fieldId, co
       msg->setField(fieldId++, static_cast<uint16_t>(DCI_DT_NULL));  // compatibility: data type
       msg->setField(fieldId++, _T(""));             // compatibility: value
    }
-   msg->setField(fieldId++, m_lastPollTime);
+   msg->setField(fieldId++, m_lastValueTimestamp);
    msg->setField(fieldId++, static_cast<uint16_t>(matchClusterResource() ? m_status : ITEM_STATUS_DISABLED)); // show resource-bound DCIs as inactive if cluster resource is not on this node
    msg->setField(fieldId++, static_cast<uint16_t>(getType()));
    msg->setField(fieldId++, m_errorCount);

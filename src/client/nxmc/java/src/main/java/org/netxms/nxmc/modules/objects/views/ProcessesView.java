@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2024 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -244,6 +244,9 @@ public class ProcessesView extends ObjectView
    public void refresh()
    {
       final long nodeId = getObjectId();
+      if (nodeId == 0)
+         return;
+
       new Job(i18n.tr("Reading process list"), this) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
