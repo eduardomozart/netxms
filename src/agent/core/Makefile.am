@@ -45,4 +45,5 @@ EXTRA_DIST = \
     nxagentd.rc \
     pe_cert.cpp \
     resource.h \
-    service.cpp
+    service.cpp \
+    wincert.cpp

@@ -262,6 +262,7 @@ userdb		User database (server side)
 watchdog	Server watchdog
 webapi.tls	WebAPI TLS reverse proxy (reproxy)
 websvc		Web services
+wincert		Windows certificate store metrics
 winevt		Windows event collection (server side)
 winnt		WINNT platform subagent messages
 wol		Wake-on-lan functions

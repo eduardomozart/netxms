@@ -42,6 +42,11 @@ LONG H_AgentEventSender(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, Abstra
 LONG H_AgentUptime(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session);
 LONG H_CertificateInfo(const TCHAR* param, const TCHAR* arg, TCHAR* value, AbstractCommSession* session);
 LONG H_CRC32(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session);
+#ifdef _WIN32
+LONG H_WindowsCertStoreInfo(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session);
+LONG H_WindowsCertStoreTable(const TCHAR *param, const TCHAR *arg, Table *value, AbstractCommSession *session);
+LONG H_WindowsCertStoreList(const TCHAR *param, const TCHAR *arg, StringList *value, AbstractCommSession *session);
+#endif
 LONG H_DataCollectorQueueSize(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session);
 LONG H_DirInfo(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session);
 LONG H_ExternalList(const TCHAR *cmd, const TCHAR *arg, StringList *value, AbstractCommSession *session);
@@ -608,6 +613,17 @@ static NETXMS_SUBAGENT_PARAM s_standardParams[] =
    { _T("X509.Certificate.Subject(*)"), H_CertificateInfo, _T("S"), DCI_DT_STRING, _T("Subject of X.509 certificate from file {instance}") },
    { _T("X509.Certificate.TemplateID(*)"), H_CertificateInfo, _T("T"), DCI_DT_STRING, _T("Template ID of X.509 certificate from file {instance}") },
 
+#ifdef _WIN32
+   { _T("WindowsCertificateStore.Certificate.ExpirationDate(*)"), H_WindowsCertStoreInfo, _T("D"), DCI_DT_STRING, _T("Expiration date (YYYY-MM-DD) of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.ExpirationTime(*)"), H_WindowsCertStoreInfo, _T("E"), DCI_DT_UINT64, _T("Expiration time of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.ExpiresIn(*)"), H_WindowsCertStoreInfo, _T("U"), DCI_DT_INT, _T("Days until expiration of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.HasPrivateKey(*)"), H_WindowsCertStoreInfo, _T("K"), DCI_DT_INT, _T("Private key presence for certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.Issuer(*)"), H_WindowsCertStoreInfo, _T("I"), DCI_DT_STRING, _T("Issuer of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.Subject(*)"), H_WindowsCertStoreInfo, _T("S"), DCI_DT_STRING, _T("Subject of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.TemplateID(*)"), H_WindowsCertStoreInfo, _T("T"), DCI_DT_STRING, _T("Template ID of certificate {instance-1} in Windows certificate store {instance}") },
+   { _T("WindowsCertificateStore.Certificate.Thumbprint(*)"), H_WindowsCertStoreInfo, _T("F"), DCI_DT_STRING, _T("SHA-1 thumbprint of certificate {instance-1} in Windows certificate store {instance}") },
+#endif
+
    // Deprecated parameters
    { _T("Agent.GeneratedTraps"), H_AgentEventSender, _T("G"), DCI_DT_DEPRECATED, DCIDESC_DEPRECATED },
    { _T("Agent.LastTrapTime"), H_AgentEventSender, _T("T"), DCI_DT_DEPRECATED, DCIDESC_DEPRECATED },
@@ -635,7 +651,10 @@ static NETXMS_SUBAGENT_LIST s_standardLists[] =
    { _T("PhysicalDisk.Devices"), H_PhysicalDiskList, nullptr, _T("List of physical disk devices") },
    { _T("SNMP.ScanAddressRange(*)"), H_SNMPAddressRangeScan, nullptr, _T("SNMP address range scan results") },
    { _T("TCP.ScanAddressRange(*)"), H_TCPAddressRangeScan, nullptr, _T("TCP address range scan results") },
-   { _T("TFTP.Get(*)"), H_TFTPGet, nullptr, _T("Content of file retrieved from TFTP server") }
+   { _T("TFTP.Get(*)"), H_TFTPGet, nullptr, _T("Content of file retrieved from TFTP server") },
+#ifdef _WIN32
+   { _T("WindowsCertificateStore.Certificates(*)"), H_WindowsCertStoreList, nullptr, _T("Certificates in Windows certificate store {instance}") },
+#endif
 };
 
 /**
@@ -648,7 +667,10 @@ static NETXMS_SUBAGENT_TABLE s_standardTables[] =
    { _T("Agent.SubAgents"), H_SubAgentTable, nullptr, _T("NAME"), DCTDESC_AGENT_SUBAGENTS },
    { _T("Agent.ZoneConfigurations"), H_ZoneConfigurations, nullptr, _T("SERVER_ID"), DCTDESC_AGENT_ZONE_CONFIGURATIONS },
    { _T("Agent.ZoneProxies"), H_ZoneProxies, nullptr, _T("SERVER_ID,PROXY_ID"), DCTDESC_AGENT_ZONE_PROXIES },
-   { _T("PhysicalDisk.Devices"), H_PhysicalDiskTable, nullptr, _T("NAME"), DCTDESC_PHYSICALDISK_DEVICES }
+   { _T("PhysicalDisk.Devices"), H_PhysicalDiskTable, nullptr, _T("NAME"), DCTDESC_PHYSICALDISK_DEVICES },
+#ifdef _WIN32
+   { _T("WindowsCertificateStore.Certificates(*)"), H_WindowsCertStoreTable, nullptr, _T("THUMBPRINT"), _T("Certificates in Windows certificate store {instance}") },
+#endif
 };
 
 /**
