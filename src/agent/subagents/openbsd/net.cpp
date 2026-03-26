@@ -37,6 +37,8 @@
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
 #include <netinet/tcp_fsm.h>
+#include <netinet/in_pcb.h>
+#include <netinet/tcp_var.h>
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 #include <kvm.h>
@@ -62,6 +64,8 @@ typedef struct t_IfList
 struct nlist nl[] = {
 #define N_IFNET 0
 	{ (char *)"_ifnet" },
+#define N_TCBTABLE 1
+	{ (char *)"_tcbtable" },
 	{ NULL },
 };
 
@@ -769,7 +773,7 @@ static int TCPStateFromName(const TCHAR *name)
 
 /**
  * Handler for Net.IP.Stats.TCPConnections and Net.IP.Stats.TCPConnections(*)
- * Uses sysctl KERN_FILE to enumerate TCP sockets and their states
+ * Uses kvm to read the kernel TCP inpcb table and count connections by state
  */
 LONG H_NetTCPConnections(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
 {
@@ -799,38 +803,47 @@ LONG H_NetTCPConnections(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abs
       }
    }
 
-   int mib[6] = { CTL_KERN, KERN_FILE, KERN_FILE_BYFILE, DTYPE_SOCKET,
-                   static_cast<int>(sizeof(struct kinfo_file)), 0 };
-   size_t len = 0;
-   if (sysctl(mib, 6, nullptr, &len, nullptr, 0) != 0)
-      return SYSINFO_RC_ERROR;
-
-   int nEntries = static_cast<int>(len / sizeof(struct kinfo_file));
-   mib[5] = nEntries;
-
-   struct kinfo_file *kf = static_cast<struct kinfo_file*>(MemAlloc(len));
-   if (sysctl(mib, 6, kf, &len, nullptr, 0) != 0)
+   if (kvmd == NULL)
    {
-      MemFree(kf);
-      return SYSINFO_RC_ERROR;
+      kvmd = kvm_openfiles(NULL, NULL, NULL, O_RDONLY, NULL);
+      if (kvmd == NULL)
+         return SYSINFO_RC_ERROR;
+      if (kvm_nlist(kvmd, nl) < 0)
+         return SYSINFO_RC_ERROR;
    }
+
+   if (nl[N_TCBTABLE].n_value == 0)
+      return SYSINFO_RC_UNSUPPORTED;
+
+   struct inpcbtable tcbtable;
+   if (kvm_read(kvmd, nl[N_TCBTABLE].n_value, &tcbtable, sizeof(tcbtable)) != sizeof(tcbtable))
+      return SYSINFO_RC_ERROR;
 
    int count = 0;
-   nEntries = static_cast<int>(len / sizeof(struct kinfo_file));
-   for (int i = 0; i < nEntries; i++)
+   u_long addr = (u_long)TAILQ_FIRST(&tcbtable.inpt_queue);
+   while (addr != 0)
    {
-      if (kf[i].so_protocol == IPPROTO_TCP)
+      struct inpcb inpcb;
+      if (kvm_read(kvmd, addr, &inpcb, sizeof(inpcb)) != sizeof(inpcb))
+         break;
+
+      bool matchVersion = (ipVersion == 0) ||
+                          (ipVersion == 4 && inpcb.inp_af == AF_INET) ||
+                          (ipVersion == 6 && inpcb.inp_af == AF_INET6);
+
+      if (matchVersion && inpcb.inp_ppcb != NULL)
       {
-         bool matchState = (targetState == -1 || kf[i].so_tcpstate == targetState);
-         bool matchVersion = (ipVersion == 0) ||
-                             (ipVersion == 4 && kf[i].so_family == AF_INET) ||
-                             (ipVersion == 6 && kf[i].so_family == AF_INET6);
-         if (matchState && matchVersion)
-            count++;
+         struct tcpcb tcpcb;
+         if (kvm_read(kvmd, (u_long)inpcb.inp_ppcb, &tcpcb, sizeof(tcpcb)) == sizeof(tcpcb))
+         {
+            if (targetState == -1 || tcpcb.t_state == targetState)
+               count++;
+         }
       }
+
+      addr = (u_long)TAILQ_NEXT(&inpcb, inp_queue);
    }
 
-   MemFree(kf);
    ret_int(value, count);
    return SYSINFO_RC_SUCCESS;
 }
