@@ -36,7 +36,9 @@
 #include <net/route.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <netinet/tcp_fsm.h>
+#include <netinet/tcp_timer.h>
 #include <netinet/in_pcb.h>
 #include <netinet/tcp_var.h>
 #include <ifaddrs.h>
@@ -827,9 +829,10 @@ LONG H_NetTCPConnections(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abs
       if (kvm_read(kvmd, addr, &inpcb, sizeof(inpcb)) != sizeof(inpcb))
          break;
 
+      bool isIPv6 = (inpcb.inp_flags & INP_IPV6) != 0;
       bool matchVersion = (ipVersion == 0) ||
-                          (ipVersion == 4 && inpcb.inp_af == AF_INET) ||
-                          (ipVersion == 6 && inpcb.inp_af == AF_INET6);
+                          (ipVersion == 4 && !isIPv6) ||
+                          (ipVersion == 6 && isIPv6);
 
       if (matchVersion && inpcb.inp_ppcb != NULL)
       {
