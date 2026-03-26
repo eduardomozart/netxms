@@ -50,6 +50,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 import org.netxms.client.InetAddressListElement;
 import org.netxms.client.NXCSession;
+import org.netxms.client.Script;
 import org.netxms.client.constants.NetworkDiscoveryFilterFlags;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.jobs.Job;
@@ -62,7 +63,7 @@ import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.events.HyperlinkAdapter;
 import org.netxms.nxmc.base.widgets.events.HyperlinkEvent;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.netxms.nxmc.modules.nxsl.widgets.ScriptSelector;
+import org.netxms.nxmc.modules.nxsl.widgets.ScriptEditor;
 import org.netxms.nxmc.modules.serverconfig.dialogs.AddressListElementEditDialog;
 import org.netxms.nxmc.modules.serverconfig.views.helpers.AddressListElementComparator;
 import org.netxms.nxmc.modules.serverconfig.views.helpers.AddressListLabelProvider;
@@ -107,8 +108,10 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
    private Button checkAllowAgent;
    private Button checkAllowSNMP;
    private Button checkAllowSSH;
-   private Button checkFilterScript;
-   private ScriptSelector filterScript;
+   private ScriptEditor stage1ScriptEditor;
+   private ScriptEditor stage2ScriptEditor;
+   private long stage1ScriptId;
+   private long stage2ScriptId;
    private SortableTableViewer filterAddressList;
    private SortableTableViewer activeDiscoveryAddressList;
    private SortableTableViewer topologyExcludedSubnetsList;
@@ -165,11 +168,37 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
          protected void run(IProgressMonitor monitor) throws Exception
          {
             final NetworkDiscoveryConfig loadedConfig = NetworkDiscoveryConfig.load(session);
+
+            // Find hook scripts by name
+            List<Script> scripts = session.getScriptLibrary();
+            Script stage1 = null, stage2 = null;
+            for(Script s : scripts)
+            {
+               if ("Hook::AcceptNewNode".equals(s.getName()))
+                  stage1 = s;
+               else if ("Hook::DiscoveryFilter".equals(s.getName()))
+                  stage2 = s;
+            }
+
+            final Script stage1Full = (stage1 != null) ? session.getScript(stage1.getId()) : null;
+            final Script stage2Full = (stage2 != null) ? session.getScript(stage2.getId()) : null;
+
             runInUIThread(new Runnable() {
                @Override
                public void run()
                {
                   setConfig(loadedConfig);
+                  if (stage1Full != null)
+                  {
+                     stage1ScriptId = stage1Full.getId();
+                     stage1ScriptEditor.setText(stage1Full.getSource());
+                  }
+                  if (stage2Full != null)
+                  {
+                     stage2ScriptId = stage2Full.getId();
+                     stage2ScriptEditor.setText(stage2Full.getSource());
+                  }
+                  modified = false;
                }
             });
          }
@@ -515,7 +544,8 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
       gd.verticalAlignment = SWT.TOP;
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
-      gd.verticalSpan = 3;
+      gd.grabExcessVerticalSpace = true;
+      gd.verticalSpan = 4;
       section.setLayoutData(gd);
 
       Composite clientArea = section.getClient();
@@ -532,8 +562,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             int flags = 0;
             if (checkFilterRange.getSelection())
                flags |= NetworkDiscoveryFilterFlags.CHECK_ADDRESS_RANGE;
-            if (checkFilterScript.getSelection())
-               flags |= NetworkDiscoveryFilterFlags.EXECUTE_SCRIPT;
             if (checkFilterProtocols.getSelection())
                flags |= NetworkDiscoveryFilterFlags.CHECK_PROTOCOLS;
             if (checkAllowAgent.getSelection())
@@ -685,24 +713,57 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
       gd.horizontalIndent = 20;
       checkAllowSSH.setLayoutData(gd);
 
-      checkFilterScript = new Button(clientArea, SWT.CHECK);
-      checkFilterScript.setText(i18n.tr("With custom script"));
-      checkFilterScript.setBackground(clientArea.getBackground());
-      checkFilterScript.addSelectionListener(checkBoxListener);
-
-      filterScript = new ScriptSelector(clientArea, SWT.NONE, true, false);
-      filterScript.setBackground(clientArea.getBackground());
-      filterScript.getTextControl().setBackground(clientArea.getBackground());
+      Section stage1Section = new Section(clientArea, i18n.tr("Stage 1 filter script (Hook::AcceptNewNode)"), false);
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
+      gd.verticalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
-      gd.horizontalIndent = 20;
-      filterScript.setLayoutData(gd);
-      filterScript.addModifyListener(new ModifyListener() {
+      gd.grabExcessVerticalSpace = true;
+      gd.heightHint = 250;
+      stage1Section.setLayoutData(gd);
+
+      stage1ScriptEditor = new ScriptEditor(stage1Section.getClient(), SWT.NONE, SWT.H_SCROLL | SWT.V_SCROLL,
+            "Available global variables:\n" +
+            "   $ipAddress - IP address (InetAddress class)\n" +
+            "   $ipAddr - IP address as text\n" +
+            "   $ipNetMask - netmask as integer\n" +
+            "   $macAddress - MAC address (MacAddress class)\n" +
+            "   $macAddr - MAC address as text\n" +
+            "   $zoneUIN - zone UIN\n\n" +
+            "Expected return value: true/false",
+            true);
+      stage1ScriptEditor.addModifyListener(new ModifyListener() {
          @Override
          public void modifyText(ModifyEvent e)
          {
-            config.setFilterScript(filterScript.getScriptName());
+            setModified();
+         }
+      });
+
+      Section stage2Section = new Section(clientArea, i18n.tr("Stage 2 filter script (Hook::DiscoveryFilter)"), false);
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.verticalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      gd.grabExcessVerticalSpace = true;
+      gd.heightHint = 250;
+      stage2Section.setLayoutData(gd);
+
+      stage2ScriptEditor = new ScriptEditor(stage2Section.getClient(), SWT.NONE, SWT.H_SCROLL | SWT.V_SCROLL,
+            "Available global variables:\n" +
+            "   $node - DiscoveredNode object (also $1)\n" +
+            "   $snmp - SNMP transport (may be null)\n\n" +
+            "DiscoveredNode attributes: ipAddr, ipAddress, netMask,\n" +
+            "   subnet, dnsName, zoneUIN, zone, snmpOID, snmpVersion,\n" +
+            "   platformName, agentVersion, isAgent, isSNMP, isSSH,\n" +
+            "   isBridge, isCDP, isLLDP, isRouter, isPrinter, isSONMP,\n" +
+            "   interfaces\n\n" +
+            "Expected return value: true/false",
+            true);
+      stage2ScriptEditor.addModifyListener(new ModifyListener() {
+         @Override
+         public void modifyText(ModifyEvent e)
+         {
             setModified();
          }
       });
@@ -1031,7 +1092,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
       enablePassiveDiscovery(config.getDiscoveryType() == NetworkDiscoveryConfig.DISCOVERY_TYPE_PASSIVE || config.getDiscoveryType() == NetworkDiscoveryConfig.DISCOVERY_TYPE_ACTIVE_PASSIVE);
 
       checkFilterRange.setSelection((config.getFilterFlags() & NetworkDiscoveryFilterFlags.CHECK_ADDRESS_RANGE) != 0);
-      checkFilterScript.setSelection((config.getFilterFlags() & NetworkDiscoveryFilterFlags.EXECUTE_SCRIPT) != 0);
       checkFilterProtocols.setSelection((config.getFilterFlags() & NetworkDiscoveryFilterFlags.CHECK_PROTOCOLS) != 0);
       checkAllowAgent.setSelection((config.getFilterFlags() & NetworkDiscoveryFilterFlags.PROTOCOL_AGENT) != 0);
       checkAllowSNMP.setSelection((config.getFilterFlags() & NetworkDiscoveryFilterFlags.PROTOCOL_SNMP) != 0);
@@ -1045,8 +1105,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
       activeDiscoveryAddressList.setInput(config.getTargets().toArray());
       filterAddressList.setInput(config.getAddressFilter().toArray());
       topologyExcludedSubnetsList.setInput(config.getTopologyExcludedSubnets().toArray());
-
-      filterScript.setScriptName(config.getFilterScript());
 
       modified = false;
    }
@@ -1065,11 +1123,18 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
    @Override
    public void save()
    {
+      final String stage1Source = stage1ScriptEditor.getText();
+      final String stage2Source = stage2ScriptEditor.getText();
+      final NXCSession session = Registry.getSession();
       new Job(i18n.tr("Saving network discovery configuration"), this) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
             config.save();
+            if (stage1ScriptId != 0)
+               session.modifyScript(stage1ScriptId, "Hook::AcceptNewNode", stage1Source);
+            if (stage2ScriptId != 0)
+               session.modifyScript(stage2ScriptId, "Hook::DiscoveryFilter", stage2Source);
             runInUIThread(new Runnable() {
                @Override
                public void run()

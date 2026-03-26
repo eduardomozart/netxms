@@ -24,6 +24,67 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.29 to 61.30
+ */
+static bool H_UpgradeFromV29()
+{
+   CHK_EXEC(SQLQuery(
+      _T("INSERT INTO script_library (guid,script_id,script_name,script_code) ")
+      _T("VALUES ('748237d9-01cd-49ee-b066-6ff115ae5a8b',29,'Hook::DiscoveryFilter','return true;\r\n')")));
+
+   // Migrate existing filter script to hook
+   TCHAR scriptName[MAX_CONFIG_VALUE_LENGTH];
+   DBMgrConfigReadStr(_T("NetworkDiscovery.Filter.Script"), scriptName, MAX_CONFIG_VALUE_LENGTH, _T("none"));
+   if (_tcsicmp(scriptName, _T("none")) && (scriptName[0] != 0))
+   {
+      DB_STATEMENT hStmt = DBPrepare(g_dbHandle,
+         _T("SELECT script_code FROM script_library WHERE script_name = ?"));
+      if (hStmt != nullptr)
+      {
+         DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, scriptName, DB_BIND_STATIC);
+         DB_RESULT hResult = DBSelectPrepared(hStmt);
+         if (hResult != nullptr)
+         {
+            if (DBGetNumRows(hResult) > 0)
+            {
+               TCHAR *scriptCode = DBGetField(hResult, 0, 0, nullptr, 0);
+               if (scriptCode != nullptr)
+               {
+                  DB_STATEMENT hUpdate = DBPrepare(g_dbHandle,
+                     _T("UPDATE script_library SET script_code = ? WHERE script_name = 'Hook::DiscoveryFilter'"));
+                  if (hUpdate != nullptr)
+                  {
+                     DBBind(hUpdate, 1, DB_SQLTYPE_TEXT, scriptCode, DB_BIND_DYNAMIC);
+                     CHK_EXEC(SQLExecute(hUpdate));
+                     DBFreeStatement(hUpdate);
+                  }
+                  else
+                  {
+                     MemFree(scriptCode);
+                  }
+               }
+            }
+            DBFreeResult(hResult);
+         }
+         DBFreeStatement(hStmt);
+      }
+   }
+
+   // Clear DFF_EXECUTE_SCRIPT bit (0x0004) from filter flags
+   uint32_t flags = DBMgrConfigReadUInt32(_T("NetworkDiscovery.Filter.Flags"), 0);
+   flags &= ~0x0004u;
+   TCHAR query[256];
+   _sntprintf(query, 256, _T("UPDATE config SET var_value='%u' WHERE var_name='NetworkDiscovery.Filter.Flags'"), flags);
+   CHK_EXEC(SQLQuery(query));
+
+   // Remove obsolete config variable
+   CHK_EXEC(SQLQuery(_T("DELETE FROM config WHERE var_name='NetworkDiscovery.Filter.Script'")));
+
+   CHK_EXEC(SetMinorSchemaVersion(30));
+   return true;
+}
+
+/**
  * Upgrade from 61.28 to 61.29
  */
 static bool H_UpgradeFromV28()
@@ -769,6 +830,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 29, 61, 30, H_UpgradeFromV29 },
    { 28, 61, 29, H_UpgradeFromV28 },
    { 27, 61, 28, H_UpgradeFromV27 },
    { 26, 61, 27, H_UpgradeFromV26 },

@@ -25,7 +25,6 @@ public final class NetworkDiscoveryFilterFlags
 {
    public static final int CHECK_PROTOCOLS     = 0x0001;
    public static final int CHECK_ADDRESS_RANGE = 0x0002;
-   public static final int EXECUTE_SCRIPT      = 0x0004;
    public static final int PROTOCOL_AGENT      = 0x0100;
    public static final int PROTOCOL_SNMP       = 0x0200;
    public static final int PROTOCOL_SSH        = 0x0400;

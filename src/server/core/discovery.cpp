@@ -710,13 +710,6 @@ static bool AcceptNewNodeStage2(DiscoveredAddress *address)
    uint32_t filterFlags = ConfigReadULong(_T("NetworkDiscovery.Filter.Flags"), 0);
    nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): filter flags=%04X"), ipAddrText, filterFlags);
 
-   // Check for filter script
-   if ((filterFlags & (DFF_CHECK_PROTOCOLS | DFF_CHECK_ADDRESS_RANGE | DFF_EXECUTE_SCRIPT)) == 0)
-   {
-      nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): no filtering, node accepted"), ipAddrText);
-      return true;   // No filtering
-   }
-
    bool result = true;
 
    // Check supported communication protocols
@@ -736,43 +729,34 @@ static bool AcceptNewNodeStage2(DiscoveredAddress *address)
       nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): protocol check result is %s"), ipAddrText, BooleanToString(result));
    }
 
-   // Execute filter script
-   if (result && (filterFlags & DFF_EXECUTE_SCRIPT))
+   // Execute discovery filter hook script
+   if (result)
    {
-      TCHAR filterScript[MAX_CONFIG_VALUE_LENGTH];
-      ConfigReadStr(_T("NetworkDiscovery.Filter.Script"), filterScript, MAX_CONFIG_VALUE_LENGTH, _T(""));
-      Trim(filterScript);
-
-      NXSL_VM *vm = CreateServerScriptVM(filterScript, shared_ptr<NetObj>());
-      if (vm != nullptr)
+      NXSL_VM *hook = FindHookScript(_T("DiscoveryFilter"), shared_ptr<NetObj>());
+      if (hook != nullptr)
       {
-         nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): Running filter script %s"), ipAddrText, filterScript);
+         nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): running discovery filter hook script"), ipAddrText);
 
          if (address->snmpTransport != nullptr)
          {
-            vm->setGlobalVariable("$snmp", vm->createValue(vm->createObject(&g_nxslSnmpTransportClass, address->snmpTransport)));
+            hook->setGlobalVariable("$snmp", hook->createValue(hook->createObject(&g_nxslSnmpTransportClass, address->snmpTransport)));
             address->snmpTransport = nullptr;   // Transport will be deleted by NXSL object destructor
          }
-         // TODO: make agent and SSH connection available in script
-         vm->setGlobalVariable("$node", vm->createValue(vm->createObject(&g_nxslDiscoveredNodeClass, data)));
+         hook->setGlobalVariable("$node", hook->createValue(hook->createObject(&g_nxslDiscoveredNodeClass, data)));
 
-         NXSL_Value *param = vm->createValue(vm->createObject(&g_nxslDiscoveredNodeClass, data));
-         if (vm->run(1, &param))
+         NXSL_Value *param = hook->createValue(hook->createObject(&g_nxslDiscoveredNodeClass, data));
+         if (hook->run(1, &param))
          {
-            result = vm->getResult()->getValueAsBoolean();
-            nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): Filter script result is %s"), ipAddrText, BooleanToString(result));
+            result = hook->getResult()->getValueAsBoolean();
+            nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): discovery filter hook script result is %s"), ipAddrText, BooleanToString(result));
          }
          else
          {
             result = false;   // Consider script runtime error to be a negative result
-            nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): Filter script execution error: %s"), ipAddrText, vm->getErrorText());
-            ReportScriptError(SCRIPT_CONTEXT_OBJECT, nullptr, 0, vm->getErrorText(), filterScript);
+            nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): discovery filter hook script execution error: %s"), ipAddrText, hook->getErrorText());
+            ReportScriptError(SCRIPT_CONTEXT_OBJECT, nullptr, 0, hook->getErrorText(), _T("Hook::DiscoveryFilter"));
          }
-         delete vm;
-      }
-      else
-      {
-         nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage2(%s): Cannot find filter script %s"), ipAddrText, filterScript);
+         delete hook;
       }
    }
 

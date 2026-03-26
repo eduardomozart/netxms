@@ -102,6 +102,18 @@ public class ScriptEditorView extends ConfigurationView
                " \n" +
                "Expected return value:\n" +
                "   true/false - boolean - whether node processing should continue\n");
+         put("Hook::DiscoveryFilter",
+               "Available global variables:\n" +
+               "   $node - discovered node object of the 'DiscoveredNode' class (also passed as $1 parameter)\n" +
+               "   $snmp - SNMP transport for the discovered node (may be null)\n" +
+               " \n" +
+               "Discovered node attributes: ipAddr, ipAddress, netMask, subnet,\n" +
+               "   dnsName, zoneUIN, zone, snmpOID, snmpVersion, platformName,\n" +
+               "   agentVersion, isAgent, isSNMP, isSSH, isBridge, isCDP,\n" +
+               "   isLLDP, isRouter, isPrinter, isSONMP, interfaces\n" +
+               " \n" +
+               "Expected return value:\n" +
+               "   true/false - boolean - whether the node should be accepted\n");
          put("Hook::DiscoveryPoll",
                "Available global variables:\n" +
                "   $node - current node, an object of the 'Node' type\n" +

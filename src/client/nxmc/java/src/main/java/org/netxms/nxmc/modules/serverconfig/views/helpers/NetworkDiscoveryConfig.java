@@ -45,7 +45,6 @@ public class NetworkDiscoveryConfig
 	private boolean useSnmpTraps;
 	private boolean useSyslog;
 	private int filterFlags;
-	private String filterScript;
    private int passiveDiscoveryPollInterval;
    private int activeDiscoveryPollInterval;
    private String activeDiscoveryPollSchedule;
@@ -82,7 +81,6 @@ public class NetworkDiscoveryConfig
       config.useSnmpTraps = getBoolean(variables, "NetworkDiscovery.UseSNMPTraps", false);
       config.useSyslog = getBoolean(variables, "NetworkDiscovery.UseSyslog", false);
       config.filterFlags = getInteger(variables, "NetworkDiscovery.Filter.Flags", 0);
-      config.filterScript = getString(variables, "NetworkDiscovery.Filter.Script", "none");
       config.passiveDiscoveryPollInterval = getInteger(variables, "NetworkDiscovery.PassiveDiscovery.Interval", 900);
       config.activeDiscoveryPollInterval = getInteger(variables, "NetworkDiscovery.ActiveDiscovery.Interval", DEFAULT_ACTIVE_INTERVAL);
       config.activeDiscoveryPollSchedule = getString(variables, "NetworkDiscovery.ActiveDiscovery.Schedule", "");
@@ -171,7 +169,6 @@ public class NetworkDiscoveryConfig
       session.setServerVariable("NetworkDiscovery.UseSNMPTraps", useSnmpTraps ? "1" : "0");
       session.setServerVariable("NetworkDiscovery.UseSyslog", useSyslog ? "1" : "0");
       session.setServerVariable("NetworkDiscovery.Filter.Flags", Integer.toString(filterFlags));
-      session.setServerVariable("NetworkDiscovery.Filter.Script", filterScript);
       session.setServerVariable("NetworkDiscovery.PassiveDiscovery.Interval", Integer.toString(passiveDiscoveryPollInterval));
       session.setServerVariable("NetworkDiscovery.ActiveDiscovery.Interval", Integer.toString(activeDiscoveryPollInterval));
       session.setServerVariable("NetworkDiscovery.ActiveDiscovery.Schedule", activeDiscoveryPollSchedule);
@@ -197,26 +194,6 @@ public class NetworkDiscoveryConfig
 	public void setFilterFlags(int filterFlags)
 	{
 		this.filterFlags = filterFlags;
-	}
-
-	/**
-    * Get filter script name.
-    *
-    * @return filter script name
-    */
-	public String getFilterScript()
-	{
-		return filterScript;
-	}
-
-	/**
-    * Set filter script name.
-    *
-    * @param filterScript new filter script name
-    */
-	public void setFilterScript(String filterScript)
-	{
-		this.filterScript = filterScript;
 	}
 
 	/**

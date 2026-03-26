@@ -500,7 +500,6 @@ enum
  */
 #define DFF_CHECK_PROTOCOLS            0x0001
 #define DFF_CHECK_ADDRESS_RANGE        0x0002
-#define DFF_EXECUTE_SCRIPT             0x0004
 #define DFF_PROTOCOL_AGENT             0x0100
 #define DFF_PROTOCOL_SNMP              0x0200
 #define DFF_PROTOCOL_SSH               0x0400
