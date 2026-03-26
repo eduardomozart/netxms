@@ -23,6 +23,15 @@
 #include "nxcore.h"
 
 /**
+ * Post-load hook
+ */
+void TemplateGroup::postLoad()
+{
+   super::postLoad();
+   m_status = STATUS_NORMAL;
+}
+
+/**
  * Redefined status calculation for template group
  */
 void TemplateGroup::calculateCompoundStatus(bool forcedRecalc)

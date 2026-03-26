@@ -79,6 +79,7 @@ bool CreateTDataTable(uint32_t objectId);
 bool CreateTDataTable_preV281(uint32_t objectId);
 
 void ResetSystemAccount();
+void ResetMonitoringState();
 
 bool LoadServerModules(wchar_t *moduleLoadList, bool quiet);
 bool EnumerateModuleTables(bool (*handler)(const wchar_t*, void*), void *userData);

@@ -3258,6 +3258,17 @@ void NetObj::leaveMaintenanceMode(uint32_t userId)
 }
 
 /**
+ * Update maintenance event ID (used after monitoring state reset to match regenerated event)
+ */
+void NetObj::updateMaintenanceEventId(uint64_t eventId)
+{
+   lockProperties();
+   m_maintenanceEventId = eventId;
+   setModified(MODIFY_COMMON_PROPERTIES);
+   unlockProperties();
+}
+
+/**
  * Create NXSL object for this object
  */
 NXSL_Value *NetObj::createNXSLObject(NXSL_VM *vm)

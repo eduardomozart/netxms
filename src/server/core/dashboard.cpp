@@ -869,6 +869,15 @@ void DashboardTemplate::autobindPoll(PollerInfo *poller, ClientSession *session,
  *****************************************************************/
 
 /**
+ * Post-load hook
+ */
+void DashboardGroup::postLoad()
+{
+   super::postLoad();
+   m_status = STATUS_NORMAL;
+}
+
+/**
  * Redefined status calculation for dashboard group
  */
 void DashboardGroup::calculateCompoundStatus(bool forcedRecalc)

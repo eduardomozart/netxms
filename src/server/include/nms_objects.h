@@ -1599,6 +1599,7 @@ public:
    uint32_t getMaintenanceInitiator() const { return m_maintenanceInitiator; }
    virtual void enterMaintenanceMode(uint32_t userId, const TCHAR *comments);
    virtual void leaveMaintenanceMode(uint32_t userId);
+   void updateMaintenanceEventId(uint64_t eventId);
    virtual bool isMaintenanceApplicable() const { return false; }
 
    void fillMessage(NXCPMessage *msg, uint32_t userId, bool full = true);
@@ -4723,6 +4724,8 @@ public:
    virtual int getObjectClass() const override { return OBJECT_TEMPLATEGROUP; }
    virtual void calculateCompoundStatus(bool forcedRecalc = false) override;
 
+   virtual void postLoad() override;
+
    virtual bool showThresholdSummary() const override;
 };
 
@@ -5646,6 +5649,8 @@ public:
 
    virtual int getObjectClass() const override { return OBJECT_DASHBOARDGROUP; }
    virtual void calculateCompoundStatus(bool forcedRecalc = false) override;
+
+   virtual void postLoad() override;
 
    virtual bool showThresholdSummary() const override;
 };

@@ -992,6 +992,53 @@ static void DummyScheduledTaskExecutor(const shared_ptr<ScheduledTaskParameters>
 }
 
 /**
+ * Regenerate maintenance mode events after monitoring state reset
+ */
+static void RegenerateMaintenanceModeEvents()
+{
+   if (!ConfigReadBoolean(L"Internal.MonitoringStateReset", false))
+      return;
+
+   nxlog_debug_tag(DEBUG_TAG_STARTUP, 1, L"Monitoring state was reset, regenerating maintenance mode events");
+
+   auto regenerate = [](NetObj *object) -> EnumerationCallbackResult
+   {
+      if (object->isInMaintenanceMode())
+      {
+         uint32_t userId = object->getMaintenanceInitiator();
+         TCHAR userName[MAX_USER_NAME];
+         ResolveUserId(userId, userName, true);
+
+         nxlog_debug_tag(DEBUG_TAG_STARTUP, 4, L"Regenerating maintenance mode event for %s [%u]", object->getName(), object->getId());
+
+         uint64_t eventId = 0;
+         EventBuilder(EVENT_MAINTENANCE_MODE_ENTERED, object->getId())
+            .param(L"comments", L"Monitoring state reset - maintenance mode event regenerated")
+            .param(L"userId", userId, EventBuilder::OBJECT_ID_FORMAT)
+            .param(L"userName", userName)
+            .storeEventId(&eventId)
+            .post();
+
+         if (eventId != 0)
+            object->updateMaintenanceEventId(eventId);
+      }
+      return _CONTINUE;
+   };
+
+   g_idxNodeById.forEach(regenerate);
+   g_idxClusterById.forEach(regenerate);
+   g_idxCollectorById.forEach(regenerate);
+   g_idxMobileDeviceById.forEach(regenerate);
+   g_idxAccessPointById.forEach(regenerate);
+   g_idxSensorById.forEach(regenerate);
+   g_idxChassisById.forEach(regenerate);
+
+   ConfigDelete(L"Internal.MonitoringStateReset");
+
+   nxlog_debug_tag(DEBUG_TAG_STARTUP, 1, L"Maintenance mode event regeneration completed");
+}
+
+/**
  * Server initialization
  */
 bool NXCORE_EXPORTABLE Initialize()
@@ -1594,6 +1641,7 @@ retry_db_lock:
 
    g_flags |= AF_SERVER_INITIALIZED;
    PostSystemEvent(EVENT_SERVER_STARTED, g_dwMgmtNode);
+   RegenerateMaintenanceModeEvents();
    nxlog_write_tag(NXLOG_INFO, DEBUG_TAG_STARTUP, _T("Server initialization completed in %d milliseconds"), static_cast<int>(GetCurrentTimeMs() - initStartTime));
    return true;
 }

@@ -578,6 +578,7 @@ stop_search:
                      _T("   import <file>        : Import database from file\n")
                      _T("   init [<type>]        : Initialize database. If type is not provided it will be deduced from driver name.\n")
                      _T("   migrate <source>     : Migrate database from given source\n")
+                     _T("   reset-monitoring     : Reset all monitoring state (alarms, thresholds, object status, DCI states)\n")
                      _T("   reset-system-account : Unlock user \"system\" and reset it's password to default\n")
                      _T("   set <name> <value>   : Set value of server configuration variable\n")
                      _T("   unlock               : Forced database unlock\n")
@@ -758,6 +759,7 @@ stop_search:
        strcmp(argv[optind], "init") &&
        strcmp(argv[optind], "migrate") &&
        strcmp(argv[optind], "online-upgrade") &&   // synonym for "background-upgrade" for compatibility
+       strcmp(argv[optind], "reset-monitoring") &&
        strcmp(argv[optind], "reset-system-account") &&
        strcmp(argv[optind], "set") &&
        strcmp(argv[optind], "unlock") &&
@@ -1025,6 +1027,10 @@ stop_search:
 			MemFree(var);
 			MemFree(value);
 		}
+      else if (!strcmp(argv[optind], "reset-monitoring"))
+      {
+         ResetMonitoringState();
+      }
       else if (!strcmp(argv[optind], "reset-system-account"))
       {
          ResetSystemAccount();

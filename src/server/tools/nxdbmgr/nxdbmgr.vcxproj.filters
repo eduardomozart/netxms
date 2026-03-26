@@ -48,6 +48,9 @@
     <ClCompile Include="resetadmin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="resetmonitoring.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="tables.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
