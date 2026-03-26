@@ -60,6 +60,7 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.views.ViewNotRestoredException;
 import org.netxms.nxmc.base.widgets.FilterText;
+import org.netxms.nxmc.base.widgets.MessageArea;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.helpers.SelectorConfigurator;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -113,6 +114,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 	private Action actionExportToCsv;
    private Action actionShowResultFilter;
    private Action actionShortTextualNames;
+   private Action actionFindInMibTree;
 	private CreateSnmpDci actionCreateSnmpDci;
 	private CreateSnmpTableDci actionCreateSnmpTableDci;
 	private CreateSnmpTableDciFromWalk actionCreateSnmpTableDciFromWalk;
@@ -213,6 +215,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 		mibViewSplitter.setLayout(new FillLayout());
 
 		mibBrowser = new MibBrowser(mibViewSplitter, SWT.BORDER);
+      mibBrowser.setMessageHandler((message) -> addMessage(MessageArea.INFORMATION, message));
 		mibBrowser.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event)
@@ -290,6 +293,11 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       boolean shortTextualNames = PreferenceStore.getInstance().getAsBoolean(getBaseId() + ".shortTextualNames", true);
       actionShortTextualNames.setChecked(shortTextualNames);
       valuesLabelProvider.setShortTextualNames(shortTextualNames);
+
+      // Setup MIB tree find bar visibility
+      boolean findInMibTree = PreferenceStore.getInstance().getAsBoolean(getBaseId() + ".findInMibTree", false);
+      actionFindInMibTree.setChecked(findInMibTree);
+      mibBrowser.showSearchBar(findInMibTree);
 
       // Setup result filter visibility
       boolean showResultFilter = PreferenceStore.getInstance().getAsBoolean(getBaseId() + ".showResultFilter", true);
@@ -472,6 +480,17 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       };
       actionShowResultFilter.setImageDescriptor(SharedIcons.FILTER);
       addKeyBinding("M1+F2", actionShowResultFilter);
+
+      actionFindInMibTree = new Action(i18n.tr("&Find in MIB tree"), Action.AS_CHECK_BOX) {
+         @Override
+         public void run()
+         {
+            mibBrowser.showSearchBar(actionFindInMibTree.isChecked());
+            PreferenceStore.getInstance().set(getBaseId() + ".findInMibTree", actionFindInMibTree.isChecked());
+         }
+      };
+      actionFindInMibTree.setImageDescriptor(SharedIcons.FIND);
+      addKeyBinding("M1+F", actionFindInMibTree);
 	}
 
 	/**
@@ -518,6 +537,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
    @Override
    protected void fillLocalToolBar(IToolBarManager manager)
    {
+      manager.add(actionFindInMibTree);
       manager.add(actionShowResultFilter);
    }
 
@@ -533,6 +553,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      manager.add(actionFindInMibTree);
       manager.add(actionShowResultFilter);
       manager.add(actionShortTextualNames);
    }

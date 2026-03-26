@@ -56,7 +56,7 @@ import org.xnap.commons.i18n.I18n;
 public class MibSelectionDialog extends Dialog
 {
    private I18n i18n = LocalizationHelper.getI18n(MibSelectionDialog.class);
-   
+
 	private long nodeId = 0;
 	private MibBrowser mibTree;
 	private Text oid;
@@ -65,7 +65,7 @@ public class MibSelectionDialog extends Dialog
 	private SnmpObjectId selectedObjectId;
 	private SnmpObjectId initialSelection;
 	private boolean updateObjectId = true;
-	
+
 	/**
 	 * @param parentShell
 	 * @param initialSelection initial selection for MIB tree or null
@@ -87,8 +87,8 @@ public class MibSelectionDialog extends Dialog
 		super.configureShell(newShell);
 		newShell.setText(i18n.tr("Select MIB Object"));
       PreferenceStore settings = PreferenceStore.getInstance();
-      newShell.setSize(settings.getAsPoint("MibSelectionDialog.size", 400, 250)); 
-	}	
+      newShell.setSize(settings.getAsPoint("MibSelectionDialog.size", 400, 250));
+	}
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.jface.dialogs.Dialog#createDialogArea(org.eclipse.swt.widgets.Composite)
@@ -97,7 +97,7 @@ public class MibSelectionDialog extends Dialog
 	protected Control createDialogArea(Composite parent)
 	{
 		Composite dialogArea = (Composite)super.createDialogArea(parent);
-		
+
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.DIALOG_SPACING;
 		layout.horizontalSpacing = WidgetHelper.DIALOG_SPACING;
@@ -105,7 +105,7 @@ public class MibSelectionDialog extends Dialog
 		layout.marginWidth = WidgetHelper.DIALOG_WIDTH_MARGIN;
 		layout.numColumns = (nodeId != 0) ? 3 : 2;
 		dialogArea.setLayout(layout);
-		
+
 		/* MIB tree */
 		Composite mibTreeGroup = new Composite(dialogArea, SWT.NONE);
 		layout = new GridLayout();
@@ -120,11 +120,12 @@ public class MibSelectionDialog extends Dialog
 		gd.verticalAlignment = SWT.FILL;
 		gd.verticalSpan = 2;
 		mibTreeGroup.setLayoutData(gd);
-		
+
 		Label label = new Label(mibTreeGroup, SWT.NONE);
 		label.setText(i18n.tr("MIB tree"));
-		
+
 		mibTree = new MibBrowser(mibTreeGroup, SWT.BORDER);
+		mibTree.showSearchBar(true);
 		gd = new GridData();
 		gd.grabExcessHorizontalSpace = true;
 		gd.horizontalAlignment = SWT.FILL;
@@ -149,7 +150,7 @@ public class MibSelectionDialog extends Dialog
 				onManualOidChange();
 			}
 		});
-		
+
 		if (nodeId != 0)
 		{
 			Button button = new Button(dialogArea, SWT.PUSH);
@@ -164,7 +165,7 @@ public class MibSelectionDialog extends Dialog
 				{
 					doWalk();
 				}
-				
+
 				@Override
 				public void widgetDefaultSelected(SelectionEvent e)
 				{
@@ -172,7 +173,7 @@ public class MibSelectionDialog extends Dialog
 				}
 			});
 		}
-		
+
 		details = new MibObjectDetails(dialogArea, SWT.NONE, false, mibTree, null);
 		gd = new GridData();
 		gd.horizontalAlignment = SWT.FILL;
@@ -181,7 +182,7 @@ public class MibSelectionDialog extends Dialog
 		gd.verticalAlignment = SWT.FILL;
 		gd.horizontalSpan = (nodeId != 0) ? 2 : 1;
 		details.setLayoutData(gd);
-		
+
 		if (initialSelection != null)
 		{
 			MibObject object = MibCache.getMibTree().findObject(initialSelection, false);
@@ -190,7 +191,7 @@ public class MibSelectionDialog extends Dialog
 				mibTree.setSelection(object);
 			}
 		}
-		
+
 		return dialogArea;
 	}
 
@@ -202,12 +203,12 @@ public class MibSelectionDialog extends Dialog
 		MibObject object = mibTree.getSelection();
 		if ((object != null) && updateObjectId)
 		{
-			SnmpObjectId objectId = object.getObjectId(); 
+			SnmpObjectId objectId = object.getObjectId();
 			oid.setText((objectId != null) ? objectId.toString() : ""); //$NON-NLS-1$
 		}
 		details.setObject(object);
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.jface.dialogs.Dialog#okPressed()
 	 */
@@ -223,7 +224,7 @@ public class MibSelectionDialog extends Dialog
 			MessageDialogHelper.openWarning(getShell(), i18n.tr("Warning"), i18n.tr("Please enter valid SNMP object ID or select one from the tree"));
 			return;
 		}
-		
+
 		selectedObject = mibTree.getSelection();
 		if (selectedObject == null)
 		{
@@ -265,7 +266,7 @@ public class MibSelectionDialog extends Dialog
 	{
 		return selectedObject;
 	}
-	
+
 	/**
 	 * Handler for manual OID change
 	 */
