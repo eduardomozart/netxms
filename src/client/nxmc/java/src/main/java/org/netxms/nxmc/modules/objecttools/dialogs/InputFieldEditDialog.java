@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2021 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ public class InputFieldEditDialog extends Dialog
 		name = new LabeledText(dialogArea, SWT.NONE);
       name.setLabel(i18n.tr("Name"));
 		name.setText(field.getName());
-      name.setEditable(create);
+      name.setEditable(true);
 		GridData gd = new GridData();
 		gd.horizontalAlignment = SWT.FILL;
 		gd.grabExcessHorizontalSpace = true;
@@ -146,8 +146,7 @@ public class InputFieldEditDialog extends Dialog
 	@Override
 	protected void okPressed()
 	{
-	   if (create)
-	      field.setName(name.getText());
+      field.setName(name.getText());
       field.setType(InputFieldType.getByValue(type.getSelectionIndex()));
 	   field.setDisplayName(displayName.getText());
 	   field.setDefaultValue(defaultValue.getText());

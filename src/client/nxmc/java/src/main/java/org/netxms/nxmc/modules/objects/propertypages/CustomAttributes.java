@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -246,10 +246,20 @@ public class CustomAttributes extends ObjectPropertyPage
          return;
 
       Entry<String, CustomAttribute> element = (Entry<String, CustomAttribute>)selection.getFirstElement();
+      String oldName = element.getKey();
       CustomAttribute attr = element.getValue();
-      final AttributeEditDialog dlg = new AttributeEditDialog(CustomAttributes.this.getShell(), element.getKey(), attr.getValue(), attr.getFlags(), attr.getSourceObject());
+      final AttributeEditDialog dlg = new AttributeEditDialog(CustomAttributes.this.getShell(), oldName, attr.getValue(), attr.getFlags(), attr.getSourceObject());
       if (dlg.open() == Window.OK)
       {
+         if (!oldName.equals(dlg.getName()))
+         {
+            if (attributes.containsKey(dlg.getName()))
+            {
+               MessageDialogHelper.openWarning(CustomAttributes.this.getShell(), i18n.tr("Warning"), String.format(i18n.tr("Attribute named %s already exists"), dlg.getName()));
+               return;
+            }
+            attributes.remove(oldName);
+         }
          attributes.put(dlg.getName(), new CustomAttribute(dlg.getValue(), dlg.getFlags(), attr.getSourceObject()));
          viewer.setInput(attributes.entrySet());
          CustomAttributes.this.isModified = true;

@@ -49,6 +49,7 @@ import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.dialogs.helpers.InputFieldLabelProvider;
 import org.netxms.nxmc.modules.objecttools.dialogs.InputFieldEditDialog;
+import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
@@ -292,43 +293,56 @@ public class InputFields extends PropertyPage
 		InputFieldEditDialog dlg = new InputFieldEditDialog(getShell(), true, f);
 		if (dlg.open() == Window.OK)
 		{
-		   if (nameIsUnique(f.getName()))
+		   if (nameIsUnique(f.getName(), null))
 		   {
 		      f.setSequence(fields.size());
    			fields.add(f);
    			viewer.setInput(fields.toArray());
    			viewer.setSelection(new StructuredSelection(f));
 		   }
+		   else
+		   {
+		      MessageDialogHelper.openWarning(getShell(), i18n.tr("Warning"), String.format(i18n.tr("Input field named %s already exists"), f.getName()));
+		   }
 		}
 	}
 	
 	/**
 	 * Check if field name is unique
-	 * 
-	 * @param name
-	 * @return
+	 *
+	 * @param name field name to check
+	 * @param exclude field to exclude from check (can be null)
+	 * @return true if name is unique
 	 */
-	private boolean nameIsUnique(String name)
+	private boolean nameIsUnique(String name, InputField exclude)
    {
 	   for(InputField f : fields)
-	      if (f.getName().equalsIgnoreCase(name))
+	      if ((f != exclude) && f.getName().equalsIgnoreCase(name))
 	         return false;
       return true;
    }
 
    /**
-	 * Edit column
+	 * Edit field
 	 */
 	private void editField()
 	{
 		IStructuredSelection selection = (IStructuredSelection)viewer.getSelection();
 		if (selection.size() != 1)
 			return;
-		
-		InputFieldEditDialog dlg = new InputFieldEditDialog(getShell(), false, (InputField)selection.getFirstElement());
+
+		InputField f = (InputField)selection.getFirstElement();
+		String oldName = f.getName();
+		InputFieldEditDialog dlg = new InputFieldEditDialog(getShell(), false, f);
 		if (dlg.open() == Window.OK)
 		{
-		   viewer.update(selection.getFirstElement(), null);
+		   if (!oldName.equalsIgnoreCase(f.getName()) && !nameIsUnique(f.getName(), f))
+		   {
+		      MessageDialogHelper.openWarning(getShell(), i18n.tr("Warning"), String.format(i18n.tr("Input field named %s already exists"), f.getName()));
+		      f.setName(oldName);
+		      return;
+		   }
+		   viewer.update(f, null);
 		}
 	}
 	
