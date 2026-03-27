@@ -140,6 +140,18 @@ Array::~Array()
 }
 
 /**
+ * Ensure that internal buffer has enough space for at least given number of elements
+ */
+void Array::reserve(int capacity)
+{
+   if (capacity > m_allocated)
+   {
+      m_allocated = capacity;
+      m_data = MemRealloc(m_data, m_elementSize * m_allocated);
+   }
+}
+
+/**
  * Add element. Pointer sized elements must be passed by value, larger elements - by pointer.
  */
 int Array::add(void *element)
