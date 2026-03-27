@@ -263,8 +263,8 @@ public class ReportDefinitionManager extends ConfigurationView implements Sessio
    {
       FileDialog fd = new FileDialog(getWindow().getShell(), SWT.OPEN | SWT.MULTI);
       fd.setText(i18n.tr("Select Report Packages"));
-      fd.setFilterExtensions(new String[] { "*.jar;*.zip", "*.*" });
-      fd.setFilterNames(new String[] { i18n.tr("Report packages (*.jar, *.zip)"), i18n.tr("All files") });
+      WidgetHelper.setFileDialogFilterExtensions(fd, new String[] { "*.jar;*.zip", "*.*" });
+      WidgetHelper.setFileDialogFilterNames(fd, new String[] { i18n.tr("Report packages (*.jar, *.zip)"), i18n.tr("All files") });
       String selection = fd.open();
       if (selection == null)
          return;

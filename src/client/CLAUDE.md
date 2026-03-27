@@ -98,6 +98,7 @@ modules/
 - **Desktop**: Uses SWT (Standard Widget Toolkit)
 - **Web**: Uses RWT (RAP Widget Toolkit) - browser-based
 - Code is mostly shared, with platform-specific handling where needed
+- `WidgetHelper` (`org.netxms.nxmc.tools`) has separate SWT (`src/swt/`) and RWT (`src/rwt/`) implementations that abstract API differences between the two toolkits. In shared code (`src/main/`), always check `WidgetHelper` for a wrapper before calling SWT widget methods that may not exist in RWT. For example, never call `FileDialog.setFilterExtensions()`, `setFilterNames()`, or `getFileNames()` directly — use `WidgetHelper.setFileDialogFilterExtensions()`, `setFileDialogFilterNames()`, and `getFileDialogFileList()` instead. Direct calls will compile for desktop but break the web build.
 
 ## Java Client Library (netxms-client)
 
