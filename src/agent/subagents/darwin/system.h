@@ -1,4 +1,4 @@
-/* 
+/*
 ** netxms subagent for darwin
 ** copyright (c) 2012 alex kirhenshtein
 **
@@ -40,6 +40,14 @@ enum
 	VIRTUAL_TOTAL
 };
 
+enum
+{
+   PROCINFO_CPUTIME,
+   PROCINFO_MEMPERC,
+   PROCINFO_RSS,
+   PROCINFO_THREADS,
+   PROCINFO_VMSIZE
+};
 
 #define INFOTYPE_MIN             0
 #define INFOTYPE_MAX             1
@@ -49,9 +57,9 @@ enum
 LONG H_HardwareManufacturer(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_HardwareProduct(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_ProcessList(const TCHAR *, const TCHAR *, StringList *, AbstractCommSession *);
+LONG H_ProcessTable(const TCHAR *, const TCHAR *, Table *, AbstractCommSession *);
 LONG H_Uptime(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_Uname(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
-LONG H_Hostname(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_Hostname(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_ProcessCount(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);
 LONG H_ProcessInfo(const TCHAR *, const TCHAR *, TCHAR *, AbstractCommSession *);

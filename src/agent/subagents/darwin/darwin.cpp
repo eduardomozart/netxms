@@ -71,9 +71,11 @@ static NETXMS_SUBAGENT_PARAM m_parameters[] =
    { _T("Hardware.System.Manufacturer"), H_HardwareManufacturer, NULL, DCI_DT_STRING, DCIDESC_HARDWARE_SYSTEM_MANUFACTURER },
    { _T("Hardware.System.Product"),      H_HardwareProduct,      NULL, DCI_DT_STRING, DCIDESC_HARDWARE_SYSTEM_PRODUCT },
 
+   { _T("System.ProcessCount"),           H_ProcessCount,    _T("S"), DCI_DT_UINT, DCIDESC_SYSTEM_PROCESSCOUNT },
+   { _T("System.ThreadCount"),           H_ProcessCount,    _T("T"), DCI_DT_UINT, DCIDESC_SYSTEM_THREADCOUNT },
    { _T("System.Uname"),                 H_Uname,           NULL, DCI_DT_STRING, DCIDESC_SYSTEM_UNAME },
    { _T("System.Uptime"),                H_Uptime,          NULL, DCI_DT_UINT, DCIDESC_SYSTEM_UPTIME },
-   { _T("System.Hostname"),              H_Hostname,        NULL, DCI_DT_FLOAT, DCIDESC_SYSTEM_HOSTNAME },
+   { _T("System.Hostname"),              H_Hostname,        NULL, DCI_DT_STRING, DCIDESC_SYSTEM_HOSTNAME },
 
    { _T("System.CPU.Count"),             H_CpuCount,        NULL, DCI_DT_INT, DCIDESC_SYSTEM_CPU_COUNT },
    { _T("System.CPU.LoadAvg"),           H_CpuLoad,         NULL, DCI_DT_FLOAT, DCIDESC_SYSTEM_CPU_LOADAVG },
@@ -163,6 +165,15 @@ static NETXMS_SUBAGENT_PARAM m_parameters[] =
    { _T("System.IO.WriteRate"), H_IOStatsTotal, (const TCHAR *)IOSTAT_NUM_WRITES, DCI_DT_FLOAT, DCIDESC_SYSTEM_IO_WRITES },
    { _T("System.IO.WriteRate(*)"), H_IOStats, (const TCHAR *)IOSTAT_NUM_WRITES, DCI_DT_FLOAT, DCIDESC_SYSTEM_IO_WRITES_EX },
 
+   { _T("Process.Count(*)"),              H_ProcessCount,    _T("P"), DCI_DT_INT, DCIDESC_PROCESS_COUNT },
+   { _T("Process.CountEx(*)"),            H_ProcessCount,    _T("E"), DCI_DT_INT, DCIDESC_PROCESS_COUNTEX },
+   { _T("Process.CPUTime(*)"),            H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_CPUTIME, const TCHAR *), DCI_DT_COUNTER64, DCIDESC_PROCESS_CPUTIME },
+   { _T("Process.MemoryUsage(*)"),        H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_MEMPERC, const TCHAR *), DCI_DT_FLOAT, DCIDESC_PROCESS_MEMORYUSAGE },
+   { _T("Process.RSS(*)"),                H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_RSS, const TCHAR *), DCI_DT_INT64, DCIDESC_PROCESS_WKSET },
+   { _T("Process.Threads(*)"),            H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_THREADS, const TCHAR *), DCI_DT_INT, DCIDESC_PROCESS_THREADS },
+   { _T("Process.VMSize(*)"),             H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_VMSIZE, const TCHAR *), DCI_DT_INT64, DCIDESC_PROCESS_VMSIZE },
+   { _T("Process.WkSet(*)"),              H_ProcessInfo,     CAST_TO_POINTER(PROCINFO_RSS, const TCHAR *), DCI_DT_INT64, DCIDESC_PROCESS_WKSET },
+
    { _T("Net.IP.Forwarding"),            H_NetIpForwarding, (const TCHAR *)4, DCI_DT_INT, DCIDESC_NET_IP_FORWARDING },
    { _T("Net.IP.Stats.TCPConnections"), H_NetTCPConnections, _T("T"), DCI_DT_INT, DCIDESC_NET_IP_STATS_TCPCONNECTIONS },
    { _T("Net.IP.Stats.TCPConnections(*)"), H_NetTCPConnections, _T("O"), DCI_DT_INT, DCIDESC_NET_IP_STATS_TCPCONNECTIONS_F },
@@ -191,6 +202,8 @@ static NETXMS_SUBAGENT_LIST m_enums[] =
    { _T("Net.ArpCache"),                 H_NetArpCache,     NULL, _T("ARP cache") },
    { _T("Net.InterfaceList"),            H_NetIfList,       NULL, _T("List of network interfaces") },
    { _T("Net.IP.RoutingTable"),          H_NetRoutingTable, NULL, _T("IP routing table") },
+   { _T("System.ProcessList"),           H_ProcessList,     _T("1"), _T("List of processes") },
+   { _T("System.Processes"),             H_ProcessList,     _T("2"), _T("List of processes (detailed)") },
    { _T("System.CPU.Instances"),          H_CpuInstanceList, NULL, _T("List of CPU instances") },
    { _T("System.IO.Devices"),            H_IODeviceList,    NULL, _T("List of I/O devices") },
 };
@@ -198,6 +211,7 @@ static NETXMS_SUBAGENT_LIST m_enums[] =
 static NETXMS_SUBAGENT_TABLE m_tables[] =
 {
    { _T("FileSystem.Volumes"), H_FileSystems, NULL, _T("VOLUME"), DCTDESC_FILESYSTEM_VOLUMES },
+   { _T("System.Processes"), H_ProcessTable, NULL, _T("PID"), DCTDESC_SYSTEM_PROCESSES },
 };
 
 static NETXMS_SUBAGENT_INFO m_info =
