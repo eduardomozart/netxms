@@ -2001,6 +2001,7 @@ public:
 	bool isEmpty() const { return m_size == 0; }
 	int sizeIncrement() const { return m_grow; }
 
+	void reserve(int capacity);
 	size_t memoryUsage() const { return m_allocated * m_elementSize; }
 
 	void setOwner(Ownership owner) { m_objectOwner = (owner == Ownership::True); }

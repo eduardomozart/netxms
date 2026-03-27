@@ -484,6 +484,7 @@ Alarm::Alarm(DB_HANDLE hdb, DB_RESULT hResult, int row) : m_relatedEvents(16, 16
    if (eventResult != nullptr)
    {
       int count = DBGetNumRows(eventResult);
+      m_relatedEvents.reserve(count);
       for(int j = 0; j < count; j++)
       {
          m_relatedEvents.add(DBGetFieldUInt64(eventResult, j, 0));
