@@ -29,6 +29,8 @@ tags:
     description: Object tool management
   - name: Find
     description: Network search operations
+  - name: Geo Areas
+    description: Geographic area management
   - name: DCI Summary Tables
     description: DCI summary table operations
   - name: Event Templates
@@ -790,6 +792,153 @@ paths:
                       description: Interface index
         '401':
           description: Unauthorized.
+      security:
+        - BearerAuth: []
+  /v1/geo-areas:
+    get:
+      tags:
+        - Geo Areas
+      summary: Get all geo areas
+      description: Retrieve the list of all configured geographic areas.
+      responses:
+        '200':
+          description: List of geo areas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeoArea'
+        '401':
+          description: Unauthorized.
+      security:
+        - BearerAuth: []
+    post:
+      tags:
+        - Geo Areas
+      summary: Create a new geo area
+      description: Create a new geographic area. Requires MANAGE_GEO_AREAS system access right.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeoAreaCreateUpdate'
+      responses:
+        '201':
+          description: Geo area created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeoArea'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+  /v1/geo-areas/{area-id}:
+    get:
+      tags:
+        - Geo Areas
+      summary: Get geo area details
+      description: Retrieve details of a specific geographic area.
+      parameters:
+        - name: area-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Geo area ID.
+      responses:
+        '200':
+          description: Geo area details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeoArea'
+        '400':
+          description: Invalid area ID.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Geo area not found.
+      security:
+        - BearerAuth: []
+    put:
+      tags:
+        - Geo Areas
+      summary: Update a geo area
+      description: Update an existing geographic area. Requires MANAGE_GEO_AREAS system access right.
+      parameters:
+        - name: area-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Geo area ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeoAreaCreateUpdate'
+      responses:
+        '200':
+          description: Geo area updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeoArea'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Geo area not found.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+    delete:
+      tags:
+        - Geo Areas
+      summary: Delete a geo area
+      description: Delete a geographic area. Requires MANAGE_GEO_AREAS system access right. Use force=true to delete even if the area is referenced by objects.
+      parameters:
+        - name: area-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Geo area ID.
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: Force deletion even if the area is referenced by objects.
+      responses:
+        '204':
+          description: Geo area deleted successfully.
+        '400':
+          description: Invalid area ID.
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Geo area not found.
+        '409':
+          description: Geo area is in use by one or more objects.
+        '500':
+          description: Internal server error.
       security:
         - BearerAuth: []
   /v1/grafana/infinity/alarms:
@@ -4240,6 +4389,60 @@ paths:
         - Two-Factor Authentication
 components:
   schemas:
+    GeoArea:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique geo area identifier.
+        name:
+          type: string
+          description: Geo area name.
+        comments:
+          type: string
+          description: Optional comments.
+        border:
+          type: array
+          description: List of border coordinates defining the area polygon.
+          items:
+            type: object
+            properties:
+              latitude:
+                type: number
+                format: double
+                description: Latitude in decimal degrees.
+              longitude:
+                type: number
+                format: double
+                description: Longitude in decimal degrees.
+    GeoAreaCreateUpdate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Geo area name (cannot be empty).
+        comments:
+          type: string
+          description: Optional comments.
+        border:
+          type: array
+          description: List of border coordinates defining the area polygon.
+          items:
+            type: object
+            required:
+              - latitude
+              - longitude
+            properties:
+              latitude:
+                type: number
+                format: double
+                description: Latitude in decimal degrees.
+              longitude:
+                type: number
+                format: double
+                description: Longitude in decimal degrees.
     ScheduledTask:
       type: object
       properties:

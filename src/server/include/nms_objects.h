@@ -136,6 +136,7 @@ public:
    ~GeoArea();
 
    void fillMessage(NXCPMessage *msg, uint32_t baseId) const;
+   json_t *toJson() const;
 
    bool containsLocation(const GeoLocation& location) const { return location.isWithinArea(m_border); }
 
@@ -6220,7 +6221,10 @@ void LoadObjectCategories();
 
 shared_ptr<GeoArea> NXCORE_EXPORTABLE GetGeoArea(uint32_t id);
 uint32_t ModifyGeoArea(const NXCPMessage& msg, uint32_t *areaId);
-uint32_t DeleteGeoArea(uint32_t id, bool forceDelete);
+uint32_t NXCORE_EXPORTABLE ModifyGeoArea(uint32_t id, json_t *json, uint32_t *areaId);
+uint32_t NXCORE_EXPORTABLE DeleteGeoArea(uint32_t id, bool forceDelete);
+json_t NXCORE_EXPORTABLE *GetGeoAreasAsJson();
+json_t NXCORE_EXPORTABLE *GetGeoAreaAsJson(uint32_t id);
 void GeoAreasToMessage(NXCPMessage *msg);
 void LoadGeoAreas();
 

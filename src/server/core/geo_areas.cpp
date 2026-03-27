@@ -132,6 +132,28 @@ StringBuffer GeoArea::getBorderAsString() const
 }
 
 /**
+ * Create JSON representation of geo area
+ */
+json_t *GeoArea::toJson() const
+{
+   json_t *root = json_object();
+   json_object_set_new(root, "id", json_integer(m_id));
+   json_object_set_new(root, "name", json_string_w(m_name));
+   json_object_set_new(root, "comments", (m_comments != nullptr) ? json_string_w(m_comments) : json_string(""));
+   json_t *border = json_array();
+   for(int i = 0; i < m_border.size(); i++)
+   {
+      GeoLocation *p = m_border.get(i);
+      json_t *point = json_object();
+      json_object_set_new(point, "latitude", json_real(p->getLatitude()));
+      json_object_set_new(point, "longitude", json_real(p->getLongitude()));
+      json_array_append_new(border, point);
+   }
+   json_object_set_new(root, "border", border);
+   return root;
+}
+
+/**
  * Index of geo areas
  */
 static SharedPointerIndex<GeoArea> s_geoAreas;
@@ -167,7 +189,7 @@ shared_ptr<GeoArea> NXCORE_EXPORTABLE GetGeoArea(uint32_t id)
 /**
  * Delete geo area
  */
-uint32_t DeleteGeoArea(uint32_t id, bool forceDelete)
+uint32_t NXCORE_EXPORTABLE DeleteGeoArea(uint32_t id, bool forceDelete)
 {
    if (forceDelete)
    {
@@ -243,6 +265,126 @@ uint32_t ModifyGeoArea(const NXCPMessage& msg, uint32_t *areaId)
    NotifyClientSessions(notificationMessage, NXC_CHANNEL_GEO_AREAS);
 
    return RCC_SUCCESS;
+}
+
+/**
+ * Create or modify geo area from JSON
+ */
+uint32_t NXCORE_EXPORTABLE ModifyGeoArea(uint32_t id, json_t *json, uint32_t *areaId)
+{
+   json_t *jsonName = json_object_get(json, "name");
+   if (!json_is_string(jsonName))
+      return RCC_GEO_AREA_NAME_EMPTY;
+
+   wchar_t name[128];
+   utf8_to_wchar(json_string_value(jsonName), -1, name, 128);
+   if (name[0] == 0)
+      return RCC_GEO_AREA_NAME_EMPTY;
+
+   if (id == 0)
+      id = CreateUniqueId(IDG_GEO_AREA);
+
+   wchar_t comments[MAX_DB_STRING];
+   json_t *jsonComments = json_object_get(json, "comments");
+   if (json_is_string(jsonComments))
+      utf8_to_wchar(json_string_value(jsonComments), -1, comments, MAX_DB_STRING);
+   else
+      comments[0] = 0;
+
+   ObjectArray<GeoLocation> border(64, 64, Ownership::True);
+   json_t *jsonBorder = json_object_get(json, "border");
+   if (json_is_array(jsonBorder))
+   {
+      size_t index;
+      json_t *point;
+      json_array_foreach(jsonBorder, index, point)
+      {
+         json_t *lat = json_object_get(point, "latitude");
+         json_t *lon = json_object_get(point, "longitude");
+         if (json_is_number(lat) && json_is_number(lon))
+            border.add(new GeoLocation(GL_MANUAL, json_real_value(lat), json_real_value(lon)));
+      }
+   }
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   static const wchar_t *columns[] = {
+      L"name", L"comments", L"configuration", nullptr
+   };
+   DB_STATEMENT hStmt = DBPrepareMerge(hdb, L"geo_areas", L"id", id, columns);
+   if (hStmt == nullptr)
+   {
+      DBConnectionPoolReleaseConnection(hdb);
+      return RCC_DB_FAILURE;
+   }
+
+   StringBuffer borderStr;
+   for(int i = 0; i < border.size(); i++)
+   {
+      GeoLocation *p = border.get(i);
+      borderStr.append(p->getLatitude());
+      borderStr.append(L'/');
+      borderStr.append(p->getLongitude());
+      borderStr.append(L';');
+   }
+   borderStr.shrink();
+
+   DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, name, DB_BIND_STATIC);
+   DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, comments, DB_BIND_STATIC);
+   DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, borderStr, DB_BIND_TRANSIENT);
+   DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, id);
+   bool success = DBExecute(hStmt);
+   DBFreeStatement(hStmt);
+   DBConnectionPoolReleaseConnection(hdb);
+
+   if (!success)
+      return RCC_DB_FAILURE;
+
+   // Re-read from DB to construct proper GeoArea object
+   DB_HANDLE hdb2 = DBConnectionPoolAcquireConnection();
+   wchar_t query[256];
+   swprintf(query, 256, L"SELECT id,name,comments,configuration FROM geo_areas WHERE id=%u", id);
+   DB_RESULT hResult = DBSelect(hdb2, query);
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+      {
+         auto area = make_shared<GeoArea>(hResult, 0);
+         s_geoAreas.put(area->getId(), area);
+
+         NXCPMessage notificationMessage(CMD_GEO_AREA_UPDATE, 0);
+         area->fillMessage(&notificationMessage, VID_ELEMENT_LIST_BASE);
+         NotifyClientSessions(notificationMessage, NXC_CHANNEL_GEO_AREAS);
+      }
+      DBFreeResult(hResult);
+   }
+   DBConnectionPoolReleaseConnection(hdb2);
+
+   *areaId = id;
+   return RCC_SUCCESS;
+}
+
+/**
+ * Get all geo areas as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetGeoAreasAsJson()
+{
+   json_t *output = json_array();
+   s_geoAreas.forEach(
+      [output](GeoArea *area) -> EnumerationCallbackResult
+      {
+         json_array_append_new(output, area->toJson());
+         return _CONTINUE;
+      });
+   return output;
+}
+
+/**
+ * Get single geo area as JSON object or nullptr if not found
+ */
+json_t NXCORE_EXPORTABLE *GetGeoAreaAsJson(uint32_t id)
+{
+   shared_ptr<GeoArea> area = s_geoAreas.get(id);
+   return (area != nullptr) ? area->toJson() : nullptr;
 }
 
 /**

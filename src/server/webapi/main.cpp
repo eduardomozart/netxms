@@ -72,6 +72,11 @@ int H_NotificationChannels(Context *context);
 int H_NotificationChannelSend(Context *context);
 int H_NotificationChannelUpdate(Context *context);
 int H_NotificationDrivers(Context *context);
+int H_GeoAreas(Context *context);
+int H_GeoAreaDetails(Context *context);
+int H_GeoAreaCreate(Context *context);
+int H_GeoAreaUpdate(Context *context);
+int H_GeoAreaDelete(Context *context);
 int H_GrafanaDciList(Context *context);
 int H_FindMacAddress(Context *context);
 int H_GrafanaGetAlarms(Context *context);
@@ -239,6 +244,15 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/find/mac-address")
       .GET(H_FindMacAddress)
+      .build();
+   RouteBuilder("v1/geo-areas")
+      .GET(H_GeoAreas)
+      .POST(H_GeoAreaCreate)
+      .build();
+   RouteBuilder("v1/geo-areas/:area-id")
+      .GET(H_GeoAreaDetails)
+      .PUT(H_GeoAreaUpdate)
+      .DELETE(H_GeoAreaDelete)
       .build();
    RouteBuilder("v1/notification-channels")
       .GET(H_NotificationChannels)

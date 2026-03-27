@@ -334,6 +334,7 @@
     <ClCompile Include="dcst.cpp" />
     <ClCompile Include="events.cpp" />
     <ClCompile Include="find.cpp" />
+    <ClCompile Include="geoareas.cpp" />
     <ClCompile Include="grafana.cpp" />
     <ClCompile Include="info.cpp" />
     <ClCompile Include="main.cpp" />
