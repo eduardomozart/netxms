@@ -71,6 +71,9 @@ void VariantToTableCell(VARIANT *v, Table *t, int column)
    }
 }
 
+// Forward declaration for mutual recursion with VariantToString
+static TCHAR *VariantArrayToString(VARIANT *v, int arrayIndex);
+
 /**
  * Convert variant to string value
  */
@@ -150,12 +153,96 @@ TCHAR *VariantToString(VARIANT *v, TCHAR *buffer, size_t size)
          }
 			break;
 	   default:
-         if (b != NULL)
+         if (v->vt & VT_ARRAY)
+         {
+            TCHAR *s = VariantArrayToString(v, -1);
+            if (s != nullptr)
+            {
+               if (b == nullptr)
+               {
+                  b = s;
+               }
+               else
+               {
+                  _tcslcpy(b, s, size);
+                  MemFree(s);
+               }
+            }
+            else if (b != nullptr)
+            {
+               *b = 0;
+            }
+         }
+         else if (b != nullptr)
+         {
             *b = 0;
+         }
 			break;
 	}
 
    return b;
+}
+
+/**
+ * Convert array variant to string
+ * If arrayIndex >= 0, return specific element; if < 0, return all elements as [val1,val2,...]
+ * Returns allocated string or nullptr on error
+ */
+static TCHAR *VariantArrayToString(VARIANT *v, int arrayIndex)
+{
+   SAFEARRAY *sa = v->parray;
+   if (sa == nullptr)
+      return nullptr;
+
+   LONG lBound, uBound;
+   if (FAILED(SafeArrayGetLBound(sa, 1, &lBound)) || FAILED(SafeArrayGetUBound(sa, 1, &uBound)))
+      return nullptr;
+
+   VARTYPE baseType = v->vt & VT_TYPEMASK;
+
+   if (arrayIndex >= 0)
+   {
+      LONG index = lBound + arrayIndex;
+      if (index > uBound)
+         return nullptr;
+
+      VARIANT element;
+      VariantInit(&element);
+      element.vt = baseType;
+
+      if (FAILED(SafeArrayGetElement(sa, &index, (baseType == VT_BSTR) ? (void *)&element.bstrVal : (void *)&element.lVal)))
+         return nullptr;
+
+      TCHAR *result = VariantToString(&element);
+      VariantClear(&element);
+      return result;
+   }
+
+   // No index — return all elements as [val1,val2,...]
+   StringBuffer sb;
+   sb.append(_T('['));
+   for (LONG i = lBound; i <= uBound; i++)
+   {
+      if (i > lBound)
+         sb.append(_T(','));
+
+      VARIANT element;
+      VariantInit(&element);
+      element.vt = baseType;
+
+      if (SUCCEEDED(SafeArrayGetElement(sa, &i, (baseType == VT_BSTR) ? (void *)&element.bstrVal : (void *)&element.lVal)))
+      {
+         TCHAR *str = VariantToString(&element);
+         if (str != nullptr)
+         {
+            sb.append(str);
+            MemFree(str);
+         }
+         VariantClear(&element);
+      }
+   }
+   sb.append(_T(']'));
+   return MemCopyString(sb.cstr());
 }
 
 /**
@@ -286,6 +373,15 @@ static LONG H_WMIQuery(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, Abstrac
 	    !AgentGetParameterArg(cmd, 3, prop, 256))
 		return SYSINFO_RC_UNSUPPORTED;
 
+	// Parse optional array index from property name (e.g. "PropertyName[0]")
+	int arrayIndex = -1;
+	TCHAR *bracket = _tcschr(prop, _T('['));
+	if (bracket != nullptr)
+	{
+	   arrayIndex = _tcstol(bracket + 1, nullptr, 10);
+	   *bracket = 0;
+	}
+
 	pEnumObject = DoWMIQuery(ns, query, &ctx);
 	if (pEnumObject != NULL)
 	{
@@ -305,7 +401,12 @@ static LONG H_WMIQuery(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, Abstrac
 
 				if (pClassObject->Get(prop, 0, &v, 0, 0) == S_OK)
 				{
-					TCHAR *str = VariantToString(&v);
+					TCHAR *str;
+					if (v.vt & VT_ARRAY)
+					   str = VariantArrayToString(&v, arrayIndex);
+					else
+					   str = VariantToString(&v);
+
 					if (str != NULL)
 					{
 						ret_string(value, str);
@@ -358,6 +459,15 @@ static LONG H_WMIListQuery(const TCHAR *cmd, const TCHAR *arg, StringList *value
        !AgentGetParameterArg(cmd, 3, prop, 256))
       return SYSINFO_RC_UNSUPPORTED;
 
+   // Parse optional array index from property name (e.g. "PropertyName[0]")
+   int arrayIndex = -1;
+   TCHAR *bracket = _tcschr(prop, _T('['));
+   if (bracket != nullptr)
+   {
+      arrayIndex = _tcstol(bracket + 1, nullptr, 10);
+      *bracket = 0;
+   }
+
    pEnumObject = DoWMIQuery(ns, query, &ctx);
    if (pEnumObject != NULL)
    {
@@ -366,7 +476,12 @@ static LONG H_WMIListQuery(const TCHAR *cmd, const TCHAR *arg, StringList *value
          VARIANT v;
          if (pClassObject->Get(prop, 0, &v, 0, 0) == S_OK)
          {
-            TCHAR *str = VariantToString(&v);
+            TCHAR *str;
+            if (v.vt & VT_ARRAY)
+               str = VariantArrayToString(&v, arrayIndex);
+            else
+               str = VariantToString(&v);
+
             if (str != NULL)
             {
                value->add(str);
