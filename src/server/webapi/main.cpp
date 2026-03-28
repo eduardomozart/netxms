@@ -34,6 +34,11 @@ DEFINE_MODULE_METADATA("WEBAPI", "Raden Solutions", NETXMS_VERSION_STRING_A, NET
 void CleanupExpiredTcpProxySessions();
 
 /**
+ * Cleanup expired tool output sessions
+ */
+void CleanupExpiredToolOutputSessions();
+
+/**
  * Handlers
  */
 int H_2FADrivers(Context *context);
@@ -161,6 +166,9 @@ int H_User2FABindingUpdate(Context *context);
 void WS_TcpProxyConnect(void *cls, MHD_Connection *connection, void *con_cls,
                         const char *extra_in, size_t extra_in_size, MHD_socket sock,
                         MHD_UpgradeResponseHandle *urh);
+void WS_ToolOutputConnect(void *cls, MHD_Connection *connection, void *con_cls,
+                          const char *extra_in, size_t extra_in_size, MHD_socket sock,
+                          MHD_UpgradeResponseHandle *urh);
 
 /**
  * Initialize module
@@ -307,6 +315,11 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/object-tools/:tool-id/execute")
       .POST(H_ObjectToolExecute)
+      .build();
+   RouteBuilder("v1/object-tools/output/:token")
+      .GET([](Context *) { return 0; })  // Placeholder for WebSocket upgrade
+      .upgradeProtocol(WS_ToolOutputConnect)
+      .noauth()  // Token-based auth
       .build();
    RouteBuilder("v1/objects")
       .GET(H_Objects)
@@ -455,6 +468,7 @@ static bool InitModule(Config *config)
 
 
    ThreadPoolScheduleRelative(g_mainThreadPool, 300000, CleanupExpiredTcpProxySessions);  // In 5 minutes
+   ThreadPoolScheduleRelative(g_mainThreadPool, 300000, CleanupExpiredToolOutputSessions);  // In 5 minutes
    return true;
 }
 

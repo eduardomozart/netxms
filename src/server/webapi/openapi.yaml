@@ -3348,9 +3348,16 @@ paths:
                   additionalProperties:
                     type: string
                   description: Optional input field values for macro expansion
+                stream:
+                  type: boolean
+                  description: |
+                    If true and the tool generates output, execution starts asynchronously
+                    and a WebSocket token is returned for streaming output. Supported for
+                    tool types: action, server-command, server-script, ssh-command.
+                  default: false
       responses:
         '200':
-          description: Tool executed successfully
+          description: Tool executed successfully (synchronous mode)
           content:
             application/json:
               schema:
@@ -3366,6 +3373,14 @@ paths:
                     table: '#/components/schemas/ObjectToolTableResult'
                     none: '#/components/schemas/ObjectToolNoResult'
                     url: '#/components/schemas/ObjectToolUrlResult'
+        '202':
+          description: |
+            Tool execution started in streaming mode. Connect to the returned
+            WebSocket URL to receive output in real-time.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectToolStreamingResult'
         '400':
           description: |
             Invalid request. Possible reasons:
@@ -3400,6 +3415,32 @@ paths:
           description: Server command execution timed out.
       security:
         - BearerAuth: []
+  /v1/object-tools/output/{token}:
+    get:
+      summary: Connect to tool output stream (WebSocket)
+      description: |
+        WebSocket endpoint for receiving streaming output from an object tool execution.
+        The token is obtained from POST /v1/object-tools/{tool-id}/execute with stream=true.
+        Token is single-use and expires after 30 seconds.
+
+        Server sends JSON text frames:
+        - `{"type":"output","data":"..."}` - output chunk
+        - `{"type":"result","data":"..."}` - script return value (server-script tools only)
+        - `{"type":"completed"}` - execution finished successfully
+        - `{"type":"error","message":"..."}` - execution failed
+      tags:
+        - Object Tools
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Single-use token from the streaming execute response
+      responses:
+        '101':
+          description: Switching protocols to WebSocket
   /v1/event-templates:
     get:
       summary: List event templates
@@ -5274,6 +5315,19 @@ components:
         url:
           type: string
           description: Expanded URL with all macros resolved
+    ObjectToolStreamingResult:
+      type: object
+      required:
+        - token
+        - wsUrl
+      properties:
+        token:
+          type: string
+          format: uuid
+          description: Single-use token for WebSocket connection (expires in 30 seconds)
+        wsUrl:
+          type: string
+          description: WebSocket URL path to connect for streaming output
     ObjectClass:
       type: string
       enum:

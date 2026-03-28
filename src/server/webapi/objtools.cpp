@@ -23,8 +23,294 @@
 #include "webapi.h"
 #include <nxtools.h>
 
+#define DEBUG_TAG _T("webapi.objtools")
+
 /**
- * Callback for agent action output capture (WebAPI)
+ * Token validity period in seconds for tool output WebSocket sessions
+ */
+static const int TOOL_OUTPUT_TOKEN_VALIDITY = 30;
+
+/**
+ * Tool output WebSocket session
+ */
+class ToolOutputWebSocketSession
+{
+private:
+   MHD_UpgradeResponseHandle *m_responseHandle;
+   SOCKET m_socket;
+   Mutex m_socketMutex;
+   bool m_started;
+   bool m_closed;
+   Mutex m_closeMutex;
+   time_t m_creationTime;
+   StringBuffer m_pendingOutput;
+   bool m_executionComplete;
+   Condition m_websocketReady;
+
+   void sendTextFrame(const char *text)
+   {
+      m_socketMutex.lock();
+      if (m_started && !m_closed)
+         SendWebsocketFrame(m_socket, text, strlen(text));
+      m_socketMutex.unlock();
+   }
+
+public:
+   ToolOutputWebSocketSession() : m_socketMutex(MutexType::FAST), m_closeMutex(MutexType::FAST), m_websocketReady(true)
+   {
+      m_responseHandle = nullptr;
+      m_socket = INVALID_SOCKET;
+      m_started = false;
+      m_closed = false;
+      m_executionComplete = false;
+      m_creationTime = time(nullptr);
+   }
+
+   time_t getCreationTime() const { return m_creationTime; }
+   bool isClosed() const { return m_closed; }
+
+   /**
+    * Wait for WebSocket connection to be established (called from execution thread)
+    */
+   bool waitForWebSocket(uint32_t timeout)
+   {
+      return m_websocketReady.wait(timeout);
+   }
+
+   /**
+    * Start WebSocket session after upgrade
+    */
+   void start(MHD_UpgradeResponseHandle *responseHandle, SOCKET s)
+   {
+      m_socketMutex.lock();
+      m_responseHandle = responseHandle;
+      m_socket = s;
+      m_started = true;
+
+      // Flush any output that arrived before WebSocket was connected
+      if (!m_pendingOutput.isEmpty())
+      {
+         json_t *msg = json_object();
+         json_object_set_new(msg, "type", json_string("output"));
+         json_object_set_new(msg, "data", json_string_t(m_pendingOutput.cstr()));
+         char *encoded = json_dumps(msg, 0);
+         SendWebsocketFrame(m_socket, encoded, strlen(encoded));
+         MemFree(encoded);
+         json_decref(msg);
+         m_pendingOutput.clear();
+      }
+
+      m_socketMutex.unlock();
+      m_websocketReady.set();
+      nxlog_debug_tag(DEBUG_TAG, 5, L"Tool output WebSocket session started");
+   }
+
+   /**
+    * Send output chunk to WebSocket client
+    */
+   void sendOutput(const TCHAR *text)
+   {
+      if (m_closed)
+         return;
+
+      m_socketMutex.lock();
+      if (m_started)
+      {
+         json_t *msg = json_object();
+         json_object_set_new(msg, "type", json_string("output"));
+         json_object_set_new(msg, "data", json_string_t(text));
+         char *encoded = json_dumps(msg, 0);
+         SendWebsocketFrame(m_socket, encoded, strlen(encoded));
+         MemFree(encoded);
+         json_decref(msg);
+      }
+      else
+      {
+         m_pendingOutput.append(text);
+      }
+      m_socketMutex.unlock();
+   }
+
+   /**
+    * Send output chunk from UTF-8 source
+    */
+   void sendOutputUtf8(const char *text, size_t length)
+   {
+      if (m_closed)
+         return;
+
+      m_socketMutex.lock();
+      if (m_started)
+      {
+         // Build JSON with raw UTF-8 text
+         json_t *msg = json_object();
+         json_object_set_new(msg, "type", json_string("output"));
+         json_object_set_new(msg, "data", json_stringn(text, length));
+         char *encoded = json_dumps(msg, 0);
+         SendWebsocketFrame(m_socket, encoded, strlen(encoded));
+         MemFree(encoded);
+         json_decref(msg);
+      }
+      else
+      {
+#ifdef UNICODE
+         m_pendingOutput.appendUtf8String(text, length);
+#else
+         m_pendingOutput.append(text, length);
+#endif
+      }
+      m_socketMutex.unlock();
+   }
+
+   /**
+    * Send completion message
+    */
+   void sendCompleted()
+   {
+      sendTextFrame("{\"type\":\"completed\"}");
+      close();
+   }
+
+   /**
+    * Send error message
+    */
+   void sendError(const char *message)
+   {
+      json_t *msg = json_object();
+      json_object_set_new(msg, "type", json_string("error"));
+      json_object_set_new(msg, "message", json_string(message));
+      char *encoded = json_dumps(msg, 0);
+      sendTextFrame(encoded);
+      MemFree(encoded);
+      json_decref(msg);
+      close();
+   }
+
+   /**
+    * Send script result
+    */
+   void sendResult(const TCHAR *result)
+   {
+      if (m_closed)
+         return;
+
+      m_socketMutex.lock();
+      if (m_started)
+      {
+         json_t *msg = json_object();
+         json_object_set_new(msg, "type", json_string("result"));
+         json_object_set_new(msg, "data", json_string_t(result));
+         char *encoded = json_dumps(msg, 0);
+         SendWebsocketFrame(m_socket, encoded, strlen(encoded));
+         MemFree(encoded);
+         json_decref(msg);
+      }
+      m_socketMutex.unlock();
+   }
+
+   /**
+    * Main loop - read incoming WebSocket frames
+    */
+   void run()
+   {
+      while (!m_closed && !IsShutdownInProgress())
+      {
+         ByteStream buffer;
+         BYTE frameType;
+
+         if (!ReadWebsocketFrame(static_cast<int>(m_socket), &buffer, &frameType))
+         {
+            nxlog_debug_tag(DEBUG_TAG, 5, L"Tool output WebSocket: read error");
+            break;
+         }
+
+         if (frameType == 0x08)  // Close frame
+         {
+            nxlog_debug_tag(DEBUG_TAG, 5, L"Tool output WebSocket: received close frame");
+            break;
+         }
+         else if (frameType == 0x09)  // Ping frame
+         {
+            m_socketMutex.lock();
+            BYTE pong[2] = { 0x8A, 0x00 };
+            SendEx(m_socket, pong, 2, 0, nullptr);
+            m_socketMutex.unlock();
+         }
+         // Ignore other frame types for now (cancel support can be added later)
+      }
+      close();
+   }
+
+   /**
+    * Close the session
+    */
+   void close()
+   {
+      m_closeMutex.lock();
+      if (m_closed)
+      {
+         m_closeMutex.unlock();
+         return;
+      }
+      m_closed = true;
+      m_closeMutex.unlock();
+
+      m_socketMutex.lock();
+      if (m_socket != INVALID_SOCKET)
+         SendWebsocketCloseFrame(m_socket, WS_CLOSE_NORMAL);
+      m_socketMutex.unlock();
+
+      if (m_responseHandle != nullptr)
+         MHD_upgrade_action(m_responseHandle, MHD_UPGRADE_ACTION_CLOSE);
+
+      nxlog_debug_tag(DEBUG_TAG, 5, L"Tool output WebSocket session closed");
+   }
+
+   /**
+    * Mark execution as complete (used by cleanup to know if session can be removed)
+    */
+   void setExecutionComplete() { m_executionComplete = true; }
+   bool isExecutionComplete() const { return m_executionComplete; }
+};
+
+/**
+ * Pending tool output sessions
+ */
+static HashMap<uuid, ToolOutputWebSocketSession> s_pendingToolOutputSessions(Ownership::True);
+static Mutex s_pendingToolOutputSessionsLock;
+
+/**
+ * Cleanup expired tool output sessions
+ */
+void CleanupExpiredToolOutputSessions()
+{
+   time_t now = time(nullptr);
+
+   s_pendingToolOutputSessionsLock.lock();
+
+   StructArray<uuid> expired;
+   s_pendingToolOutputSessions.forEach(
+      [now, &expired](const uuid& token, ToolOutputWebSocketSession *session) -> EnumerationCallbackResult
+      {
+         if (now - session->getCreationTime() > TOOL_OUTPUT_TOKEN_VALIDITY * 2)
+         {
+            nxlog_debug_tag(DEBUG_TAG, 5, L"Cleaning up expired tool output session token");
+            session->close();
+            expired.add(token);
+         }
+         return _CONTINUE;
+      });
+
+   for (int i = 0; i < expired.size(); i++)
+      s_pendingToolOutputSessions.remove(*expired.get(i));
+
+   s_pendingToolOutputSessionsLock.unlock();
+
+   ThreadPoolScheduleRelative(g_mainThreadPool, 300000, CleanupExpiredToolOutputSessions);
+}
+
+/**
+ * Callback for agent action output capture (WebAPI) - synchronous mode
  */
 static void ActionOutputCallback(ActionCallbackEvent e, const void *text, void *arg)
 {
@@ -40,7 +326,48 @@ static void ActionOutputCallback(ActionCallbackEvent e, const void *text, void *
 }
 
 /**
- * NXSL environment that captures print output for WebAPI
+ * Callback for agent action output capture (WebAPI) - streaming mode
+ */
+static void StreamingActionOutputCallback(ActionCallbackEvent e, const void *text, void *arg)
+{
+   ToolOutputWebSocketSession *session = static_cast<ToolOutputWebSocketSession*>(arg);
+   if (e == ACE_DATA)
+   {
+      const char *utf8Text = static_cast<const char*>(text);
+      session->sendOutputUtf8(utf8Text, strlen(utf8Text));
+   }
+}
+
+/**
+ * Process executor that streams output to a WebSocket session
+ */
+class WebAPIStreamingProcessExecutor : public ProcessExecutor
+{
+private:
+   ToolOutputWebSocketSession *m_session;
+
+protected:
+   virtual void onOutput(const char *text, size_t length) override
+   {
+      m_session->sendOutputUtf8(text, length);
+   }
+
+   virtual void endOfOutput() override
+   {
+      m_session->sendCompleted();
+   }
+
+public:
+   WebAPIStreamingProcessExecutor(const TCHAR *command, ToolOutputWebSocketSession *session)
+      : ProcessExecutor(command, true), m_session(session)
+   {
+      m_sendOutput = true;
+      m_replaceNullCharacters = true;
+   }
+};
+
+/**
+ * NXSL environment that captures print output for WebAPI (synchronous mode)
  */
 class NXSL_WebAPIEnv : public NXSL_ServerEnv
 {
@@ -51,6 +378,19 @@ public:
    NXSL_WebAPIEnv() : NXSL_ServerEnv() {}
    virtual void print(const TCHAR *text) override { m_output.append(text); }
    const StringBuffer& getOutput() const { return m_output; }
+};
+
+/**
+ * NXSL environment that streams print output to WebSocket (streaming mode)
+ */
+class NXSL_WebAPIStreamingEnv : public NXSL_ServerEnv
+{
+private:
+   ToolOutputWebSocketSession *m_session;
+
+public:
+   NXSL_WebAPIStreamingEnv(ToolOutputWebSocketSession *session) : NXSL_ServerEnv(), m_session(session) {}
+   virtual void print(const TCHAR *text) override { m_session->sendOutput(text); }
 };
 
 /**
@@ -383,6 +723,305 @@ static int ExecuteSSHCommand(Context *context, const shared_ptr<NetObj>& object,
 }
 
 /**
+ * Data for streaming agent action execution on thread pool
+ */
+struct StreamingAgentActionData
+{
+   shared_ptr<NetObj> object;
+   TCHAR *toolData;
+   Alarm *alarm;
+   StringMap inputFields;
+   ToolOutputWebSocketSession *session;
+   uint32_t userId;
+   wchar_t loginName[MAX_USER_NAME];
+};
+
+/**
+ * Execute agent action in streaming mode (thread pool callback)
+ */
+static void StreamingAgentActionThread(StreamingAgentActionData *data)
+{
+   data->session->waitForWebSocket(TOOL_OUTPUT_TOKEN_VALIDITY * 1000);
+
+   if (data->session->isClosed())
+   {
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   if (data->object->getObjectClass() != OBJECT_NODE)
+   {
+      data->session->sendError("Object is not a node");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   shared_ptr<AgentConnectionEx> conn = static_cast<Node&>(*data->object).createAgentConnection();
+   if (conn == nullptr)
+   {
+      data->session->sendError("Cannot connect to agent");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   StringList args = SplitCommandLine(data->object->expandText(data->toolData, data->alarm, nullptr, shared_ptr<DCObjectInfo>(), data->loginName, nullptr, nullptr, &data->inputFields, nullptr));
+   wchar_t actionName[MAX_PARAM_NAME];
+   wcslcpy(actionName, args.get(0), MAX_PARAM_NAME);
+   args.remove(0);
+
+   uint32_t rcc = conn->executeCommand(actionName, args, true, StreamingActionOutputCallback, data->session, true);
+   if (rcc != ERR_SUCCESS)
+   {
+      char errorMsg[256];
+      snprintf(errorMsg, sizeof(errorMsg), "Agent error %u", rcc);
+      data->session->sendError(errorMsg);
+   }
+   else
+   {
+      data->session->sendCompleted();
+   }
+
+   delete data->alarm;
+   MemFree(data->toolData);
+   delete data;
+}
+
+/**
+ * Data for streaming server command execution on thread pool
+ */
+struct StreamingServerCommandData
+{
+   shared_ptr<NetObj> object;
+   TCHAR *toolData;
+   Alarm *alarm;
+   StringMap inputFields;
+   ToolOutputWebSocketSession *session;
+   wchar_t loginName[MAX_USER_NAME];
+};
+
+/**
+ * Execute server command in streaming mode (thread pool callback)
+ */
+static void StreamingServerCommandThread(StreamingServerCommandData *data)
+{
+   data->session->waitForWebSocket(TOOL_OUTPUT_TOKEN_VALIDITY * 1000);
+
+   if (data->session->isClosed())
+   {
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   StringBuffer expandedCommand = data->object->expandText(data->toolData, data->alarm, nullptr, shared_ptr<DCObjectInfo>(), data->loginName, nullptr, nullptr, &data->inputFields, nullptr);
+
+   WebAPIStreamingProcessExecutor executor(expandedCommand, data->session);
+   if (!executor.execute())
+   {
+      data->session->sendError("Failed to execute server command");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   // Wait for process to complete (endOfOutput will send completed/error)
+   executor.waitForCompletion(INFINITE);
+
+   delete data->alarm;
+   MemFree(data->toolData);
+   delete data;
+}
+
+/**
+ * Data for streaming server script execution on thread pool
+ */
+struct StreamingServerScriptData
+{
+   shared_ptr<NetObj> object;
+   TCHAR *toolData;
+   Alarm *alarm;
+   StringMap inputFields;
+   ToolOutputWebSocketSession *session;
+   uint32_t userId;
+   wchar_t loginName[MAX_USER_NAME];
+};
+
+/**
+ * Execute server script in streaming mode (thread pool callback)
+ */
+static void StreamingServerScriptThread(StreamingServerScriptData *data)
+{
+   data->session->waitForWebSocket(TOOL_OUTPUT_TOKEN_VALIDITY * 1000);
+
+   if (data->session->isClosed())
+   {
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   StringBuffer expandedScript = data->object->expandText(data->toolData, data->alarm, nullptr, shared_ptr<DCObjectInfo>(), data->loginName, nullptr, nullptr, &data->inputFields, nullptr);
+   StringList *scriptArgs = ParseCommandLine(expandedScript);
+
+   if (scriptArgs->size() == 0)
+   {
+      delete scriptArgs;
+      data->session->sendError("Empty script name");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   NXSL_WebAPIStreamingEnv *env = new NXSL_WebAPIStreamingEnv(data->session);
+   NXSL_VM *vm = GetServerScriptLibrary()->createVM(scriptArgs->get(0), env);
+   if (vm == nullptr)
+   {
+      delete scriptArgs;
+      data->session->sendError("Script not found in library");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   SetupServerScriptVM(vm, data->object, shared_ptr<DCObjectInfo>());
+   vm->setSecurityContext(new NXSL_UserSecurityContext(data->userId));
+   vm->setGlobalVariable("$INPUT", vm->createValue(new NXSL_HashMap(vm, &data->inputFields)));
+
+   ObjectRefArray<NXSL_Value> sargs(scriptArgs->size() - 1, 1);
+   for(int i = 1; i < scriptArgs->size(); i++)
+      sargs.add(vm->createValue(scriptArgs->get(i)));
+
+   if (!vm->run(sargs))
+   {
+      char errorMsg[1024];
+      snprintf(errorMsg, sizeof(errorMsg), "Script execution failed");
+      data->session->sendError(errorMsg);
+   }
+   else
+   {
+      const TCHAR *result = vm->getResult()->getValueAsCString();
+      if (result != nullptr)
+         data->session->sendResult(result);
+      data->session->sendCompleted();
+   }
+
+   delete vm;
+   delete scriptArgs;
+   delete data->alarm;
+   MemFree(data->toolData);
+   delete data;
+}
+
+/**
+ * Data for streaming SSH command execution on thread pool
+ */
+struct StreamingSSHCommandData
+{
+   shared_ptr<NetObj> object;
+   TCHAR *toolData;
+   Alarm *alarm;
+   StringMap inputFields;
+   ToolOutputWebSocketSession *session;
+   wchar_t loginName[MAX_USER_NAME];
+};
+
+/**
+ * Execute SSH command in streaming mode (thread pool callback)
+ */
+static void StreamingSSHCommandThread(StreamingSSHCommandData *data)
+{
+   data->session->waitForWebSocket(TOOL_OUTPUT_TOKEN_VALIDITY * 1000);
+
+   if (data->session->isClosed())
+   {
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   if (data->object->getObjectClass() != OBJECT_NODE)
+   {
+      data->session->sendError("Object is not a node");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+   Node& node = static_cast<Node&>(*data->object);
+
+   StringBuffer command = data->object->expandText(data->toolData, data->alarm, nullptr, shared_ptr<DCObjectInfo>(), data->loginName, nullptr, nullptr, &data->inputFields, nullptr);
+
+   uint32_t proxyId = node.getEffectiveSshProxy();
+   shared_ptr<Node> proxy = static_pointer_cast<Node>(FindObjectById(proxyId, OBJECT_NODE));
+   if (proxy == nullptr)
+   {
+      data->session->sendError("SSH proxy not available");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   shared_ptr<AgentConnectionEx> conn = proxy->createAgentConnection();
+   if (conn == nullptr)
+   {
+      data->session->sendError("Cannot connect to SSH proxy agent");
+      delete data->alarm;
+      MemFree(data->toolData);
+      delete data;
+      return;
+   }
+
+   StringList sshArgs;
+   TCHAR ipAddr[64];
+   sshArgs.add(node.getIpAddress().toString(ipAddr));
+   sshArgs.add(node.getSshPort());
+   sshArgs.add(node.getSshLogin());
+   sshArgs.add(node.getSshPassword());
+   sshArgs.add(command);
+   sshArgs.add(node.getSshKeyId());
+
+   uint32_t rcc = conn->executeCommand(_T("SSH.Command"), sshArgs, true, StreamingActionOutputCallback, data->session, true);
+   if (rcc != ERR_SUCCESS)
+   {
+      char errorMsg[256];
+      snprintf(errorMsg, sizeof(errorMsg), "Agent error %u", rcc);
+      data->session->sendError(errorMsg);
+   }
+   else
+   {
+      data->session->sendCompleted();
+   }
+
+   delete data->alarm;
+   MemFree(data->toolData);
+   delete data;
+}
+
+/**
+ * Check if tool type supports streaming
+ */
+static bool IsStreamableToolType(int toolType)
+{
+   return (toolType == TOOL_TYPE_ACTION) ||
+          (toolType == TOOL_TYPE_SERVER_COMMAND) ||
+          (toolType == TOOL_TYPE_SERVER_SCRIPT) ||
+          (toolType == TOOL_TYPE_SSH_COMMAND);
+}
+
+/**
  * Expand URL tool
  */
 static int ExpandURL(Context *context, const shared_ptr<NetObj>& object, const TCHAR *toolData, Alarm *alarm, const StringMap *inputFields, json_t *response)
@@ -486,6 +1125,93 @@ int H_ObjectToolExecute(Context *context)
 
    StringMap inputFields(json_object_get(request, "inputFields"));
 
+   // Check if streaming mode is requested
+   bool streamRequested = json_object_get_boolean(request, "stream", false);
+   if (streamRequested && IsStreamableToolType(toolType) && (toolFlags & TF_GENERATES_OUTPUT))
+   {
+      // Streaming mode - start async execution, return token for WebSocket connection
+      auto *session = new ToolOutputWebSocketSession();
+
+      uuid token = uuid::generate();
+      s_pendingToolOutputSessionsLock.lock();
+      s_pendingToolOutputSessions.set(token, session);
+      s_pendingToolOutputSessionsLock.unlock();
+
+      // Start tool execution on thread pool
+      switch(toolType)
+      {
+         case TOOL_TYPE_ACTION:
+         {
+            auto *data = new StreamingAgentActionData();
+            data->object = object;
+            data->toolData = toolData;
+            data->alarm = alarm;
+            data->inputFields = inputFields;
+            data->session = session;
+            data->userId = context->getUserId();
+            wcslcpy(data->loginName, context->getLoginName(), MAX_USER_NAME);
+            ThreadPoolExecute(g_mainThreadPool, StreamingAgentActionThread, data);
+            break;
+         }
+         case TOOL_TYPE_SERVER_COMMAND:
+         {
+            auto *data = new StreamingServerCommandData();
+            data->object = object;
+            data->toolData = toolData;
+            data->alarm = alarm;
+            data->inputFields = inputFields;
+            data->session = session;
+            wcslcpy(data->loginName, context->getLoginName(), MAX_USER_NAME);
+            ThreadPoolExecute(g_mainThreadPool, StreamingServerCommandThread, data);
+            break;
+         }
+         case TOOL_TYPE_SERVER_SCRIPT:
+         {
+            auto *data = new StreamingServerScriptData();
+            data->object = object;
+            data->toolData = toolData;
+            data->alarm = alarm;
+            data->inputFields = inputFields;
+            data->session = session;
+            data->userId = context->getUserId();
+            wcslcpy(data->loginName, context->getLoginName(), MAX_USER_NAME);
+            ThreadPoolExecute(g_mainThreadPool, StreamingServerScriptThread, data);
+            break;
+         }
+         case TOOL_TYPE_SSH_COMMAND:
+         {
+            auto *data = new StreamingSSHCommandData();
+            data->object = object;
+            data->toolData = toolData;
+            data->alarm = alarm;
+            data->inputFields = inputFields;
+            data->session = session;
+            wcslcpy(data->loginName, context->getLoginName(), MAX_USER_NAME);
+            ThreadPoolExecute(g_mainThreadPool, StreamingSSHCommandThread, data);
+            break;
+         }
+         default:
+            break;
+      }
+
+      // toolData and alarm ownership transferred to the thread pool callback
+      // Return token to client
+      json_t *response = json_object();
+      char tokenStr[64];
+      token.toStringA(tokenStr);
+      json_object_set_new(response, "token", json_string(tokenStr));
+
+      char wsUrl[128];
+      snprintf(wsUrl, sizeof(wsUrl), "/v1/object-tools/output/%s", tokenStr);
+      json_object_set_new(response, "wsUrl", json_string(wsUrl));
+
+      context->writeAuditLog(AUDIT_OBJECTS, true, object->getId(), L"Started streaming tool execution on object %s [%u]", object->getName(), object->getId());
+      context->setResponseData(response);
+      json_decref(response);
+      return 202;
+   }
+
+   // Synchronous mode (original behavior)
    json_t *response = json_object();
 
    int httpCode;
@@ -525,4 +1251,70 @@ int H_ObjectToolExecute(Context *context)
    }
    json_decref(response);
    return httpCode;
+}
+
+/**
+ * WebSocket upgrade handler for tool output streaming
+ */
+void WS_ToolOutputConnect(void *cls, MHD_Connection *connection, void *con_cls,
+                          const char *extra_in, size_t extra_in_size, MHD_socket sock,
+                          MHD_UpgradeResponseHandle *responseHandle)
+{
+   Context *context = static_cast<Context*>(cls);
+
+   const TCHAR *tokenStr = context->getPlaceholderValue(_T("token"));
+   if (tokenStr == nullptr)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Tool output WebSocket connection rejected: no token provided");
+      SendWebsocketCloseFrame(static_cast<SOCKET>(sock), WS_CLOSE_POLICY_VIOLATION);
+      MHD_upgrade_action(responseHandle, MHD_UPGRADE_ACTION_CLOSE);
+      return;
+   }
+
+   uuid token = uuid::parse(tokenStr);
+   if (token.isNull())
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Tool output WebSocket connection rejected: invalid token format");
+      SendWebsocketCloseFrame(static_cast<SOCKET>(sock), WS_CLOSE_POLICY_VIOLATION);
+      MHD_upgrade_action(responseHandle, MHD_UPGRADE_ACTION_CLOSE);
+      return;
+   }
+
+   // Look up and remove pending session (token is single-use)
+   s_pendingToolOutputSessionsLock.lock();
+   ToolOutputWebSocketSession *session = s_pendingToolOutputSessions.get(token);
+   if (session != nullptr)
+   {
+      s_pendingToolOutputSessions.unlink(token);
+   }
+   s_pendingToolOutputSessionsLock.unlock();
+
+   if (session == nullptr)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Tool output WebSocket connection rejected: token not found");
+      SendWebsocketCloseFrame(static_cast<SOCKET>(sock), WS_CLOSE_POLICY_VIOLATION);
+      MHD_upgrade_action(responseHandle, MHD_UPGRADE_ACTION_CLOSE);
+      return;
+   }
+
+   // Check expiration
+   if (time(nullptr) - session->getCreationTime() > TOOL_OUTPUT_TOKEN_VALIDITY)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Tool output WebSocket connection rejected: token expired");
+      session->close();
+      delete session;
+      SendWebsocketCloseFrame(static_cast<SOCKET>(sock), WS_CLOSE_POLICY_VIOLATION);
+      MHD_upgrade_action(responseHandle, MHD_UPGRADE_ACTION_CLOSE);
+      return;
+   }
+
+   session->start(responseHandle, static_cast<SOCKET>(sock));
+   nxlog_debug_tag(DEBUG_TAG, 4, L"Tool output WebSocket connection established");
+
+   ThreadCreate(
+      [session]() -> void
+      {
+         session->run();
+         delete session;
+      });
 }

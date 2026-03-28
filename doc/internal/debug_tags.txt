@@ -260,6 +260,7 @@ useragent	User support application (server side)
 userdb		User database (server side)
 
 watchdog	Server watchdog
+webapi.objtools	WebAPI object tool execution and streaming
 webapi.tls	WebAPI TLS reverse proxy (reproxy)
 websvc		Web services
 wincert		Windows certificate store metrics
