@@ -825,7 +825,12 @@ bool NotificationChannel::shouldDigest()
    if ((m_throttlingConfig.digestThreshold <= 0) || (m_throttlingConfig.digestInterval <= 0))
       return false;
 
-   return static_cast<int>(m_notificationQueue.size()) >= m_throttlingConfig.digestThreshold;
+   // Keep diverting while digest is pending, or if queue exceeds threshold
+   m_digestLock.lock();
+   bool hasPending = m_digestAccumulator.size() > 0;
+   m_digestLock.unlock();
+
+   return hasPending || static_cast<int>(m_notificationQueue.size()) >= m_throttlingConfig.digestThreshold;
 }
 
 /**
@@ -870,21 +875,28 @@ TokenBucket *NotificationChannel::getOrCreateRecipientBucket(const wchar_t *reci
 }
 
 /**
- * Check if digest timer has fired and send accumulated digests
+ * Check if digest interval has elapsed and enqueue composed digests
  */
 void NotificationChannel::checkAndSendDigests()
 {
-   if (m_throttlingConfig.digestInterval <= 0)
+   if ((m_throttlingConfig.digestThreshold <= 0) || (m_throttlingConfig.digestInterval <= 0))
       return;
 
    int64_t now = GetCurrentTimeMs();
    if (now - m_lastDigestTime < static_cast<int64_t>(m_throttlingConfig.digestInterval) * 1000)
       return;
 
-   m_lastDigestTime = now;
-
    m_digestLock.lock();
    if (m_digestAccumulator.size() == 0)
+   {
+      m_digestLock.unlock();
+      m_lastDigestTime = now;
+      return;
+   }
+
+   // Check if there is room in the queue for digest messages
+   uint32_t maxQueueSize = ConfigReadULong(L"NotificationChannels.MaxQueueSize", 500);
+   if ((maxQueueSize > 0) && (m_notificationQueue.size() + m_digestAccumulator.size() >= maxQueueSize))
    {
       m_digestLock.unlock();
       return;
@@ -909,7 +921,7 @@ void NotificationChannel::checkAndSendDigests()
    }
    m_digestLock.unlock();
 
-   // Send a digest for each recipient
+   // Compose and enqueue a digest message for each recipient
    for (int i = 0; i < pendingKeys.size(); i++)
    {
       const wchar_t *recipient = pendingKeys.get(i);
@@ -918,42 +930,14 @@ void NotificationChannel::checkAndSendDigests()
       if (messages->size() == 0)
          continue;
 
-      nxlog_debug_tag(DEBUG_TAG, 4, L"Sending digest for recipient \"%s\" on channel \"%s\" (%d messages)",
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Enqueuing digest for recipient \"%s\" on channel \"%s\" (%d messages)",
          recipient, m_name, messages->size());
 
       String digestBody = GenerateDigestMessage(m_name, recipient, *messages);
-      String digestSubject(L"[Digest] Notification summary");
-
-      m_messageCount++;
-      m_lastMessageTime = time(nullptr);
-
-      int result;
-      m_driverLock.lock();
-      if (m_nxslScript != nullptr)
-      {
-         result = sendNXSL(recipient, digestSubject.cstr(), digestBody.cstr(), nullptr, shared_ptr<NetObj>());
-      }
-      else if (m_driver != nullptr)
-      {
-         result = m_driver->send(recipient, digestSubject.cstr(), digestBody.cstr());
-      }
-      else
-      {
-         result = -99;
-      }
-      m_driverLock.unlock();
-
-      if (result == 0)
-      {
-         nxlog_debug_tag(DEBUG_TAG, 5, L"Digest to \"%s\" successfully sent via channel \"%s\"", recipient, m_name);
-         clearError();
-      }
-      else
-      {
-         nxlog_debug_tag(DEBUG_TAG, 4, L"Failed to send digest to \"%s\" via channel \"%s\"", recipient, m_name);
-         m_failureCount++;
-      }
+      m_notificationQueue.put(new NotificationMessage(recipient, L"[Digest] Notification summary", digestBody.cstr(), 0, 0, uuid::NULL_UUID));
    }
+
+   m_lastDigestTime = now;
 }
 
 /**
