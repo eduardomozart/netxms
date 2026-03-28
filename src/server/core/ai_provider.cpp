@@ -128,8 +128,8 @@ json_t *LLMProvider::doHttpRequest(json_t *requestData)
    curl_easy_setopt(curl, CURLOPT_HEADER, (long)0);
    curl_easy_setopt(curl, CURLOPT_TIMEOUT, m_config.timeout);
    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ByteStream::curlWriteFunction);
-   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, (long)0);
-   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, (long)0);
+   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, m_config.verifySSL ? (long)2 : (long)0);
+   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, m_config.verifySSL ? (long)1 : (long)0);
    curl_easy_setopt(curl, CURLOPT_USERAGENT, "NetXMS Server/" NETXMS_VERSION_STRING_A);
 
    char *postData = (requestData != nullptr) ? json_dumps(requestData, 0) : MemCopyStringA("{}");

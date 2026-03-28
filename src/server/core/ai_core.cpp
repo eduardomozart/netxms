@@ -2154,6 +2154,7 @@ void ShowAIProviders(ServerConsole *console)
       ConsolePrintf(console, L"Type            : %s\n", typeName);
       ConsolePrintf(console, L"Model           : %hs\n", p->getModelName());
       ConsolePrintf(console, L"URL             : %hs\n", p->getUrl());
+      ConsolePrintf(console, L"Verify SSL      : %s\n", p->isSSLVerificationEnabled() ? L"yes" : L"no");
 
       StringList *slots = providerSlots[p];
       StringBuffer slotList;
@@ -2319,6 +2320,7 @@ bool InitAIAssistant()
          config.topP = entry->getSubEntryValueAsInt(_T("TopP"), 0, -1);
          config.contextSize = entry->getSubEntryValueAsInt(_T("ContextSize"), 0, 32768);
          config.timeout = entry->getSubEntryValueAsInt(_T("Timeout"), 0, 180);
+         config.verifySSL = entry->getSubEntryValueAsBoolean(_T("VerifySSL"), true);
 
          // Create provider
          shared_ptr<LLMProvider> provider = CreateLLMProvider(config);
@@ -2351,8 +2353,8 @@ bool InitAIAssistant()
             case LLMProviderType::ANTHROPIC: typeName = _T("Anthropic"); break;
             default: typeName = _T("Ollama"); break;
          }
-         nxlog_debug_tag(DEBUG_TAG, 3, _T("Configured AI provider \"%s\" (type=%s, model=%hs, slots=%s)"),
-            config.name.cstr(), typeName, config.model, slotsStr);
+         nxlog_debug_tag(DEBUG_TAG, 3, _T("Configured AI provider \"%s\" (type=%s, model=%hs, slots=%s, verifySSL=%s)"),
+            config.name.cstr(), typeName, config.model, slotsStr, config.verifySSL ? _T("yes") : _T("no"));
       }
    }
 
