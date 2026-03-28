@@ -50,6 +50,7 @@ struct NXCORE_EXPORTABLE LLMProviderConfig
    double topP;           // -1 = not set
    int contextSize;
    int timeout;           // seconds
+   bool verifySSL;        // verify peer certificate for HTTPS connections
 
    LLMProviderConfig()
    {
@@ -61,6 +62,7 @@ struct NXCORE_EXPORTABLE LLMProviderConfig
       topP = -1.0;
       contextSize = 32768;
       timeout = 180;
+      verifySSL = true;
    }
 };
 
@@ -111,6 +113,7 @@ public:
    double getTemperature() const { return m_config.temperature; }
    double getTopP() const { return m_config.topP; }
    LLMProviderType getType() const { return m_config.type; }
+   bool isSSLVerificationEnabled() const { return m_config.verifySSL; }
    int64_t getTotalRequests() const { return m_totalRequests; }
    int64_t getTotalInputTokens() const { return m_totalInputTokens; }
    int64_t getTotalOutputTokens() const { return m_totalOutputTokens; }
