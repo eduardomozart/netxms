@@ -117,6 +117,7 @@ public class SystemRights extends PropertyPage
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_SSH_KEY_CONFIGURATION, i18n.tr("Manage SSH keys")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_UA_NOTIFICATIONS, i18n.tr("Manage user support application notifications")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_UNLINK_ISSUES, i18n.tr("Unlink helpdesk tickets")));
+      attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_USE_AI_ASSISTANT, i18n.tr("Use AI assistant")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_USER_SCHEDULED_TASKS, i18n.tr("Manage user scheduled tasks")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_ALL_ALARMS, i18n.tr("View all alarm categories")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_ASSET_CHANGE_LOG, i18n.tr("View asset change log")));
