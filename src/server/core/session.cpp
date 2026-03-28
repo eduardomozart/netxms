@@ -18958,6 +18958,13 @@ void ClientSession::queryAiAssistant(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
 
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
+
    uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
    char *userMessage = request.getFieldAsUtf8String(VID_MESSAGE);
    uint32_t rcc;
@@ -19004,6 +19011,13 @@ void ClientSession::queryAiAssistant(const NXCPMessage& request)
 void ClientSession::createAiAssistantChat(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
 
    // Get optional incident ID
    uint32_t incidentId = request.getFieldAsUInt32(VID_INCIDENT_ID);
@@ -19069,6 +19083,12 @@ void ClientSession::createAiAssistantChat(const NXCPMessage& request)
 void ClientSession::clearAiAssistantChat(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
    uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
    response.setField(VID_RCC, ClearAIAssistantChat(chatId, m_userId));
    sendMessage(response);
@@ -19089,6 +19109,12 @@ void ClientSession::clearAiAssistantChat(const NXCPMessage& request)
 void ClientSession::deleteAiAssistantChat(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
    uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
    response.setField(VID_RCC, DeleteAIAssistantChat(chatId, m_userId));
    sendMessage(response);
@@ -19110,6 +19136,13 @@ void ClientSession::deleteAiAssistantChat(const NXCPMessage& request)
 void ClientSession::requestAiAssistantComment(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
 
    uint32_t alarmId = request.getFieldAsUInt32(VID_ALARM_ID);
    Alarm *alarm = FindAlarmById(alarmId);
@@ -19149,6 +19182,12 @@ void ClientSession::requestAiAssistantComment(const NXCPMessage& request)
 void ClientSession::getAiAssistantFunctions(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
    FillAIAssistantFunctionListMessage(&response);
    response.setField(VID_RCC, RCC_SUCCESS);
    sendMessage(response);
@@ -19160,6 +19199,13 @@ void ClientSession::getAiAssistantFunctions(const NXCPMessage& request)
 void ClientSession::callAiAssistantFunction(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
 
    char functionName[128];
    request.getFieldAsUtf8String(VID_AI_FUNCTION_NAME, functionName, 128);
@@ -19225,6 +19271,12 @@ void ClientSession::deleteAiAgentTask(const NXCPMessage& request)
 void ClientSession::addAiAgentTask(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
    wchar_t *description = request.getFieldAsString(VID_DESCRIPTION);
    wchar_t *prompt = request.getFieldAsString(VID_PROMPT);
    if ((description != nullptr) && (prompt != nullptr) && (description[0] != 0) && (prompt[0] != 0))
@@ -19261,6 +19313,13 @@ void ClientSession::addAiAgentTask(const NXCPMessage& request)
 void ClientSession::handleAiQuestionResponse(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+
+   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(response);
+      return;
+   }
 
    uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
    uint32_t rcc;

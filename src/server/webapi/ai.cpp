@@ -30,6 +30,9 @@
  */
 int H_AiChatCreate(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    json_t *request = context->getRequestDocument();
    uint32_t incidentId = (request != nullptr) ? json_object_get_uint32(request, "incidentId", 0) : 0;
 
@@ -83,6 +86,9 @@ int H_AiChatCreate(Context *context)
  */
 int H_AiChatSendMessage(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
@@ -147,6 +153,9 @@ int H_AiChatSendMessage(Context *context)
  */
 int H_AiChatGetStatus(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
@@ -222,6 +231,9 @@ int H_AiChatGetStatus(Context *context)
  */
 int H_AiCharPollQuestion(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
@@ -256,6 +268,9 @@ int H_AiCharPollQuestion(Context *context)
  */
 int H_AiChatAnswerQuestion(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
@@ -310,6 +325,9 @@ int H_AiChatAnswerQuestion(Context *context)
  */
 int H_AiChatClear(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
@@ -339,6 +357,9 @@ int H_AiChatClear(Context *context)
  */
 int H_AiChatDelete(Context *context)
 {
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
    uint32_t chatId = context->getPlaceholderValueAsUInt32(_T("chat-id"));
    if (chatId == 0)
    {
