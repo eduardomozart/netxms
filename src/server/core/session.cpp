@@ -19182,14 +19182,15 @@ void ClientSession::requestAiAssistantComment(const NXCPMessage& request)
 void ClientSession::getAiAssistantFunctions(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
-   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   if (checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      FillAIAssistantFunctionListMessage(&response);
+      response.setField(VID_RCC, RCC_SUCCESS);
+   }
+   else
    {
       response.setField(VID_RCC, RCC_ACCESS_DENIED);
-      sendMessage(response);
-      return;
    }
-   FillAIAssistantFunctionListMessage(&response);
-   response.setField(VID_RCC, RCC_SUCCESS);
    sendMessage(response);
 }
 
@@ -19200,37 +19201,36 @@ void ClientSession::callAiAssistantFunction(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
 
-   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   if (checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
    {
-      response.setField(VID_RCC, RCC_ACCESS_DENIED);
-      sendMessage(response);
-      return;
-   }
+      char functionName[128];
+      request.getFieldAsUtf8String(VID_AI_FUNCTION_NAME, functionName, 128);
 
-   char functionName[128];
-   request.getFieldAsUtf8String(VID_AI_FUNCTION_NAME, functionName, 128);
-
-   char *args = request.getFieldAsUtf8String(VID_ARGUMENTS);
-   if (args != nullptr)
-   {
-      json_t *arguments = json_loads(args, 0, nullptr);
-      if (arguments != nullptr)
+      char *args = request.getFieldAsUtf8String(VID_ARGUMENTS);
+      if (args != nullptr)
       {
-         response.setFieldFromUtf8String(VID_MESSAGE, CallGlobalAIAssistantFunction(functionName, arguments, m_userId).c_str());
-         response.setField(VID_RCC, RCC_SUCCESS);
-         json_decref(arguments);
+         json_t *arguments = json_loads(args, 0, nullptr);
+         if (arguments != nullptr)
+         {
+            response.setFieldFromUtf8String(VID_MESSAGE, CallGlobalAIAssistantFunction(functionName, arguments, m_userId).c_str());
+            response.setField(VID_RCC, RCC_SUCCESS);
+            json_decref(arguments);
+         }
+         else
+         {
+            response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
+         }
       }
       else
       {
          response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
       }
+      MemFree(args);
    }
    else
    {
-      response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
    }
-   MemFree(args);
-
    sendMessage(response);
 }
 
@@ -19271,27 +19271,29 @@ void ClientSession::deleteAiAgentTask(const NXCPMessage& request)
 void ClientSession::addAiAgentTask(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
-   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   if (checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT) || checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_TASKS))
    {
-      response.setField(VID_RCC, RCC_ACCESS_DENIED);
-      sendMessage(response);
-      return;
-   }
-   wchar_t *description = request.getFieldAsString(VID_DESCRIPTION);
-   wchar_t *prompt = request.getFieldAsString(VID_PROMPT);
-   if ((description != nullptr) && (prompt != nullptr) && (description[0] != 0) && (prompt[0] != 0))
-   {
-      uint32_t taskId = RegisterAITask(description, m_userId, prompt);
-      response.setField(VID_RCC, RCC_SUCCESS);
-      response.setField(VID_TASK_ID, taskId);
-      writeAuditLog(AUDIT_SYSCFG, true, 0, _T("AI agent task %u added"), taskId);
+      wchar_t *description = request.getFieldAsString(VID_DESCRIPTION);
+      wchar_t *prompt = request.getFieldAsString(VID_PROMPT);
+      if ((description != nullptr) && (prompt != nullptr) && (description[0] != 0) && (prompt[0] != 0))
+      {
+         uint32_t taskId = RegisterAITask(description, m_userId, prompt);
+         response.setField(VID_RCC, RCC_SUCCESS);
+         response.setField(VID_TASK_ID, taskId);
+         writeAuditLog(AUDIT_SYSCFG, true, 0, L"AI agent task %u added", taskId);
+      }
+      else
+      {
+         response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
+      }
+      MemFree(description);
+      MemFree(prompt);
    }
    else
    {
-      response.setField(VID_RCC, RCC_INVALID_ARGUMENT);
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+      writeAuditLog(AUDIT_SYSCFG, false, 0, L"Access denied on adding AI agent task");
    }
-   MemFree(description);
-   MemFree(prompt);
    sendMessage(response);
 }
 
@@ -19314,27 +19316,27 @@ void ClientSession::handleAiQuestionResponse(const NXCPMessage& request)
 {
    NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
 
-   if (!checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   if (checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
    {
-      response.setField(VID_RCC, RCC_ACCESS_DENIED);
-      sendMessage(response);
-      return;
-   }
-
-   uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
-   uint32_t rcc;
-   shared_ptr<Chat> chat = GetAIAssistantChat(chatId, m_userId, &rcc);
-   if (chat != nullptr)
-   {
-      uint64_t questionId = request.getFieldAsUInt64(VID_AI_QUESTION_ID);
-      bool positive = request.getFieldAsBoolean(VID_AI_RESPONSE_POSITIVE);
-      int32_t selectedOption = request.getFieldAsInt32(VID_AI_RESPONSE_OPTION);
-      chat->handleQuestionResponse(questionId, positive, selectedOption);
-      response.setField(VID_RCC, RCC_SUCCESS);
+      uint32_t chatId = request.getFieldAsUInt32(VID_CHAT_ID);
+      uint32_t rcc;
+      shared_ptr<Chat> chat = GetAIAssistantChat(chatId, m_userId, &rcc);
+      if (chat != nullptr)
+      {
+         uint64_t questionId = request.getFieldAsUInt64(VID_AI_QUESTION_ID);
+         bool positive = request.getFieldAsBoolean(VID_AI_RESPONSE_POSITIVE);
+         int32_t selectedOption = request.getFieldAsInt32(VID_AI_RESPONSE_OPTION);
+         chat->handleQuestionResponse(questionId, positive, selectedOption);
+         response.setField(VID_RCC, RCC_SUCCESS);
+      }
+      else
+      {
+         response.setField(VID_RCC, rcc);
+      }
    }
    else
    {
-      response.setField(VID_RCC, rcc);
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
    }
 
    sendMessage(response);

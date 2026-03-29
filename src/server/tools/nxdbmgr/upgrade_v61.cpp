@@ -24,6 +24,53 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.30 to 61.31
+ */
+static bool H_UpgradeFromV30()
+{
+   // Add SYSTEM_ACCESS_USE_AI_ASSISTANT to built-in "Everyone" group
+   DB_RESULT hResult = SQLSelect(L"SELECT system_access FROM user_groups WHERE id=1073741824");
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+      {
+         uint64_t access = DBGetFieldUInt64(hResult, 0, 0);
+         access |= SYSTEM_ACCESS_USE_AI_ASSISTANT;
+         wchar_t query[256];
+         nx_swprintf(query, 256, L"UPDATE user_groups SET system_access=" INT64_FMT L" WHERE id=1073741824", access);
+         CHK_EXEC(SQLQuery(query));
+      }
+      DBFreeResult(hResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   // Add SYSTEM_ACCESS_USE_AI_ASSISTANT to default "Admins" group
+   hResult = SQLSelect(L"SELECT system_access FROM user_groups WHERE id=1073741825");
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+      {
+         uint64_t access = DBGetFieldUInt64(hResult, 0, 0);
+         access |= SYSTEM_ACCESS_USE_AI_ASSISTANT;
+         wchar_t query[256];
+         nx_swprintf(query, 256, L"UPDATE user_groups SET system_access=" INT64_FMT L" WHERE id=1073741825", access);
+         CHK_EXEC(SQLQuery(query));
+      }
+      DBFreeResult(hResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   CHK_EXEC(SetMinorSchemaVersion(31));
+   return true;
+}
+
+/**
  * Upgrade from 61.29 to 61.30
  */
 static bool H_UpgradeFromV29()
@@ -830,6 +877,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 30, 61, 31, H_UpgradeFromV30 },
    { 29, 61, 30, H_UpgradeFromV29 },
    { 28, 61, 29, H_UpgradeFromV28 },
    { 27, 61, 28, H_UpgradeFromV27 },

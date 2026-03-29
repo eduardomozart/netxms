@@ -332,6 +332,16 @@ AITask::AITask(DB_RESULT hResult, int row) : m_description(DBGetFieldAsString(hR
  */
 void AITask::execute()
 {
+   // Re-check that user still have AI access rights
+   if ((GetEffectiveSystemRights(m_userId) & SYSTEM_ACCESS_USE_AI_ASSISTANT) == 0)
+   {
+      m_state = AITaskState::FAILED;
+      nxlog_debug_tag(DEBUG_TAG, 5, L"AI task [%u] \"%s\" execution failed (user %u lost AI access rights)", m_id, m_description.cstr(), m_userId);
+      logExecution();
+      deleteFromDatabase();
+      return;
+   }
+
    m_state = AITaskState::RUNNING;
    std::string prompt(m_prompt);
    prompt.append("</instructions>\n<current_time>");
