@@ -2483,14 +2483,7 @@ static EnumerationCallbackResult ResetPollTimers(NetObj *object, void *data)
 void ResetObjectPollTimers(const shared_ptr<ScheduledTaskParameters>& parameters)
 {
    nxlog_debug_tag(_T("poll.system"), 2, _T("Resetting object poll timers"));
-   g_idxNodeById.forEach(ResetPollTimers, nullptr); //FIXME: maybe we can use g_idxObjectById here now?
-   g_idxClusterById.forEach(ResetPollTimers, nullptr);
-   g_idxMobileDeviceById.forEach(ResetPollTimers, nullptr);
-   g_idxCircuitById.forEach(ResetPollTimers, nullptr);
-   g_idxCollectorById.forEach(ResetPollTimers, nullptr);
-   g_idxSensorById.forEach(ResetPollTimers, nullptr);
-   g_idxAccessPointById.forEach(ResetPollTimers, nullptr);
-   g_idxChassisById.forEach(ResetPollTimers, nullptr);
+   g_idxObjectById.forEach(ResetPollTimers, nullptr);
 }
 
 #if WITH_PRIVATE_EXTENSIONS || (defined(_WIN32) && !defined(WIN32_UNRESTRICTED_BUILD))

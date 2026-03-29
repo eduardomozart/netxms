@@ -1922,7 +1922,12 @@ void Interface::deleteIpAddress(InetAddress addr)
  */
 void Interface::clearIpAddresses()
 {
-   // FIXME: make copy of address list and work on it (requires changes to InetAddressList)
+   lockProperties();
+   InetAddressList addrList(m_ipAddressList);
+   m_ipAddressList.clear();
+   setModified(MODIFY_INTERFACE_PROPERTIES);
+   unlockProperties();
+
    if (!isExcludedFromTopology())
    {
       if (IsZoningEnabled())
@@ -1935,7 +1940,7 @@ void Interface::clearIpAddresses()
       }
       else
       {
-         const ObjectArray<InetAddress>& list = m_ipAddressList.getList();
+         const ObjectArray<InetAddress>& list = addrList.getList();
          for(int i = 0; i < list.size(); i++)
          {
             InetAddress *addr = list.get(i);
@@ -1950,11 +1955,6 @@ void Interface::clearIpAddresses()
          }
       }
    }
-
-   lockProperties();
-   m_ipAddressList.clear();
-   setModified(MODIFY_INTERFACE_PROPERTIES);
-   unlockProperties();
 }
 
 /**

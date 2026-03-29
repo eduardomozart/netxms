@@ -9654,7 +9654,7 @@ void Node::fillMessageLocked(NXCPMessage *msg, uint32_t userId)
    msg->setFieldFromMBString(VID_SNMP_AUTH_PASSWORD, m_snmpSecurity->getAuthPassword());
    msg->setFieldFromMBString(VID_SNMP_PRIV_PASSWORD, m_snmpSecurity->getPrivPassword());
    msg->setField(VID_SNMP_USM_METHODS, (WORD)((WORD)m_snmpSecurity->getAuthMethod() | ((WORD)m_snmpSecurity->getPrivMethod() << 8)));
-   msg->setField(VID_SNMP_OID, m_snmpObjectId.toString());  // FIXME: send in binary form
+   msg->setField(VID_SNMP_OID, m_snmpObjectId.toString());  // String form is fine - client stores and displays it as string, and VID_SNMP_OID is also used as string in SNMP walk commands
    msg->setField(VID_SNMP_PORT, m_snmpPort);
    msg->setField(VID_SNMP_VERSION, (WORD)m_snmpVersion);
    msg->setField(VID_AGENT_VERSION, m_agentVersion);
