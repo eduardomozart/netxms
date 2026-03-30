@@ -937,6 +937,19 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
     */
    public boolean showObject(AbstractObject object, long dciId)
    {
+      return showObject(object, dciId, false);
+   }
+
+   /**
+    * Show object and optionally open DCI editor
+    *
+    * @param object object to be shown
+    * @param dciId DCI id or 0 if object only should be showed
+    * @param openEditor true to open DCI editor after navigation
+    * @return true if object found in the view
+    */
+   public boolean showObject(AbstractObject object, long dciId, boolean openEditor)
+   {
       if (!ObjectBrowser.calculateClassFilter(subtreeType).contains(object.getObjectClass()))
          return false;
 
@@ -947,7 +960,10 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
       if ((dciId != 0) && showMainView(DataCollectionView.VIEW_ID))
       {
          View dataCollectionView = findMainView(DataCollectionView.VIEW_ID);
-         ((DataCollectionView)dataCollectionView).selectDci(dciId);
+         if (openEditor)
+            ((DataCollectionView)dataCollectionView).selectAndEditDci(dciId);
+         else
+            ((DataCollectionView)dataCollectionView).selectDci(dciId);
       }
       return true;
    }

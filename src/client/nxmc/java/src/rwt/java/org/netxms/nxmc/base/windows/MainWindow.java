@@ -1002,13 +1002,25 @@ public class MainWindow extends Window implements MessageAreaHolder
     */
    public static void switchToObject(long objectId, long dciId)
    {
+      switchToObject(objectId, dciId, false);
+   }
+
+   /**
+    * Switch to object and optionally open DCI editor
+    *
+    * @param objectId object id
+    * @param dciId dci id
+    * @param openEditor true to open DCI editor after navigation
+    */
+   public static void switchToObject(long objectId, long dciId, boolean openEditor)
+   {
       AbstractObject object = Registry.getSession().findObjectById(objectId);
       if (object == null)
          return;
 
       for (Perspective p : Registry.getPerspectives())
       {
-         if (p instanceof ObjectsPerspective && ((ObjectsPerspective)p).showObject(object, dciId))
+         if (p instanceof ObjectsPerspective && ((ObjectsPerspective)p).showObject(object, dciId, openEditor))
             break;
       }
    }

@@ -706,7 +706,88 @@ public class DataCollectionView extends BaseDataCollectionView
    }
 
    /**
-    * Open template and it's DCI
+    * Navigate to source DCI. Follows the chain through instance discovery and clusters until
+    * the originating template is found. If the DCI is from local instance discovery (no template),
+    * switches to edit mode and selects the instance discovery DCI.
+    *
+    * @param dco starting data collection object
+    * @param openEditor true to open DCI editor after navigation
+    */
+   private void navigateToSource(DataCollectionObject dco, boolean openEditor)
+   {
+      // If DCI was created by instance discovery, resolve parent on same node
+      if (dco.getTemplateId() == dco.getNodeId())
+      {
+         dco = dciConfig.findItem(dco.getTemplateItemId());
+         if (dco == null)
+            return;
+      }
+
+      if (dco.getTemplateId() == 0)
+      {
+         // Local instance discovery DCI - switch to edit mode and select it
+         long dciId = dco.getId();
+         if (!editMode)
+         {
+            editMode = true;
+            previousEditMode = true;
+            actionToggleEditMode.setChecked(true);
+            switchMode();
+         }
+         refresh(() -> {
+            for(DataCollectionObject item : (DataCollectionObject[])viewer.getInput())
+            {
+               if (item.getId() == dciId)
+               {
+                  viewer.setSelection(new StructuredSelection(item), true);
+                  if (openEditor)
+                     showDCIPropertyPages(item);
+                  break;
+               }
+            }
+         });
+         return;
+      }
+
+      // Follow the chain across objects (cluster, etc.) until we reach a template or chain ends
+      final long startObjectId = dco.getTemplateId();
+      final long startDciId = dco.getTemplateItemId();
+      new Job(i18n.tr("Resolving source DCI"), this) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            long objectId = startObjectId;
+            long dciId = startDciId;
+            for(int i = 0; i < 8; i++)
+            {
+               AbstractObject object = session.findObjectById(objectId);
+               if (object == null || object instanceof Template)
+                  break;
+
+               // Not a template - fetch DCI from this object to follow the chain
+               DataCollectionObject remoteDco = session.getDataCollectionObject(objectId, dciId);
+               if (remoteDco == null || remoteDco.getTemplateId() == 0)
+                  break;
+
+               objectId = remoteDco.getTemplateId();
+               dciId = remoteDco.getTemplateItemId();
+            }
+
+            final long targetObjectId = objectId;
+            final long targetDciId = dciId;
+            runInUIThread(() -> MainWindow.switchToObject(targetObjectId, targetDciId, openEditor));
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Cannot resolve source DCI");
+         }
+      }.start();
+   }
+
+   /**
+    * Open template or source DCI
     */
    private void showTemplate()
    {
@@ -715,8 +796,47 @@ public class DataCollectionView extends BaseDataCollectionView
          return;
 
       DataCollectionObject dco = getDataCollectionObject(selection.getFirstElement());
+      if (dco == null)
+         return;
 
-      MainWindow.switchToObject(dco.getTemplateId(), dco.getTemplateItemId());
+      navigateToSource(dco, false);
+   }
+
+   /**
+    * Select DCI and open its property pages
+    *
+    * @param dciId DCI id
+    */
+   public void selectAndEditDci(long dciId)
+   {
+      refresh(() -> {
+         if (editMode)
+         {
+            for(DataCollectionObject item : (DataCollectionObject[])viewer.getInput())
+            {
+               if (item.getId() == dciId)
+               {
+                  viewer.setSelection(new StructuredSelection(item), true);
+                  showDCIPropertyPages(item);
+                  return;
+               }
+            }
+         }
+         else
+         {
+            for(DciValue item : (DciValue[])viewer.getInput())
+            {
+               if (item.getId() == dciId)
+               {
+                  viewer.setSelection(new StructuredSelection(item), true);
+                  DataCollectionObject dco = dciConfig.findItem(dciId);
+                  if (dco != null)
+                     showDCIPropertyPages(dco);
+                  return;
+               }
+            }
+         }
+      });
    }
 
    /**
@@ -840,7 +960,15 @@ public class DataCollectionView extends BaseDataCollectionView
          String message = DataCollectionObjectEditor.createModificationWarningMessage(dco);
          if (message != null)
          {
-            data = MessageDialogHelper.openWarningWithCheckbox(getWindow().getShell(), i18n.tr("Warning"), i18n.tr("Don't show this message again"), message);
+            if (dco.getTemplateId() != 0)
+            {
+               data = MessageDialogHelper.openWarningWithCheckbox(getWindow().getShell(), i18n.tr("Warning"), i18n.tr("Don't show this message again"), message,
+                     new String[] { i18n.tr("OK"), i18n.tr("Edit Source"), i18n.tr("Cancel") });
+            }
+            else
+            {
+               data = MessageDialogHelper.openWarningWithCheckbox(getWindow().getShell(), i18n.tr("Warning"), i18n.tr("Don't show this message again"), message);
+            }
             hideModificationWarnings = data.getSaveSelection();
          }
       }
@@ -848,6 +976,10 @@ public class DataCollectionView extends BaseDataCollectionView
       if ((data == null) || data.isOkPressed())
       {
          showDCIPropertyPages(dco);
+      }
+      else if ((data != null) && (data.getReturnCode() == 1))
+      {
+         navigateToSource(dco, true);
       }
    }
 
@@ -1546,7 +1678,7 @@ public class DataCollectionView extends BaseDataCollectionView
                   if (dci.getTemplateDciId() != 0)
                   {
                      DataCollectionObject dco = getDataCollectionObject(dci);
-                     if (dco != null && dco.getTemplateId() != 0 && dco.getTemplateId() != getObjectId())
+                     if (dco != null && dco.getTemplateId() != 0)
                         hasTemplate = true;
                   }
                }

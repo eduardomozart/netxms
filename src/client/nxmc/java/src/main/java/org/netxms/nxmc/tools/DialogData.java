@@ -27,7 +27,8 @@ public class DialogData
 {
    private boolean okPressed;
    private boolean saveSelection;
-   
+   private int returnCode;
+
    /**
     * @param dlgReturn code
     * @param saveSelection
@@ -38,7 +39,8 @@ public class DialogData
          okPressed = true;
       else
          okPressed = false;
-      
+
+      this.returnCode = dlgReturn;
       this.saveSelection = saveSelection;
    }
    
@@ -56,5 +58,13 @@ public class DialogData
    public boolean getSaveSelection()
    {
       return saveSelection;
+   }
+
+   /**
+    * @return raw dialog return code (button index)
+    */
+   public int getReturnCode()
+   {
+      return returnCode;
    }
 }
