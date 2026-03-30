@@ -1619,6 +1619,8 @@ public:
    bool checkAccessRights(uint32_t userId, uint32_t requiredRights) const;
    void setUserAccess(uint32_t userId, uint32_t accessRights);
    void dropUserAccess(uint32_t userId);
+   void clearInheritedAccessCache();
+   void clearOwnInheritedAccessCache() { m_accessList.clearCache(); }
 
    void addChildNodesToList(SharedObjectArray<Node> *nodeList, uint32_t userId);
    void addChildDCTargetsToList(SharedObjectArray<DataCollectionTarget> *dctList, uint32_t userId);
@@ -6189,6 +6191,7 @@ void DumpObjects(ServerConsole *console, const TCHAR *filter);
 bool NXCORE_EXPORTABLE CreateObjectAccessSnapshot(uint32_t userId, int objClass);
 
 void DeleteUserFromAllObjects(uint32_t userId);
+void ClearAllObjectsInheritedAccessCache();
 
 bool IsValidParentClass(int childClass, int parentClass);
 bool IsEventSource(int objectClass);

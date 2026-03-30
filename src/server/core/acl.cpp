@@ -111,6 +111,7 @@ bool AccessList::deleteElement(uint32_t userId)
       if (m_elements.get(i)->userId == userId)
       {
          m_elements.remove(i);
+         m_cache.clear();
          deleted = true;
          break;
       }

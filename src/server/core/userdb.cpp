@@ -818,6 +818,7 @@ static void UpdateGlobalAccessRightsCallback(ClientSession *session)
  */
 static void UpdateGlobalAccessRights()
 {
+   ClearAllObjectsInheritedAccessCache();
    EnumerateClientSessions(UpdateGlobalAccessRightsCallback);
 }
 

@@ -197,6 +197,7 @@ void NetObj::linkObjects(const shared_ptr<NetObj>& parent, const shared_ptr<NetO
    parent->addChildReference(child);
    child->markAsModified(MODIFY_RELATIONS);
    parent->markAsModified(MODIFY_RELATIONS);
+   child->clearInheritedAccessCache();
    nxlog_debug_tag(DEBUG_TAG_OBJECT_RELATIONS, 7, _T("NetObj::linkObjects: parent=%s [%u]; child=%s [%u]"), parent->m_name, parent->m_id, child->m_name, child->m_id);
 }
 
@@ -209,6 +210,7 @@ void NetObj::unlinkObjects(NetObj *parent, NetObj *child)
    parent->deleteChildReference(child->m_id);
    child->markAsModified(MODIFY_RELATIONS);
    parent->markAsModified(MODIFY_RELATIONS);
+   child->clearInheritedAccessCache();
    nxlog_debug_tag(DEBUG_TAG_OBJECT_RELATIONS, 7, _T("NetObj::unlinkObjects: parent=%s [%u]; child=%s [%u]"), parent->m_name, parent->m_id, child->m_name, child->m_id);
 }
 
@@ -2110,6 +2112,7 @@ uint32_t NetObj::modifyFromMessageInternalStage2(const NXCPMessage& msg, ClientS
    {
       m_inheritAccessRights = msg.getFieldAsBoolean(VID_INHERIT_RIGHTS);
       m_accessList.updateFromMessage(msg);
+      clearInheritedAccessCache();
    }
 
    return RCC_SUCCESS;
@@ -2147,8 +2150,7 @@ uint32_t NetObj::getUserRights(uint32_t userId) const
       for(int i = 0; i < getParentList().size(); i++)
          rights |= getParentList().get(i)->getUserRights(userId);
       unlockParentList();
-      // FIXME: temporarily disabled
-      // const_cast<NetObj*>(this)->m_accessList.addElement(userId, rights, true);
+      const_cast<NetObj*>(this)->m_accessList.addElement(userId, rights, true);
    }
 
    return rights;
@@ -2173,7 +2175,10 @@ bool NetObj::checkAccessRights(uint32_t userId, uint32_t requiredRights) const
 void NetObj::setUserAccess(uint32_t userId, uint32_t accessRights)
 {
    if (m_accessList.addElement(userId, accessRights, false))
+   {
       setModified(MODIFY_ACCESS_LIST);
+      clearInheritedAccessCache();
+   }
 }
 
 /**
@@ -2182,7 +2187,22 @@ void NetObj::setUserAccess(uint32_t userId, uint32_t accessRights)
 void NetObj::dropUserAccess(uint32_t userId)
 {
    if (m_accessList.deleteElement(userId))
+   {
       setModified(MODIFY_ACCESS_LIST);
+      clearInheritedAccessCache();
+   }
+}
+
+/**
+ * Clear inherited access rights cache for this object and all descendants
+ */
+void NetObj::clearInheritedAccessCache()
+{
+   m_accessList.clearCache();
+   readLockChildList();
+   for(int i = 0; i < getChildList().size(); i++)
+      static_cast<NetObj*>(getChildList().get(i))->clearInheritedAccessCache();
+   unlockChildList();
 }
 
 /**
