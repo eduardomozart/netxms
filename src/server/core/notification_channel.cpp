@@ -277,6 +277,7 @@ private:
    Mutex m_recipientBucketsLock;
    StringObjectMap<ObjectArray<NotificationMessage>> m_digestAccumulator;
    Mutex m_digestLock;
+   bool m_digestInProgress;
    int64_t m_lastDigestTime;
    int64_t m_lastBucketCleanupTime;
    int64_t m_lastConfigReloadTime;
@@ -552,6 +553,7 @@ NotificationChannel::NotificationChannel(NCDriver *driver, NCDriverServerStorage
       m_channelBucket = new TokenBucket(m_throttlingConfig.channelBurst, m_throttlingConfig.channelRate);
    else
       m_channelBucket = nullptr;
+   m_digestInProgress = false;
    m_lastDigestTime = GetCurrentTimeMs();
    m_lastBucketCleanupTime = GetCurrentTimeMs();
    m_lastConfigReloadTime = GetCurrentTimeMs();
@@ -825,9 +827,9 @@ bool NotificationChannel::shouldDigest()
    if ((m_throttlingConfig.digestThreshold <= 0) || (m_throttlingConfig.digestInterval <= 0))
       return false;
 
-   // Keep diverting while digest is pending, or if queue exceeds threshold
+   // Keep diverting while digest is pending, generation is in progress, or if queue exceeds threshold
    m_digestLock.lock();
-   bool hasPending = m_digestAccumulator.size() > 0;
+   bool hasPending = m_digestAccumulator.size() > 0 || m_digestInProgress;
    m_digestLock.unlock();
 
    return hasPending || static_cast<int>(m_notificationQueue.size()) >= m_throttlingConfig.digestThreshold;
@@ -903,6 +905,9 @@ void NotificationChannel::checkAndSendDigests()
    }
 
    // Collect keys first, then unlink entries
+   // Set flag before unlinking so that shouldDigest() continues returning true
+   // during digest generation (which may involve a slow AI call)
+   m_digestInProgress = true;
    StringList keys;
    auto it = m_digestAccumulator.begin();
    while (it.hasNext())
@@ -936,6 +941,10 @@ void NotificationChannel::checkAndSendDigests()
       String digestBody = GenerateDigestMessage(m_name, recipient, *messages);
       m_notificationQueue.put(new NotificationMessage(recipient, L"[Digest] Notification summary", digestBody.cstr(), 0, 0, uuid::NULL_UUID));
    }
+
+   m_digestLock.lock();
+   m_digestInProgress = false;
+   m_digestLock.unlock();
 
    m_lastDigestTime = now;
 }
