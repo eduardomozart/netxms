@@ -84,22 +84,28 @@ class NotificationMessage
    wchar_t *m_ruleDescription;
    Event *m_event;                    // Event context for NXSL driver (can be nullptr)
    shared_ptr<NetObj> m_sourceObject; // Source object for NXSL driver (can be nullptr)
+   ObjectArray<NotificationMessage> *m_digestMessages;  // Accumulated messages for digest (can be nullptr)
 
 public:
    NotificationMessage(const wchar_t *recipient, const wchar_t *subject, const wchar_t *body,
                        uint32_t eventCode, uint64_t eventId, const uuid& ruleId, const wchar_t *ruleDescription = nullptr,
                        const Event *event = nullptr, const shared_ptr<NetObj>& sourceObject = shared_ptr<NetObj>());
+   NotificationMessage(const wchar_t *recipient, ObjectArray<NotificationMessage> *digestMessages);
    ~NotificationMessage();
 
    const wchar_t *getRecipient() const { return m_recipient; }
    const wchar_t *getSubject() const { return m_subject; }
    const wchar_t *getBody() const { return m_body; }
+   void setSubject(const wchar_t *subject) { MemFree(m_subject); m_subject = MemCopyStringW(subject); }
+   void setBody(const wchar_t *body) { MemFree(m_body); m_body = MemCopyStringW(body); }
    uint32_t getEventCode() const { return m_eventCode; }
    uint64_t getEventId() const { return m_eventId; }
    const uuid& getRuleId() const { return m_ruleId; }
    const wchar_t *getRuleDescription() const { return m_ruleDescription; }
    const Event *getEvent() const { return m_event; }
    const shared_ptr<NetObj>& getSourceObject() const { return m_sourceObject; }
+   bool isDigest() const { return m_digestMessages != nullptr; }
+   const ObjectArray<NotificationMessage> *getDigestMessages() const { return m_digestMessages; }
 };
 
 /**
@@ -277,7 +283,6 @@ private:
    Mutex m_recipientBucketsLock;
    StringObjectMap<ObjectArray<NotificationMessage>> m_digestAccumulator;
    Mutex m_digestLock;
-   bool m_digestInProgress;
    int64_t m_lastDigestTime;
    int64_t m_lastBucketCleanupTime;
    int64_t m_lastConfigReloadTime;
@@ -387,6 +392,22 @@ NotificationMessage::NotificationMessage(const wchar_t *recipient, const wchar_t
    m_eventId = eventId;
    m_ruleDescription = MemCopyStringW(ruleDescription);
    m_event = (event != nullptr) ? new Event(*event) : nullptr;
+   m_digestMessages = nullptr;
+}
+
+/**
+ * Notification message constructor for digest (takes ownership of digestMessages)
+ */
+NotificationMessage::NotificationMessage(const wchar_t *recipient, ObjectArray<NotificationMessage> *digestMessages) : m_ruleId(uuid::NULL_UUID)
+{
+   m_recipient = MemCopyStringW(recipient);
+   m_subject = nullptr;
+   m_body = nullptr;
+   m_eventCode = 0;
+   m_eventId = 0;
+   m_ruleDescription = nullptr;
+   m_event = nullptr;
+   m_digestMessages = digestMessages;
 }
 
 /**
@@ -399,6 +420,7 @@ NotificationMessage::~NotificationMessage()
    MemFree(m_body);
    MemFree(m_ruleDescription);
    delete m_event;
+   delete m_digestMessages;
 }
 
 /**
@@ -553,7 +575,6 @@ NotificationChannel::NotificationChannel(NCDriver *driver, NCDriverServerStorage
       m_channelBucket = new TokenBucket(m_throttlingConfig.channelBurst, m_throttlingConfig.channelRate);
    else
       m_channelBucket = nullptr;
-   m_digestInProgress = false;
    m_lastDigestTime = GetCurrentTimeMs();
    m_lastBucketCleanupTime = GetCurrentTimeMs();
    m_lastConfigReloadTime = GetCurrentTimeMs();
@@ -604,35 +625,48 @@ void NotificationChannel::workerThread()
          continue;
       }
 
-      // Check channel-level rate limit
-      if (m_channelBucket != nullptr && !m_channelBucket->consume())
+      // Handle digest messages - generate text and send directly (skip throttle checks)
+      if (notification->isDigest())
       {
-         nxlog_debug_tag(DEBUG_TAG, 4, L"Message to \"%s\" via channel \"%s\" throttled (channel rate limit)", notification->getRecipient(), m_name);
-         if (shouldDigest())
-         {
-            absorbIntoDigest(notification);
-            continue;
-         }
-         m_notificationQueue.insert(notification);
-         int64_t waitMs = m_channelBucket->timeToNextToken();
-         SleepAndCheckForShutdownEx(static_cast<uint32_t>(std::min(waitMs, static_cast<int64_t>(1000))));
-         continue;
+         nxlog_debug_tag(DEBUG_TAG, 4, L"Generating digest text for recipient \"%s\" on channel \"%s\" (%d messages)",
+            notification->getRecipient(), m_name, notification->getDigestMessages()->size());
+         String digestBody = GenerateDigestMessage(m_name, notification->getRecipient(), *notification->getDigestMessages());
+         notification->setSubject(L"[Digest] Notification summary");
+         notification->setBody(digestBody.cstr());
+         // Fall through to send
       }
-
-      // Check recipient-level rate limit
-      TokenBucket *rb = getOrCreateRecipientBucket(notification->getRecipient());
-      if (rb != nullptr && !rb->consume())
+      else
       {
-         nxlog_debug_tag(DEBUG_TAG, 4, L"Message to \"%s\" via channel \"%s\" throttled (recipient rate limit)", notification->getRecipient(), m_name);
-         if (shouldDigest())
+         // Check channel-level rate limit
+         if (m_channelBucket != nullptr && !m_channelBucket->consume())
          {
-            absorbIntoDigest(notification);
+            nxlog_debug_tag(DEBUG_TAG, 4, L"Message to \"%s\" via channel \"%s\" throttled (channel rate limit)", notification->getRecipient(), m_name);
+            if (shouldDigest())
+            {
+               absorbIntoDigest(notification);
+               continue;
+            }
+            m_notificationQueue.insert(notification);
+            int64_t waitMs = m_channelBucket->timeToNextToken();
+            SleepAndCheckForShutdownEx(static_cast<uint32_t>(std::min(waitMs, static_cast<int64_t>(1000))));
             continue;
          }
-         m_notificationQueue.insert(notification);
-         int64_t waitMs = rb->timeToNextToken();
-         SleepAndCheckForShutdownEx(static_cast<uint32_t>(std::min(waitMs, static_cast<int64_t>(1000))));
-         continue;
+
+         // Check recipient-level rate limit
+         TokenBucket *rb = getOrCreateRecipientBucket(notification->getRecipient());
+         if (rb != nullptr && !rb->consume())
+         {
+            nxlog_debug_tag(DEBUG_TAG, 4, L"Message to \"%s\" via channel \"%s\" throttled (recipient rate limit)", notification->getRecipient(), m_name);
+            if (shouldDigest())
+            {
+               absorbIntoDigest(notification);
+               continue;
+            }
+            m_notificationQueue.insert(notification);
+            int64_t waitMs = rb->timeToNextToken();
+            SleepAndCheckForShutdownEx(static_cast<uint32_t>(std::min(waitMs, static_cast<int64_t>(1000))));
+            continue;
+         }
       }
 
       m_messageCount++;
@@ -827,9 +861,9 @@ bool NotificationChannel::shouldDigest()
    if ((m_throttlingConfig.digestThreshold <= 0) || (m_throttlingConfig.digestInterval <= 0))
       return false;
 
-   // Keep diverting while digest is pending, generation is in progress, or if queue exceeds threshold
+   // Keep diverting while digest is pending, or if queue exceeds threshold
    m_digestLock.lock();
-   bool hasPending = m_digestAccumulator.size() > 0 || m_digestInProgress;
+   bool hasPending = m_digestAccumulator.size() > 0;
    m_digestLock.unlock();
 
    return hasPending || static_cast<int>(m_notificationQueue.size()) >= m_throttlingConfig.digestThreshold;
@@ -905,45 +939,26 @@ void NotificationChannel::checkAndSendDigests()
    }
 
    // Collect keys first, then unlink entries
-   // Set flag before unlinking so that shouldDigest() continues returning true
-   // during digest generation (which may involve a slow AI call)
-   m_digestInProgress = true;
    StringList keys;
    auto it = m_digestAccumulator.begin();
    while (it.hasNext())
       keys.add(it.next()->key);
 
-   ObjectArray<ObjectArray<NotificationMessage>> pendingValues(keys.size(), 16, Ownership::True);
-   StringList pendingKeys;
    for (int i = 0; i < keys.size(); i++)
    {
       ObjectArray<NotificationMessage> *msgs = m_digestAccumulator.unlink(keys.get(i));
-      if (msgs != nullptr)
+      if (msgs == nullptr || msgs->size() == 0)
       {
-         pendingKeys.add(keys.get(i));
-         pendingValues.add(msgs);
-      }
-   }
-   m_digestLock.unlock();
-
-   // Compose and enqueue a digest message for each recipient
-   for (int i = 0; i < pendingKeys.size(); i++)
-   {
-      const wchar_t *recipient = pendingKeys.get(i);
-      ObjectArray<NotificationMessage> *messages = pendingValues.get(i);
-
-      if (messages->size() == 0)
+         delete msgs;
          continue;
+      }
 
-      nxlog_debug_tag(DEBUG_TAG, 4, L"Enqueuing digest for recipient \"%s\" on channel \"%s\" (%d messages)",
-         recipient, m_name, messages->size());
+      nxlog_debug_tag(DEBUG_TAG, 4, L"Enqueuing digest for recipient \"%s\" on channel \"%s\" (%d messages)", keys.get(i), m_name, msgs->size());
 
-      String digestBody = GenerateDigestMessage(m_name, recipient, *messages);
-      m_notificationQueue.put(new NotificationMessage(recipient, L"[Digest] Notification summary", digestBody.cstr(), 0, 0, uuid::NULL_UUID));
+      // Enqueue digest message carrying accumulated messages - actual text generation
+      // will happen in worker thread when this message is dequeued for sending
+      m_notificationQueue.put(new NotificationMessage(keys.get(i), msgs));
    }
-
-   m_digestLock.lock();
-   m_digestInProgress = false;
    m_digestLock.unlock();
 
    m_lastDigestTime = now;
