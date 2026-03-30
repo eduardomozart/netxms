@@ -258,7 +258,7 @@ void ScheduledTask::startExecution(SchedulerCallback *callback)
    else
    {
       nxlog_write_tag(NXLOG_WARNING, DEBUG_TAG,
-               _T("Internal error - attempt to start execution of already running or completed scheduled task %s [%u]"),
+               _T("Internal error - attempt to start execution of already running or completed scheduled task %s [") UINT64_FMT _T("]"),
                m_taskHandlerId.cstr(), m_id);
    }
    unlock();
@@ -273,13 +273,13 @@ void ScheduledTask::run(SchedulerCallback *callback)
    {
       uint32_t diff = static_cast<uint32_t>(time(nullptr) - m_scheduledExecutionTime);
       if (diff > 0)
-         nxlog_debug_tag(DEBUG_TAG, 6, _T("Scheduled task [%u] execution delayed by %u seconds"), m_id, diff);
+         nxlog_debug_tag(DEBUG_TAG, 6, _T("Scheduled task [") UINT64_FMT _T("] execution delayed by %u seconds"), m_id, diff);
    }
 
 	NotifyClientSessions(NX_NOTIFY_SCHEDULE_UPDATE, 0);
 
    callback->m_handler(m_parameters);
-   nxlog_debug_tag(DEBUG_TAG, 6, _T("Scheduled task [%u] execution completed"), m_id);
+   nxlog_debug_tag(DEBUG_TAG, 6, _T("Scheduled task [") UINT64_FMT _T("] execution completed"), m_id);
 
    lock();
    m_lastExecutionTime = time(nullptr);
@@ -516,7 +516,7 @@ uint32_t NXCORE_EXPORTABLE UpdateRecurrentScheduledTask(uint64_t id, const TCHAR
          ScheduledTaskTransientData *transientData, const TCHAR *comments, uint32_t owner, uint32_t objectId,
          uint64_t systemAccessRights, bool disabled)
 {
-   nxlog_debug_tag(DEBUG_TAG, 5, _T("UpdateRecurrentScheduledTask: task [%u]: handler=%s, schedule=%s, data=%s"), id, taskHandlerId, schedule, persistentData);
+   nxlog_debug_tag(DEBUG_TAG, 5, _T("UpdateRecurrentScheduledTask: task [") UINT64_FMT _T("]: handler=%s, schedule=%s, data=%s"), id, taskHandlerId, schedule, persistentData);
 
    uint32_t rcc = RCC_SUCCESS;
 
@@ -608,7 +608,7 @@ uint32_t NXCORE_EXPORTABLE UpdateOneTimeScheduledTask(uint64_t id, const TCHAR *
          ScheduledTaskTransientData *transientData, const TCHAR *comments, uint32_t owner, uint32_t objectId,
          uint64_t systemAccessRights, bool disabled)
 {
-   nxlog_debug_tag(DEBUG_TAG, 5, _T("UpdateOneTimeScheduledTask: task [%u]: handler=%s, time=") INT64_FMT _T(", data=%s"),
+   nxlog_debug_tag(DEBUG_TAG, 5, _T("UpdateOneTimeScheduledTask: task [") UINT64_FMT _T("]: handler=%s, time=") INT64_FMT _T(", data=%s"),
             id, taskHandlerId, static_cast<int64_t>(nextExecutionTime), persistentData);
 
    uint32_t rcc = RCC_SUCCESS;
@@ -775,11 +775,11 @@ uint32_t NXCORE_EXPORTABLE DeleteScheduledTask(uint64_t id, uint32_t user, uint6
    if (rcc == RCC_SUCCESS)
    {
       DeleteScheduledTaskFromDB(id);
-      nxlog_debug_tag(DEBUG_TAG, 5, _T("DeleteScheduledTask: task [%u] removed"), id);
+      nxlog_debug_tag(DEBUG_TAG, 5, _T("DeleteScheduledTask: task [") UINT64_FMT _T("] removed"), id);
    }
    else
    {
-      nxlog_debug_tag(DEBUG_TAG, 5, _T("DeleteScheduledTask: task [%u] cannot be removed (RCC=%u)"), id, rcc);
+      nxlog_debug_tag(DEBUG_TAG, 5, _T("DeleteScheduledTask: task [") UINT64_FMT _T("] cannot be removed (RCC=%u)"), id, rcc);
    }
    return rcc;
 }
@@ -852,7 +852,7 @@ static void DeleteScheduledTaskByHandlerId(ObjectArray<ScheduledTask> *category,
          }
          else
          {
-            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [%u] delayed because task is still running"), task->getId());
+            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [") UINT64_FMT _T("] delayed because task is still running"), task->getId());
             task->disable();  // Prevent re-run
             ThreadPoolExecuteSerialized(g_schedulerThreadPool, _T("DeleteTask"), DelayedTaskDelete, CAST_TO_POINTER(task->getId(), void*));
          }
@@ -902,7 +902,7 @@ static void DeleteScheduledTasksByKey(ObjectArray<ScheduledTask> *category, cons
          }
          else
          {
-            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [%u] delayed because task is still running"), task->getId());
+            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [") UINT64_FMT _T("] delayed because task is still running"), task->getId());
             task->disable();  // Prevent re-run
             ThreadPoolExecuteSerialized(g_schedulerThreadPool, _T("DeleteTask"), DelayedTaskDelete, CAST_TO_POINTER(task->getId(), void*));
          }
@@ -952,7 +952,7 @@ static void DeleteScheduledTasksByObjectId(ObjectArray<ScheduledTask> *category,
          }
          else
          {
-            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [%u] delayed because task is still running"), task->getId());
+            nxlog_debug_tag(DEBUG_TAG, 4, _T("Delete of scheduled task [") UINT64_FMT _T("] delayed because task is still running"), task->getId());
             task->disable();  // Prevent re-run
             ThreadPoolExecuteSerialized(g_schedulerThreadPool, _T("DeleteTask"), DelayedTaskDelete, CAST_TO_POINTER(task->getId(), void*));
          }
@@ -1297,7 +1297,7 @@ static void AdHocScheduler()
          // execute all tasks that is expected to execute now
          if (now >= task->getScheduledExecutionTime())
          {
-            nxlog_debug_tag(DEBUG_TAG, 6, _T("AdHocScheduler: run scheduled task with id = %d, execution time = ") INT64_FMT,
+            nxlog_debug_tag(DEBUG_TAG, 6, _T("AdHocScheduler: run scheduled task with id = ") UINT64_FMT _T(", execution time = ") INT64_FMT,
                      task->getId(), static_cast<int64_t>(task->getScheduledExecutionTime()));
 
             SchedulerCallback *callback = s_callbacks.get(task->getTaskHandlerId());
@@ -1351,7 +1351,7 @@ static void RecurrentScheduler()
 
          if (MatchSchedule(task->getSchedule(), nullptr, &currLocal, now))
          {
-            nxlog_debug_tag(DEBUG_TAG, 5, _T("RecurrentScheduler: starting scheduled task [%u] with handler \"%s\" (schedule \"%s\")"),
+            nxlog_debug_tag(DEBUG_TAG, 5, _T("RecurrentScheduler: starting scheduled task [") UINT64_FMT _T("] with handler \"%s\" (schedule \"%s\")"),
                      task->getId(), task->getTaskHandlerId().cstr(), task->getSchedule().cstr());
 
             SchedulerCallback *callback = s_callbacks.get(task->getTaskHandlerId());
@@ -1386,7 +1386,7 @@ static void DeleteExpiredTasks()
          time_t deleteTime = std::max(now, task->getLastExecutionTime() + taskRetentionTime);
          if (deleteTime < now + 3600)
          {
-            nxlog_debug_tag(DEBUG_TAG, 6, _T("DeleteExpiredTasks: scheduling delete for task [%u]"), task->getId());
+            nxlog_debug_tag(DEBUG_TAG, 6, _T("DeleteExpiredTasks: scheduling delete for task [") UINT64_FMT _T("]"), task->getId());
             ThreadPoolScheduleAbsolute(g_schedulerThreadPool, deleteTime, DelayedTaskDelete, CAST_TO_POINTER(task->getId(), void*));
          }
       }
@@ -1431,7 +1431,7 @@ void InitializeTaskScheduler()
          ScheduledTask *task = new ScheduledTask(hResult, i);
          if (task->getSchedule().isEmpty())
          {
-            nxlog_debug_tag(DEBUG_TAG, 7, _T("InitializeTaskScheduler: added one time task [%u] at ") INT64_FMT,
+            nxlog_debug_tag(DEBUG_TAG, 7, _T("InitializeTaskScheduler: added one time task [") UINT64_FMT _T("] at ") INT64_FMT,
                      task->getId(), static_cast<int64_t>(task->getScheduledExecutionTime()));
             if (task->isCompleted())
                s_completedOneTimeTasks.add(task);
@@ -1440,7 +1440,7 @@ void InitializeTaskScheduler()
          }
          else
          {
-            nxlog_debug_tag(DEBUG_TAG, 7, _T("InitializeTaskScheduler: added recurrent task %u at %s"),
+            nxlog_debug_tag(DEBUG_TAG, 7, _T("InitializeTaskScheduler: added recurrent task ") UINT64_FMT _T(" at %s"),
                      task->getId(), task->getSchedule().cstr());
             s_recurrentTasks.add(task);
          }
