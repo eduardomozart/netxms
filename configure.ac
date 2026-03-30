@@ -1067,8 +1067,8 @@ AC_ARG_WITH(dist,
 	TEST_MODULES="agent test-libnxcc test-libnxsl test-libnxsnmp"
 	AGENT_UNIT_TESTS="linux-cpu-usage-collector"
 	TOOLS="nxlptest"
-	SUBAGENT_DIRS="linux ds18x20 freebsd openbsd minix mqtt mysql pgsql netbsd sunos aix informix oracle prometheus lmsensors darwin rpi java jmx opcua ubntlw db2 tuxedo mongodb ssh vmgr xen asterisk python redis"
-	AGENT_DIRS="libnxappc libnxtux"
+	SUBAGENT_DIRS="linux ds18x20 fbdev freebsd openbsd minix mqtt mysql pgsql netbsd sunos aix informix oracle prometheus lmsensors darwin rpi java jmx opcua ubntlw db2 tuxedo mongodb ssh vmgr xen asterisk python redis"
+	AGENT_DIRS="libnxappc libnxtux nxsagent"
 	NCDRV_MODULES="anysms googlechat kannel mattermost mqtt msteams mymobile nexmo nxagent slack smtp smseagle telegram text2reach twilio websms xmpp"
 	HDLINK_DIRS="jira redmine"
 	PDSDRV_DIRS="clickhouse influxdb rrdtool"
@@ -1076,7 +1076,7 @@ AC_ARG_WITH(dist,
 	SERVER_INCLUDE="include"
 	CONTRIB_MODULES="mibs backgrounds music oui templates"
 	CLIENT_COMPONENTS="java nxalarm nxevent nxmc nxnotify nxpush nxshell"
-	SERVER_COMPONENTS="nxreportd webapi"
+	SERVER_COMPONENTS="nxreportd otlp webapi"
 	DIST_BUILD="yes"
 )
 
@@ -2689,8 +2689,6 @@ if test "x$DISABLE_MODBUS" != "xyes" -a "x$DIST_BUILD" != "xyes"; then
 else
 	HAVE_MODBUS=no
 fi
-
-
 
 
 #--------------------------------------------------------------------
