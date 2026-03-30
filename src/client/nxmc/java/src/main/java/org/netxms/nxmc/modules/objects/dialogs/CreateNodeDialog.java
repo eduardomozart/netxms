@@ -72,6 +72,7 @@ public class CreateNodeDialog extends Dialog
    private Button checkDisableModbusTCP;
 	private Button checkDisablePing;
 	private Button checkCreateAnother;
+	private Button checkNodeWithoutIP;
 	private Button checkDisableAutomaticSNMPConfig;
    private Button checkRemoteManagementNode;
 	private ObjectSelector agentProxySelector;
@@ -196,6 +197,35 @@ public class CreateNodeDialog extends Dialog
       gd.horizontalSpan = layout.numColumns;
 		hostNameField.setLayoutData(gd);
 		hostNameField.setText(hostName);
+
+		checkNodeWithoutIP = new Button(dialogArea, SWT.CHECK);
+		checkNodeWithoutIP.setText(i18n.tr("Node without IP address"));
+		gd = new GridData();
+		gd.horizontalAlignment = SWT.FILL;
+		gd.grabExcessHorizontalSpace = true;
+		gd.horizontalSpan = layout.numColumns;
+		checkNodeWithoutIP.setLayoutData(gd);
+		checkNodeWithoutIP.addSelectionListener(new SelectionListener() {
+			@Override
+			public void widgetSelected(SelectionEvent e)
+			{
+				if (checkNodeWithoutIP.getSelection())
+				{
+					hostNameField.setText("0.0.0.0");
+					hostNameField.getTextControl().setEnabled(false);
+				}
+				else
+				{
+					hostNameField.getTextControl().setEnabled(true);
+				}
+			}
+
+			@Override
+			public void widgetDefaultSelected(SelectionEvent e)
+			{
+				widgetSelected(e);
+			}
+		});
 
 		agentPortField = WidgetHelper.createLabeledSpinner(dialogArea, SWT.BORDER, i18n.tr("NetXMS agent port"), 1, 65535, WidgetHelper.DEFAULT_LAYOUT_DATA);
 		agentPortField.setSelection(agentPort);
@@ -442,9 +472,16 @@ public class CreateNodeDialog extends Dialog
 	protected void okPressed()
 	{
 		// Validate primary name
-		hostName = hostNameField.getText().trim();
-		if (hostName.isEmpty())
-			hostName = objectNameField.getText().trim();
+		if (checkNodeWithoutIP.getSelection())
+		{
+			hostName = "0.0.0.0";
+		}
+		else
+		{
+			hostName = hostNameField.getText().trim();
+			if (hostName.isEmpty())
+				hostName = objectNameField.getText().trim();
+		}
 		if (!hostName.matches("^(([A-Za-z0-9_-]+\\.)*[A-Za-z0-9_-]+|[A-Fa-f0-9:]+)$")) //$NON-NLS-1$
 		{
 			MessageDialogHelper.openWarning(getShell(), i18n.tr("Warning"), 

@@ -22,6 +22,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -51,6 +53,7 @@ public class Communication extends ObjectPropertyPage
 
    private AbstractNode node;
 	private LabeledText primaryName;
+   private Button checkNodeWithoutIP;
    private Button externalGateway;
    private Button enablePingOnPrimaryIP;
 	private boolean primaryNameChanged = false;
@@ -123,6 +126,39 @@ public class Communication extends ObjectPropertyPage
             public void modifyText(ModifyEvent e)
             {
                primaryNameChanged = true;
+            }
+         });
+
+         checkNodeWithoutIP = new Button(dialogArea, SWT.CHECK);
+         checkNodeWithoutIP.setText(i18n.tr("Node without IP address"));
+         gd = new GridData();
+         gd.horizontalAlignment = SWT.FILL;
+         gd.grabExcessHorizontalSpace = true;
+         checkNodeWithoutIP.setLayoutData(gd);
+         if ("0.0.0.0".equals(node.getPrimaryName()))
+         {
+            checkNodeWithoutIP.setSelection(true);
+            primaryName.getTextControl().setEnabled(false);
+         }
+         checkNodeWithoutIP.addSelectionListener(new SelectionListener() {
+            @Override
+            public void widgetSelected(SelectionEvent e)
+            {
+               if (checkNodeWithoutIP.getSelection())
+               {
+                  primaryName.setText("0.0.0.0");
+                  primaryName.getTextControl().setEnabled(false);
+               }
+               else
+               {
+                  primaryName.getTextControl().setEnabled(true);
+               }
+            }
+
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e)
+            {
+               widgetSelected(e);
             }
          });
 
@@ -295,6 +331,8 @@ public class Communication extends ObjectPropertyPage
 		super.performDefaults();
       if (node != null)
       {
+         checkNodeWithoutIP.setSelection(false);
+         primaryName.getTextControl().setEnabled(true);
          externalGateway.setSelection(false);
          enablePingOnPrimaryIP.setSelection(false);
       }
