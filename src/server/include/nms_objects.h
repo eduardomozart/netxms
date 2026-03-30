@@ -1804,6 +1804,7 @@ protected:
    virtual void instanceDiscoveryPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
    virtual void topologyPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
    virtual void routingTablePoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
+   virtual void discoveryPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
    virtual void icmpPoll(PollerInfo *poller) {}
    virtual void autobindPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
    virtual void mapUpdatePoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) {}
@@ -4024,6 +4025,7 @@ protected:
    virtual void configurationPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) override;
    virtual void topologyPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) override;
    virtual void routingTablePoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) override;
+   virtual void discoveryPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) override;
    virtual void icmpPoll(PollerInfo *poller) override;
 
    virtual void populateInternalCommunicationTopologyMap(NetworkMapObjectList *map, uint32_t currentObjectId, bool agentConnectionOnly, bool checkAllProxies) override;
@@ -4124,8 +4126,6 @@ public:
    virtual bool lockForRoutingTablePoll() override;
    virtual bool lockForTopologyPoll() override;
    virtual bool lockForIcmpPoll() override;
-
-   void completeDiscoveryPoll(INT64 elapsedTime) { m_discoveryPollState.complete(elapsedTime); }
 
    virtual NXSL_Value *createNXSLObject(NXSL_VM *vm) override;
 

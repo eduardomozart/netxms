@@ -207,17 +207,15 @@ void Pollable::doRoutingTablePoll(PollerInfo *poller)
    delete poller;
 }
 
-// External function, from poll.cpp
-// FIXME: any reason for not going to standart poll?
-void DiscoveryPoller(PollerInfo *poller);
-
 /**
  * Start forced discovery poll
  */
 void Pollable::doForcedDiscoveryPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId)
 {
    startForcedDiscoveryPoll();
-   DiscoveryPoller(poller);
+   poller->startExecution();
+   discoveryPoll(poller, session, rqId);
+   delete poller;
 }
 
 /**
@@ -225,7 +223,9 @@ void Pollable::doForcedDiscoveryPoll(PollerInfo *poller, ClientSession *session,
  */
 void Pollable::doDiscoveryPoll(PollerInfo *poller)
 {
-   DiscoveryPoller(poller);
+   poller->startExecution();
+   discoveryPoll(poller, nullptr, 0);
+   delete poller;
 }
 
 /**

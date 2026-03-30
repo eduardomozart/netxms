@@ -129,6 +129,7 @@ public final class ObjectMenuFactory
          addPollMenuItem(menu, object, contextId, ObjectPollType.CONFIGURATION_WITH_RESET, viewPlacement);
          addPollMenuItem(menu, object, contextId, ObjectPollType.INSTANCE_DISCOVERY, viewPlacement);
          addPollMenuItem(menu, object, contextId, ObjectPollType.INTERFACES, viewPlacement);
+         addPollMenuItem(menu, object, contextId, ObjectPollType.NETWORK_DISCOVERY, viewPlacement);
          addPollMenuItem(menu, object, contextId, ObjectPollType.TOPOLOGY, viewPlacement);
 		}
       else if (object instanceof BusinessServicePrototype)
