@@ -68,6 +68,11 @@
 #define DDIR_FILES            _T("\\files")
 #define DDIR_CRL              _T("\\crl")
 #define DDIR_MIBS             _T("\\mibs")
+#define DDIR_CERT             _T("\\cert")
+#define DFILE_AUTO_CA_CERT    _T("\\cert\\ca_cert.pem")
+#define DFILE_AUTO_CA_KEY     _T("\\cert\\ca_key.pem")
+#define DFILE_AUTO_SERVER_CERT _T("\\cert\\server_cert.pem")
+#define DFILE_AUTO_SERVER_KEY _T("\\cert\\server_key.pem")
 
 #define SDIR_SCRIPTS          _T("\\scripts")
 #define SDIR_TEMPLATES        _T("\\templates")
@@ -107,6 +112,11 @@
 #define DDIR_FILES            _T("/files")
 #define DDIR_CRL              _T("/crl")
 #define DDIR_MIBS             _T("/mibs")
+#define DDIR_CERT             _T("/cert")
+#define DFILE_AUTO_CA_CERT    _T("/cert/ca_cert.pem")
+#define DFILE_AUTO_CA_KEY     _T("/cert/ca_key.pem")
+#define DFILE_AUTO_SERVER_CERT _T("/cert/server_cert.pem")
+#define DFILE_AUTO_SERVER_KEY _T("/cert/server_key.pem")
 
 #define SDIR_SCRIPTS          _T("/scripts")
 #define SDIR_TEMPLATES        _T("/templates")

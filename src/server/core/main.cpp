@@ -567,6 +567,9 @@ static bool CheckDataDirectory()
    if (!CreateDataDirectory(DDIR_MIBS))
       return false;
 
+   if (!CreateDataDirectory(DDIR_CERT))
+      return false;
+
    return true;
 }
 
@@ -764,6 +767,16 @@ static bool InitCryptography()
       nxlog_debug_tag(_T("crypto"), 1, _T("Server certificate loaded"));
    }
    LoadInternalCACertificate();
+
+   // Auto-generate certificates if none configured
+   if (!IsServerCertificateLoaded())
+   {
+      if (GenerateAutoSignedCertificates(&g_serverKey))
+      {
+         nxlog_write_tag(NXLOG_INFO, _T("crypto"), _T("Using auto-generated self-signed certificates for agent tunnels"));
+      }
+   }
+
    if (g_serverKey != nullptr)
    {
       nxlog_debug_tag(_T("crypto"), 1, _T("Using server certificate key"));

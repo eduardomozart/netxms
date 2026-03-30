@@ -1,6 +1,6 @@
 /* 
 ** NetXMS - Network Management System
-** Copyright (C) 2007-2025 Raden Solutions
+** Copyright (C) 2007-2026 Raden Solutions
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -23,8 +23,9 @@
 #include "nxcore.h"
 #include <nxcrypto.h>
 #include <nxstat.h>
+#include <openssl/x509v3.h>
 
-#define DEBUG_TAG    _T("crypto.cert")
+#define DEBUG_TAG    L"crypto.cert"
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static inline ASN1_TIME *X509_getm_notBefore(const X509 *x)
@@ -607,6 +608,10 @@ void CleanupServerCertificates()
       X509_free(s_serverCertificate);
    if (s_serverCertificateKey != nullptr)
       EVP_PKEY_free(s_serverCertificateKey);
+   if (s_internalCACertificate != nullptr)
+      X509_free(s_internalCACertificate);
+   if (s_internalCACertificateKey != nullptr)
+      EVP_PKEY_free(s_internalCACertificateKey);
 }
 
 #if HAVE_X509_STORE_SET_VERIFY_CB
@@ -723,6 +728,288 @@ time_t GetServerCertificateExpirationTime()
 bool IsServerCertificateLoaded()
 {
    return (s_serverCertificate != nullptr) && (s_serverCertificateKey != nullptr);
+}
+
+/**
+ * Generate self-signed certificate with a new RSA key
+ */
+static bool GenerateSelfSignedCertificate(X509 **cert, EVP_PKEY **key, bool isCA)
+{
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("GenerateSelfSignedCertificate: generating %s certificate"), isCA ? _T("CA") : _T("server"));
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+   EVP_PKEY *pkey = EVP_RSA_gen(NETXMS_RSA_KEYLEN);
+#else
+   RSA_KEY rsaKey = RSAGenerateKey(NETXMS_RSA_KEYLEN);
+   EVP_PKEY *pkey = (rsaKey != nullptr) ? EVP_PKEY_from_RSA_KEY(rsaKey) : nullptr;
+#endif
+   if (pkey == nullptr)
+   {
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("GenerateSelfSignedCertificate: failed to generate RSA key"));
+      return false;
+   }
+
+   X509 *x509 = X509_new();
+   if (x509 == nullptr)
+   {
+      EVP_PKEY_free(pkey);
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("GenerateSelfSignedCertificate: call to X509_new() failed"));
+      return false;
+   }
+
+   X509_set_version(x509, 2);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+   ASN1_INTEGER *serial = ASN1_INTEGER_new();
+#else
+   ASN1_INTEGER *serial = M_ASN1_INTEGER_new();
+#endif
+   ASN1_INTEGER_set(serial, 1);
+   X509_set_serialNumber(x509, serial);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+   ASN1_INTEGER_free(serial);
+#else
+   M_ASN1_INTEGER_free(serial);
+#endif
+
+   X509_NAME *name = X509_get_subject_name(x509);
+   TCHAR hostname[256];
+   GetLocalHostName(hostname, 256, false);
+#ifdef UNICODE
+   char hostnameA[256];
+   wchar_to_utf8(hostname, -1, hostnameA, 256);
+#else
+   const char *hostnameA = hostname;
+#endif
+   X509_NAME_add_entry_by_txt(name, "O", MBSTRING_UTF8, (const BYTE *)"NetXMS", -1, -1, 0);
+   if (isCA)
+      X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_UTF8, (const BYTE *)"Auto-generated CA", -1, -1, 0);
+   X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_UTF8, (const BYTE *)hostnameA, -1, -1, 0);
+   X509_set_issuer_name(x509, name);
+
+   X509_set_pubkey(x509, pkey);
+   X509_gmtime_adj(X509_getm_notBefore(x509), 0);
+   X509_gmtime_adj(X509_getm_notAfter(x509), 3650L * 86400L);
+
+   if (isCA)
+   {
+      X509V3_CTX ctx;
+      X509V3_set_ctx_nodb(&ctx);
+      X509V3_set_ctx(&ctx, x509, x509, nullptr, nullptr, 0);
+      X509_EXTENSION *ext = X509V3_EXT_conf_nid(nullptr, &ctx, NID_basic_constraints, const_cast<char*>("critical,CA:TRUE"));
+      if (ext != nullptr)
+      {
+         X509_add_ext(x509, ext, -1);
+         X509_EXTENSION_free(ext);
+      }
+   }
+
+   if (X509_sign(x509, pkey, EVP_sha256()) == 0)
+   {
+      TCHAR buffer[1024];
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("GenerateSelfSignedCertificate: X509_sign() failed (%s)"), _ERR_error_tstring(ERR_get_error(), buffer));
+      X509_free(x509);
+      EVP_PKEY_free(pkey);
+      return false;
+   }
+
+   *cert = x509;
+   *key = pkey;
+
+   char subjectName[1024];
+   X509_NAME_oneline(X509_get_subject_name(x509), subjectName, 1024);
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("GenerateSelfSignedCertificate: generated %s certificate with subject \"%hs\""), isCA ? _T("CA") : _T("server"), subjectName);
+   return true;
+}
+
+/**
+ * Save certificate and key to PEM files
+ */
+static bool SaveCertificateAndKey(X509 *cert, EVP_PKEY *key, const TCHAR *certSuffix, const TCHAR *keySuffix)
+{
+   TCHAR certPath[MAX_PATH], keyPath[MAX_PATH];
+   _tcscpy(certPath, g_netxmsdDataDir);
+   _tcscat(certPath, certSuffix);
+   _tcscpy(keyPath, g_netxmsdDataDir);
+   _tcscat(keyPath, keySuffix);
+
+   FILE *f = _tfopen(certPath, _T("w"));
+   if (f == nullptr)
+   {
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Cannot write certificate to %s (%s)"), certPath, _tcserror(errno));
+      return false;
+   }
+   bool success = (PEM_write_X509(f, cert) == 1);
+   fclose(f);
+   if (!success)
+   {
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Failed to write certificate to %s"), certPath);
+      return false;
+   }
+
+   f = _tfopen(keyPath, _T("w"));
+   if (f == nullptr)
+   {
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Cannot write private key to %s (%s)"), keyPath, _tcserror(errno));
+      return false;
+   }
+   success = (PEM_write_PrivateKey(f, key, nullptr, nullptr, 0, nullptr, nullptr) == 1);
+   fclose(f);
+   if (!success)
+   {
+      nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Failed to write private key to %s"), keyPath);
+      return false;
+   }
+
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("Certificate and key saved to %s and %s"), certPath, keyPath);
+   return true;
+}
+
+/**
+ * Load auto-generated certificate from PEM files, returns false if files don't exist or cert is near expiry
+ */
+static bool LoadAutoGeneratedCertificate(const TCHAR *certSuffix, const TCHAR *keySuffix, X509 **cert, EVP_PKEY **key)
+{
+   TCHAR certPath[MAX_PATH], keyPath[MAX_PATH];
+   _tcscpy(certPath, g_netxmsdDataDir);
+   _tcscat(certPath, certSuffix);
+   _tcscpy(keyPath, g_netxmsdDataDir);
+   _tcscat(keyPath, keySuffix);
+
+   if (_taccess(certPath, R_OK) != 0 || _taccess(keyPath, R_OK) != 0)
+      return false;
+
+   FILE *f = _tfopen(certPath, _T("r"));
+   if (f == nullptr)
+      return false;
+   *cert = PEM_read_X509(f, nullptr, nullptr, nullptr);
+   fclose(f);
+   if (*cert == nullptr)
+      return false;
+
+   f = _tfopen(keyPath, _T("r"));
+   if (f == nullptr)
+   {
+      X509_free(*cert);
+      *cert = nullptr;
+      return false;
+   }
+   *key = PEM_read_PrivateKey(f, nullptr, nullptr, nullptr);
+   fclose(f);
+   if (*key == nullptr)
+   {
+      X509_free(*cert);
+      *cert = nullptr;
+      return false;
+   }
+
+   // Check if certificate is near expiry (within 30 days)
+   time_t expiry = GetCertificateExpirationTime(*cert);
+   time_t now = time(nullptr);
+   if ((expiry - now) < 30 * 86400)
+   {
+      nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("Auto-generated certificate %s expires within 30 days, will regenerate"), certPath);
+      X509_free(*cert);
+      EVP_PKEY_free(*key);
+      *cert = nullptr;
+      *key = nullptr;
+      return false;
+   }
+
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("Loaded auto-generated certificate from %s"), certPath);
+   return true;
+}
+
+/**
+ * Generate or load auto-signed certificates for agent tunnels when no certificates are configured
+ */
+bool GenerateAutoSignedCertificates(RSA_KEY *serverKey)
+{
+   // Load or generate internal CA certificate
+   if (!LoadAutoGeneratedCertificate(DFILE_AUTO_CA_CERT, DFILE_AUTO_CA_KEY, &s_internalCACertificate, &s_internalCACertificateKey))
+   {
+      if (!GenerateSelfSignedCertificate(&s_internalCACertificate, &s_internalCACertificateKey, true))
+         return false;
+      if (!SaveCertificateAndKey(s_internalCACertificate, s_internalCACertificateKey, DFILE_AUTO_CA_CERT, DFILE_AUTO_CA_KEY))
+      {
+         X509_free(s_internalCACertificate);
+         EVP_PKEY_free(s_internalCACertificateKey);
+         s_internalCACertificate = nullptr;
+         s_internalCACertificateKey = nullptr;
+         return false;
+      }
+      nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("Auto-generated internal CA certificate"));
+   }
+
+   // Load or generate server certificate
+   if (!LoadAutoGeneratedCertificate(DFILE_AUTO_SERVER_CERT, DFILE_AUTO_SERVER_KEY, &s_serverCertificate, &s_serverCertificateKey))
+   {
+      if (!GenerateSelfSignedCertificate(&s_serverCertificate, &s_serverCertificateKey, false))
+      {
+         X509_free(s_internalCACertificate);
+         EVP_PKEY_free(s_internalCACertificateKey);
+         s_internalCACertificate = nullptr;
+         s_internalCACertificateKey = nullptr;
+         return false;
+      }
+      if (!SaveCertificateAndKey(s_serverCertificate, s_serverCertificateKey, DFILE_AUTO_SERVER_CERT, DFILE_AUTO_SERVER_KEY))
+      {
+         X509_free(s_serverCertificate);
+         EVP_PKEY_free(s_serverCertificateKey);
+         s_serverCertificate = nullptr;
+         s_serverCertificateKey = nullptr;
+         X509_free(s_internalCACertificate);
+         EVP_PKEY_free(s_internalCACertificateKey);
+         s_internalCACertificate = nullptr;
+         s_internalCACertificateKey = nullptr;
+         return false;
+      }
+      nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("Auto-generated server certificate"));
+   }
+
+   // Extract RSA_KEY from server certificate for NXCP encryption
+   if (serverKey != nullptr)
+   {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      EVP_PKEY *publicKey = X509_get0_pubkey(s_serverCertificate);
+      if (publicKey != nullptr)
+      {
+         uint32_t keyLen = i2d_PublicKey(publicKey, nullptr);
+         keyLen += i2d_PrivateKey(s_serverCertificateKey, nullptr);
+         BYTE *keyBuffer = MemAllocArrayNoInit<BYTE>(keyLen);
+         BYTE *p = keyBuffer;
+         i2d_PublicKey(publicKey, &p);
+         i2d_PrivateKey(s_serverCertificateKey, &p);
+         *serverKey = RSAKeyFromData(keyBuffer, keyLen, true);
+         MemFree(keyBuffer);
+      }
+#else
+      RSA *privKey = EVP_PKEY_get1_RSA(s_serverCertificateKey);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      EVP_PKEY *certPubKey = X509_get0_pubkey(s_serverCertificate);
+#else
+      EVP_PKEY *certPubKey = X509_get_pubkey(s_serverCertificate);
+#endif
+      RSA *pubKey = EVP_PKEY_get1_RSA(certPubKey);
+      if ((privKey != nullptr) && (pubKey != nullptr))
+      {
+         int keyLen = i2d_RSAPublicKey(pubKey, nullptr);
+         keyLen += i2d_RSAPrivateKey(privKey, nullptr);
+         BYTE *keyBuffer = MemAllocArray<BYTE>(keyLen);
+         BYTE *pos = keyBuffer;
+         i2d_RSAPublicKey(pubKey, &pos);
+         i2d_RSAPrivateKey(privKey, &pos);
+         *serverKey = RSAKeyFromData(keyBuffer, keyLen, true);
+         MemFree(keyBuffer);
+      }
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+      if (certPubKey != nullptr)
+         EVP_PKEY_free(certPubKey);
+#endif
+#endif
+   }
+
+   return true;
 }
 
 /**
