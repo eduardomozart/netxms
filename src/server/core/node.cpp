@@ -14325,9 +14325,9 @@ static FlagNameMapping s_stateMapping[] =
 /**
  * Serialize object to JSON
  */
-json_t *Node::toJson()
+json_t *Node::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
    lockProperties();
    json_object_set_new(root, "ipAddress", m_ipAddress.toJson());
    json_object_set_new(root, "primaryName", json_string_t(m_primaryHostName));
@@ -14349,11 +14349,13 @@ json_t *Node::toJson()
    json_object_set_new(root, "agentPort", json_integer(m_agentPort));
    json_object_set_new(root, "agentCacheMode", json_integer(m_agentCacheMode));
    json_object_set_new(root, "agentCompressionMode", json_integer(m_agentCompressionMode));
-   json_object_set_new(root, "agentSecret", json_string_t(m_agentSecret));
+   if (includeSensitiveData)
+      json_object_set_new(root, "agentSecret", json_string_t(m_agentSecret));
    json_object_set_new(root, "snmpVersion", json_integer(m_snmpVersion));
    json_object_set_new(root, "snmpPort", json_integer(m_snmpPort));
    json_object_set_new(root, "useIfXTable", json_integer(m_nUseIfXTable));
-   json_object_set_new(root, "snmpSecurity", (m_snmpSecurity != nullptr) ? m_snmpSecurity->toJson() : json_object());
+   if (includeSensitiveData)
+      json_object_set_new(root, "snmpSecurity", (m_snmpSecurity != nullptr) ? m_snmpSecurity->toJson(true) : json_object());
    json_object_set_new(root, "agentVersion", json_string_t(m_agentVersion));
    json_object_set_new(root, "platformName", json_string_t(m_platformName));
    json_object_set_new(root, "snmpObjectId", json_string_t(m_snmpObjectId.toString()));
@@ -14380,9 +14382,12 @@ json_t *Node::toJson()
    json_object_set_new(root, "rackImageRear", m_rackImageRear.toJson());
    json_object_set_new(root, "syslogMessageCount", json_integer(m_syslogMessageCount));
    json_object_set_new(root, "snmpTrapCount", json_integer(m_snmpTrapCount));
-   json_object_set_new(root, "sshLogin", json_string_t(m_sshLogin));
-   json_object_set_new(root, "sshPassword", json_string_t(m_sshPassword));
-   json_object_set_new(root, "sshKeyId", json_integer(m_sshKeyId));
+   if (includeSensitiveData)
+   {
+      json_object_set_new(root, "sshLogin", json_string_t(m_sshLogin));
+      json_object_set_new(root, "sshPassword", json_string_t(m_sshPassword));
+      json_object_set_new(root, "sshKeyId", json_integer(m_sshKeyId));
+   }
    json_object_set_new(root, "sshPort", json_integer(m_sshPort));
    json_object_set_new(root, "sshProxy", json_integer(m_sshProxy));
    json_object_set_new(root, "portNumberingScheme", json_integer(m_portNumberingScheme));
@@ -14401,7 +14406,8 @@ json_t *Node::toJson()
    json_object_set_new(root, "modbusUnitId", json_integer(m_modbusUnitId));
    json_object_set_new(root, "modbusTCPPort", json_integer(m_modbusTcpPort));
    json_object_set_new(root, "modbusProxyNodeId", json_integer(m_modbusProxy));
-   json_object_set_new(root, "vncPassword", json_string_t(m_vncPassword));
+   if (includeSensitiveData)
+      json_object_set_new(root, "vncPassword", json_string_t(m_vncPassword));
    json_object_set_new(root, "vncPort", json_integer(m_vncPort));
    json_object_set_new(root, "vncProxy", json_integer(m_vncProxy));
    unlockProperties();

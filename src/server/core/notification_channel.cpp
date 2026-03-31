@@ -338,7 +338,7 @@ public:
    void getStatus(NotificationChannelStatus *status);
 
    void fillMessage(NXCPMessage *msg, uint32_t base) const;
-   json_t *toJson() const;
+   json_t *toJson(bool includeSensitiveData = false) const;
 
    void update(const TCHAR *description, const TCHAR *driverName, const char *config);
    void updateName(const wchar_t *newName) { wcslcpy(m_name, newName, MAX_OBJECT_NAME); }
@@ -1170,13 +1170,14 @@ void NotificationChannel::fillMessage(NXCPMessage *msg, uint32_t base) const
 /**
  * Convert notification channel to JSON
  */
-json_t *NotificationChannel::toJson() const
+json_t *NotificationChannel::toJson(bool includeSensitiveData) const
 {
    json_t *root = json_object();
    json_object_set_new(root, "name", json_string_t(m_name));
    json_object_set_new(root, "description", json_string_t(m_description));
    json_object_set_new(root, "driverName", json_string_t(m_driverName));
-   json_object_set_new(root, "configuration", json_string_a(m_configuration));
+   if (includeSensitiveData)
+      json_object_set_new(root, "configuration", json_string_a(m_configuration));
    json_object_set_new(root, "driverInitialized", json_boolean(m_driver != nullptr));
    if (m_confTemplate != nullptr)
    {
@@ -1647,13 +1648,13 @@ void NXCORE_EXPORTABLE GetNotificationChannels(NXCPMessage *msg)
 /**
  * Get single notification channel as JSON by name
  */
-json_t NXCORE_EXPORTABLE *GetNotificationChannelByName(const wchar_t *name)
+json_t NXCORE_EXPORTABLE *GetNotificationChannelByName(const wchar_t *name, bool includeSensitiveData)
 {
    json_t *result = nullptr;
    s_channelListLock.lock();
    NotificationChannel *nc = s_channelList.get(name);
    if (nc != nullptr)
-      result = nc->toJson();
+      result = nc->toJson(includeSensitiveData);
    s_channelListLock.unlock();
    return result;
 }
@@ -1673,7 +1674,7 @@ json_t NXCORE_EXPORTABLE *GetNotificationDriversAsJson()
 /**
  * Get notification channel list
  */
-json_t NXCORE_EXPORTABLE *GetNotificationChannels(bool basicInfoOnly)
+json_t NXCORE_EXPORTABLE *GetNotificationChannels(bool basicInfoOnly, bool includeSensitiveData)
 {
    json_t *channels = json_array();
    s_channelListLock.lock();
@@ -1691,7 +1692,7 @@ json_t NXCORE_EXPORTABLE *GetNotificationChannels(bool basicInfoOnly)
       }
       else
       {
-         json_array_append_new(channels, nc->toJson());
+         json_array_append_new(channels, nc->toJson(includeSensitiveData));
       }
    }
    s_channelListLock.unlock();

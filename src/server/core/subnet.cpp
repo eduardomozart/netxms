@@ -339,9 +339,9 @@ bool Subnet::isPointToPoint() const
 /**
  * Serialize object to JSON
  */
-json_t *Subnet::toJson()
+json_t *Subnet::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
 

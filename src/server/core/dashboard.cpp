@@ -298,9 +298,9 @@ bool DashboardBase::showThresholdSummary() const
 /**
  * Serialize object to JSON
  */
-json_t *DashboardBase::toJson()
+json_t *DashboardBase::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
    AutoBindTarget::toJson(root);
 
    lockProperties();
@@ -492,9 +492,9 @@ uint32_t Dashboard::modifyFromMessageInternal(const NXCPMessage& msg, ClientSess
 /**
  * Serialize object to JSON
  */
-json_t *Dashboard::toJson()
+json_t *Dashboard::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "displayPriority", json_integer(m_displayPriority));
@@ -737,9 +737,9 @@ uint32_t DashboardTemplate::modifyFromMessageInternal(const NXCPMessage& msg, Cl
 /**
  * Serialize object to JSON
  */
-json_t *DashboardTemplate::toJson()
+json_t *DashboardTemplate::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "nameTemplate", json_string_t(m_nameTemplate.cstr()));

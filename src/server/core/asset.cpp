@@ -228,9 +228,9 @@ NXSL_Value *Asset::createNXSLObject(NXSL_VM *vm)
 /**
  * Serialize object to JSON
  */
-json_t *Asset::toJson()
+json_t *Asset::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "linkedObjectId", json_integer(m_linkedObjectId));

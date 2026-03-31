@@ -31,7 +31,7 @@ int H_NotificationChannels(Context *context)
    if (!context->checkSystemAccessRights(SYSTEM_ACCESS_SERVER_CONFIG))
       return 403;
 
-   json_t *output = GetNotificationChannels(false);
+   json_t *output = GetNotificationChannels(false, true);
    context->setResponseData(output);
    json_decref(output);
    return 200;
@@ -49,7 +49,7 @@ int H_NotificationChannelDetails(Context *context)
    if (channelName == nullptr)
       return 400;
 
-   json_t *output = GetNotificationChannelByName(channelName);
+   json_t *output = GetNotificationChannelByName(channelName, true);
    if (output == nullptr)
       return 404;
 
@@ -113,7 +113,7 @@ int H_NotificationChannelCreate(Context *context)
    NotifyClientSessions(NX_NOTIFY_NC_CHANNEL_CHANGED, 0);
    context->writeAuditLog(AUDIT_SYSCFG, true, 0, L"Notification channel \"%s\" created via REST API", name);
 
-   json_t *output = GetNotificationChannelByName(name);
+   json_t *output = GetNotificationChannelByName(name, true);
    context->setResponseData(output);
    json_decref(output);
    return 201;
@@ -139,7 +139,7 @@ int H_NotificationChannelUpdate(Context *context)
       return 400;
 
    // Get current channel data to use as defaults for unspecified fields
-   json_t *current = GetNotificationChannelByName(channelName);
+   json_t *current = GetNotificationChannelByName(channelName, true);
    if (current == nullptr)
       return 404;
 
@@ -167,7 +167,7 @@ int H_NotificationChannelUpdate(Context *context)
    NotifyClientSessions(NX_NOTIFY_NC_CHANNEL_CHANGED, 0);
    context->writeAuditLog(AUDIT_SYSCFG, true, 0, L"Notification channel \"%s\" updated via REST API", channelName);
 
-   json_t *output = GetNotificationChannelByName(channelName);
+   json_t *output = GetNotificationChannelByName(channelName, true);
    context->setResponseData(output);
    json_decref(output);
    return 200;

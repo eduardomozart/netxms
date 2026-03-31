@@ -915,7 +915,7 @@ public:
 	}
    void recalculateKeys();
 
-	json_t *toJson() const;
+	json_t *toJson(bool includeSensitiveData = false) const;
 
    void setCommunity(const char *community)
    {

@@ -349,9 +349,9 @@ NXSL_Value *MobileDevice::createNXSLObject(NXSL_VM *vm)
 /**
  * Serialize object to JSON
  */
-json_t *MobileDevice::toJson()
+json_t *MobileDevice::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "altitude", json_integer(m_altitude));

@@ -218,7 +218,7 @@ int H_ObjectDetails(Context *context)
    if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_READ))
       return 403;
 
-   json_t *output = object->toJson();
+   json_t *output = object->toJson(object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_MODIFY));
    context->setResponseData(output);
    json_decref(output);
    return 200;

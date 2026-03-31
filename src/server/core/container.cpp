@@ -185,9 +185,9 @@ void AbstractContainer::calculateCompoundStatus(bool forcedRecalc)
 /**
  * Serialize object to JSON
  */
-json_t *AbstractContainer::toJson()
+json_t *AbstractContainer::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
    lockProperties();
    json_object_set_new(root, "flags", json_integer(m_flags));
    unlockProperties();

@@ -225,9 +225,9 @@ void Rack::prepareForDeletion()
 /**
  * Serialize object to JSON
  */
-json_t *Rack::toJson()
+json_t *Rack::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "height", json_integer(m_height));

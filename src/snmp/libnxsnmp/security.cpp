@@ -290,14 +290,17 @@ void SNMP_SecurityContext::recalculateKeys()
 /**
  * Serialize to JSON
  */
-json_t *SNMP_SecurityContext::toJson() const
+json_t *SNMP_SecurityContext::toJson(bool includeSensitiveData) const
 {
    json_t *root = json_object();
    json_object_set_new(root, "securityModel", json_integer(m_securityModel));
-   json_object_set_new(root, "community", json_string_a(m_community));
+   if (includeSensitiveData)
+   {
+      json_object_set_new(root, "community", json_string_a(m_community));
+      json_object_set_new(root, "authPassword", json_string_a(m_authPassword));
+      json_object_set_new(root, "privPassword", json_string_a(m_privPassword));
+   }
    json_object_set_new(root, "userName", json_string_a(m_userName));
-   json_object_set_new(root, "authPassword", json_string_a(m_authPassword));
-   json_object_set_new(root, "privPassword", json_string_a(m_privPassword));
    json_object_set_new(root, "contextName", json_string_a(m_contextName));
    json_object_set_new(root, "authMethod", json_integer(m_authMethod));
    json_object_set_new(root, "privMethod", json_integer(m_privMethod));

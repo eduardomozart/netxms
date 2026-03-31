@@ -211,9 +211,9 @@ NXSL_Value *Resource::createNXSLObject(NXSL_VM *vm)
 /**
  * Serialize to JSON
  */
-json_t *Resource::toJson()
+json_t *Resource::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
    json_object_set_new(root, "resourceId", json_string_t(m_cloudResourceId));

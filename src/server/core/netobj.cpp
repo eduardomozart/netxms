@@ -3342,7 +3342,7 @@ EnumerationCallbackResult CustomAttributeToJson(const TCHAR *key, const CustomAt
 /**
  * Serialize object to JSON
  */
-json_t *NetObj::toJson()
+json_t *NetObj::toJson(bool includeSensitiveData)
 {
    json_t *root = json_object();
 

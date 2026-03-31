@@ -447,9 +447,9 @@ void NetworkService::onObjectDelete(const NetObj& object)
 /**
  * Serialize object to JSON
  */
-json_t *NetworkService::toJson()
+json_t *NetworkService::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
 

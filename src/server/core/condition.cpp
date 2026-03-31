@@ -537,9 +537,9 @@ int ConditionObject::getCacheSizeForDCI(uint32_t itemId)
 /**
  * Serialize object to JSON
  */
-json_t *ConditionObject::toJson()
+json_t *ConditionObject::toJson(bool includeSensitiveData)
 {
-   json_t *root = super::toJson();
+   json_t *root = super::toJson(includeSensitiveData);
 
    lockProperties();
 
