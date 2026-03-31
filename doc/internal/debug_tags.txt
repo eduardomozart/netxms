@@ -85,6 +85,8 @@ gps		GPS subagent
 
 housekeeper	Housekeeper
 
+image.library	Image library management and SVG sanitization
+
 import.*	Server configuration import
 
 init.*		Generic process or library initialization

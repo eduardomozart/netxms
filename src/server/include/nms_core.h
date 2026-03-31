@@ -1437,6 +1437,8 @@ bool VNCCheckCommSettings(uint32_t proxyNodeId, const InetAddress& addr, int32_t
 
 void InitLocalNetInfo();
 
+bool SanitizeSVGFile(const TCHAR *fileName);
+
 shared_ptr<ArpCache> GetLocalArpCache();
 InterfaceList *GetLocalInterfaceList();
 

@@ -390,6 +390,9 @@
     <ClCompile Include="summary_email.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="svg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="swpkg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

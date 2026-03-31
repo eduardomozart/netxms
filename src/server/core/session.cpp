@@ -13476,11 +13476,16 @@ void ClientSession::updateLibraryImage(const NXCPMessage& request)
             _sntprintf(absFileName, MAX_PATH, _T("%s%s%s%s"), g_netxmsdDataDir, DDIR_IMAGES, FS_PATH_SEPARATOR, guidText);
             debugPrintf(5, _T("updateLibraryImage: guid=%s, absFileName=%s"), guidText, absFileName);
 
+            bool isSVG = !_tcsicmp(mimetype, _T("image/svg+xml"));
             ServerDownloadFileInfo *dInfo = new ServerDownloadFileInfo(absFileName,
-               [guid] (const TCHAR *fileName, uint32_t uploadData, bool success) -> void
+               [guid, isSVG] (const TCHAR *fileName, uint32_t uploadData, bool success) -> void
                {
                   if (success)
+                  {
+                     if (isSVG)
+                        SanitizeSVGFile(fileName);
                      EnumerateClientSessions([] (ClientSession *pSession, void *arg) { pSession->onLibraryImageChange(*((const uuid *)arg), false); }, (void *)&guid);
+                  }
                });
             if (dInfo->open())
             {

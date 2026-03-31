@@ -584,6 +584,7 @@
     <ClCompile Include="stp.cpp" />
     <ClCompile Include="subnet.cpp" />
     <ClCompile Include="summary_email.cpp" />
+    <ClCompile Include="svg.cpp" />
     <ClCompile Include="swpkg.cpp" />
     <ClCompile Include="syncer.cpp" />
     <ClCompile Include="syslogd.cpp" />
