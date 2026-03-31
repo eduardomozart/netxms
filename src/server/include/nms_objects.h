@@ -224,7 +224,7 @@ class NXCORE_EXPORTABLE TcpProxyCallback
 {
 public:
    virtual ~TcpProxyCallback() = default;
-   
+
    virtual void onTcpProxyData(AgentConnectionEx *conn, uint32_t channelId, const void *data, size_t size, bool errorIndicator) = 0;
    virtual void onTcpProxyAgentDisconnect(AgentConnectionEx *conn) = 0;
 };
@@ -1405,6 +1405,7 @@ protected:
    uint32_t m_savedState; // Object state in database
    uint32_t m_stateBeforeMaintenance;
    uint64_t m_maintenanceEventId;
+   time_t m_maintenanceStartTime;
    uint32_t m_maintenanceInitiator;
    VolatileCounter m_modified;
    bool m_isDeleted;
@@ -1585,6 +1586,7 @@ public:
 
    bool isInMaintenanceMode() const { return m_maintenanceEventId != 0; }
    uint64_t getMaintenanceEventId() const { return m_maintenanceEventId; }
+   time_t getMaintenanceStartTime() const { return m_maintenanceStartTime; }
    uint32_t getMaintenanceInitiator() const { return m_maintenanceInitiator; }
    virtual void enterMaintenanceMode(uint32_t userId, const TCHAR *comments);
    virtual void leaveMaintenanceMode(uint32_t userId);
