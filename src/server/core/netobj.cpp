@@ -74,6 +74,7 @@ NetObj::NetObj() : NObject(), m_mutexProperties(MutexType::FAST), m_dashboards(0
    m_isUnpublished = false;
    m_isHidden = false;
    m_maintenanceEventId = 0;
+   m_maintenanceStartTime = 0;
    m_maintenanceInitiator = 0;
    m_inheritAccessRights = true;
    m_trustedObjects = nullptr;
@@ -3284,6 +3285,7 @@ void NetObj::updateMaintenanceEventId(uint64_t eventId)
 {
    lockProperties();
    m_maintenanceEventId = eventId;
+   m_maintenanceStartTime = time(nullptr);
    setModified(MODIFY_COMMON_PROPERTIES);
    unlockProperties();
 }
