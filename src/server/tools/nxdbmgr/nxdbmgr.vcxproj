@@ -368,6 +368,7 @@
     <ClCompile Include="tables.cpp" />
     <ClCompile Include="tdata_convert.cpp" />
     <ClCompile Include="unlock.cpp" />
+    <ClCompile Include="usermgmt.cpp" />
     <ClCompile Include="upgrade.cpp" />
     <ClCompile Include="upgrade_online.cpp" />
     <ClCompile Include="upgrade_v0.cpp" />

@@ -1,6 +1,6 @@
 /*
 ** nxdbmgr - NetXMS database manager
-** Copyright (C) 2004-2024 Victor Kirhenshtein
+** Copyright (C) 2004-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -143,7 +143,24 @@ bool ExecSQLBatch(const char *batchFile, bool showOutput)
 /**
  * Initialize database
  */
-int InitDatabase(const char *initFile)
+/**
+ * Generate random password of given length using alphanumeric characters
+ */
+static void GenerateRandomPassword(TCHAR *buffer, size_t length)
+{
+   static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+   BYTE *randomBytes = static_cast<BYTE*>(MemAlloc(length));
+   GenerateRandomBytes(randomBytes, length);
+   for (size_t i = 0; i < length; i++)
+      buffer[i] = charset[randomBytes[i] % (sizeof(charset) - 1)];
+   buffer[length] = 0;
+   MemFree(randomBytes);
+}
+
+/**
+ * Initialize database
+ */
+int InitDatabase(const char *initFile, const TCHAR *password)
 {
    TCHAR query[256];
 
@@ -185,6 +202,45 @@ int InitDatabase(const char *initFile)
    _sntprintf(query, 256, _T("UPDATE user_groups SET guid='%s' WHERE id=1073741825"), uuid::generate().toString().cstr());
    if (!SQLQuery(query))
       goto init_failed;
+
+   // Set admin and system user passwords
+   {
+      TCHAR adminPassword[64];
+      bool randomPassword;
+      if (password != nullptr)
+      {
+         _tcslcpy(adminPassword, password, 64);
+         randomPassword = false;
+      }
+      else
+      {
+         GenerateRandomPassword(adminPassword, 16);
+         randomPassword = true;
+      }
+
+      TCHAR hashStr[128];
+      HashPassword(adminPassword, hashStr, 128);
+
+      _sntprintf(query, 256, _T("UPDATE users SET password='%s' WHERE id=0"), hashStr);
+      if (!SQLQuery(query))
+         goto init_failed;
+
+      // Re-hash for admin user (different salt)
+      HashPassword(adminPassword, hashStr, 128);
+
+      _sntprintf(query, 256, _T("UPDATE users SET password='%s' WHERE id=1"), hashStr);
+      if (!SQLQuery(query))
+         goto init_failed;
+
+      if (randomPassword)
+      {
+         WriteToTerminal(L"\n\x1b[1mIMPORTANT: Generated admin password\x1b[0m\n");
+         WriteToTerminal(L"   Login:    admin\n");
+         WriteToTerminalEx(L"   Password: %s\n\n", adminPassword);
+         WriteToTerminal(L"\x1b[33;1mPlease save this password - it will not be shown again.\n");
+         WriteToTerminal(L"You will be required to change it on first login.\x1b[0m\n\n");
+      }
+   }
 
    _tprintf(_T("Database initialized successfully\n"));
    return 0;
@@ -321,7 +377,7 @@ static bool CreateDatabase_MSSQL(const TCHAR *dbName, const TCHAR *dbLogin, cons
  */
 bool CreateDatabase(const char *driver, const TCHAR *dbName, const TCHAR *dbLogin, const TCHAR *dbPassword)
 {
-   _tprintf(_T("Creating database and user...\n"));
+   WriteToTerminal(L"Creating database and user...\n");
 
    if (!stricmp(driver, "mssql"))
       return CreateDatabase_MSSQL(dbName, dbLogin, dbPassword);
@@ -332,6 +388,6 @@ bool CreateDatabase(const char *driver, const TCHAR *dbName, const TCHAR *dbLogi
    if (!stricmp(driver, "pgsql"))
       return CreateDatabase_PostgreSQL(dbName, dbLogin, dbPassword);
 
-   _tprintf(_T("Database creation is not implemented for selected database type"));
+   WriteToTerminal(L"Database creation is not implemented for selected database type");
    return false;
 }

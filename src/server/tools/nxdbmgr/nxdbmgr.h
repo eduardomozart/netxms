@@ -47,7 +47,7 @@ struct COLUMN_IDENTIFIER
 DB_HANDLE ConnectToDatabase();
 void CheckDatabase();
 bool CreateDatabase(const char *driver, const TCHAR *dbName, const TCHAR *dbLogin, const TCHAR *dbPassword);
-int InitDatabase(const char *initFile);
+int InitDatabase(const char *initFile, const TCHAR *password);
 bool ClearDatabase(bool preMigration);
 void ExportDatabase(const char *file, const StringList& excludedTables, const StringList& includedTables);
 void ImportDatabase(const char *file, const StringList& excludedTables, const StringList& includedTables, bool ignoreDataMigrationErrors);
@@ -80,6 +80,9 @@ bool CreateTDataTable_preV281(uint32_t objectId);
 
 void ResetSystemAccount();
 void ResetMonitoringState();
+void SetUserPassword(const TCHAR *login);
+void UnlockUser(const TCHAR *login);
+void HashPassword(const TCHAR *password, TCHAR *hashStr, size_t hashStrSize);
 
 bool LoadServerModules(wchar_t *moduleLoadList, bool quiet);
 bool EnumerateModuleTables(bool (*handler)(const wchar_t*, void*), void *userData);

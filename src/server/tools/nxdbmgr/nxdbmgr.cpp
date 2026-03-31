@@ -495,6 +495,7 @@ int main(int argc, char *argv[])
    bool ignoreDataMigrationErrors = false;
 	TCHAR fallbackSyntax[32] = _T("");
 	TCHAR *dbaLogin = nullptr, *dbaPassword = nullptr;
+	TCHAR *initPassword = nullptr;
 	StringList includedTables, excludedTables;
    int ch;
 
@@ -559,7 +560,7 @@ stop_search:
 
    // Parse command line
    opterr = 1;
-   while((ch = getopt(argc, argv, "c:C:dDe:EfF:GhIj:L:mMNoPqsStT:vxXY:Z:")) != -1)
+   while((ch = getopt(argc, argv, "c:C:dDe:EfF:GhIj:L:mMNop:PqsStT:vxXY:Z:")) != -1)
    {
       switch(ch)
       {
@@ -581,7 +582,9 @@ stop_search:
                      _T("   reset-monitoring     : Reset all monitoring state (alarms, thresholds, object status, DCI states)\n")
                      _T("   reset-system-account : Unlock user \"system\" and reset it's password to default\n")
                      _T("   set <name> <value>   : Set value of server configuration variable\n")
+                     _T("   set-user-password <login> : Set password for the given user\n")
                      _T("   unlock               : Forced database unlock\n")
+                     _T("   unlock-user <login>  : Unlock user account\n")
                      _T("   upgrade              : Upgrade database to new version\n")
                      _T("Valid options are:\n")
                      _T("   -c <config> : Use alternate configuration file. Default is %s\n")
@@ -603,6 +606,7 @@ stop_search:
                      _T("   -M          : MySQL only - specify TYPE=MyISAM for new tables.\n")
                      _T("   -N          : Do not replace existing configuration value (\"set\" command only).\n")
                      _T("   -o          : Show output from SELECT statements in a batch.\n")
+                     _T("   -p <passwd> : Set admin password during init (if not set, a random password will be generated).\n")
                      _T("   -P          : Pause after error.\n")
                      _T("   -q          : Quiet mode (don't show startup banner).\n")
                      _T("   -s          : Skip collected data during export, import, conversion, or migration.\n")
@@ -693,6 +697,9 @@ stop_search:
          case 'o':
             showOutput = true;
             break;
+         case 'p':
+            initPassword = WideStringFromMBStringSysLocale(optarg);
+            break;
          case 'P':
             pauseAfterError = true;
             break;
@@ -762,7 +769,9 @@ stop_search:
        strcmp(argv[optind], "reset-monitoring") &&
        strcmp(argv[optind], "reset-system-account") &&
        strcmp(argv[optind], "set") &&
+       strcmp(argv[optind], "set-user-password") &&
        strcmp(argv[optind], "unlock") &&
+       strcmp(argv[optind], "unlock-user") &&
        strcmp(argv[optind], "upgrade"))
    {
       _tprintf(_T("Invalid command \"%hs\". Type nxdbmgr -h for command line syntax.\n"), argv[optind]);
@@ -908,7 +917,7 @@ stop_search:
          initFile.append(_T(".sql"));
 
          char *initFileMB = MBStringFromWideStringSysLocale(initFile);
-         exitCode = InitDatabase(initFileMB);
+         exitCode = InitDatabase(initFileMB, initPassword);
          MemFree(initFileMB);
       }
       else if (strchr(argv[optind + 1], FS_PATH_SEPARATOR_CHAR_A) == nullptr)
@@ -922,7 +931,7 @@ stop_search:
          initFile.append(_T(".sql"));
 
          char *initFileMB = MBStringFromWideStringSysLocale(initFile);
-         exitCode = InitDatabase(initFileMB);
+         exitCode = InitDatabase(initFileMB, initPassword);
          MemFree(initFileMB);
       }
       else
@@ -937,7 +946,7 @@ stop_search:
                return 8;
             }
          }
-         exitCode = InitDatabase(argv[optind + 1]);
+         exitCode = InitDatabase(argv[optind + 1], initPassword);
       }
    }
    else
@@ -1035,12 +1044,25 @@ stop_search:
       {
          ResetSystemAccount();
       }
+      else if (!strcmp(argv[optind], "set-user-password"))
+      {
+         TCHAR *login = WideStringFromMBStringSysLocale(argv[optind + 1]);
+         SetUserPassword(login);
+         MemFree(login);
+      }
+      else if (!strcmp(argv[optind], "unlock-user"))
+      {
+         TCHAR *login = WideStringFromMBStringSysLocale(argv[optind + 1]);
+         UnlockUser(login);
+         MemFree(login);
+      }
 
       if (IsOnlineUpgradePending())
          WriteToTerminal(_T("\n\x1b[31;1mWARNING:\x1b[0m Background upgrades pending. Please run \x1b[1mnxdbmgr background-upgrade\x1b[0m when possible.\n"));
    }
 
    // Shutdown
+   MemFree(initPassword);
    DBDisconnect(g_dbHandle);
    DBUnloadDriver(s_driver);
 
