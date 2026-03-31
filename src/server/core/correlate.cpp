@@ -1,4 +1,4 @@
-/* 
+/*
 ** NetXMS - Network Management System
 ** Copyright (C) 2003-2024 Victor Kirhenshtein
 **
@@ -243,9 +243,13 @@ void CorrelateEvent(Event *event)
 
    if (source->isInMaintenanceMode() && (eventCode != EVENT_NODE_ADDED))
    {
-      event->setRootId(source->getMaintenanceEventId());
-      nxlog_debug_tag(DEBUG_TAG, 6, _T("CorrelateEvent: finished, rootId=") UINT64_FMT, event->getRootId());
-      return;
+      if (event->getTimestamp() >= source->getMaintenanceStartTime())
+      {
+         event->setRootId(source->getMaintenanceEventId());
+         nxlog_debug_tag(DEBUG_TAG, 6, _T("CorrelateEvent: finished, rootId=") UINT64_FMT, event->getRootId());
+         return;
+      }
+      nxlog_debug_tag(DEBUG_TAG, 6, _T("CorrelateEvent: event timestamp precedes maintenance mode entry, skipping maintenance correlation"));
    }
 
    switch(source->getObjectClass())

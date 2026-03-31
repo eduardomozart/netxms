@@ -1234,6 +1234,7 @@ protected:
    uint32_t m_savedState; // Object state in database
    uint32_t m_stateBeforeMaintenance;
    uint64_t m_maintenanceEventId;
+   time_t m_maintenanceStartTime;
    uint32_t m_maintenanceInitiator;
    VolatileCounter m_modified;
    bool m_isDeleted;
@@ -1405,6 +1406,7 @@ public:
 
    bool isInMaintenanceMode() const { return m_maintenanceEventId != 0; }
    uint64_t getMaintenanceEventId() const { return m_maintenanceEventId; }
+   time_t getMaintenanceStartTime() const { return m_maintenanceStartTime; }
    uint32_t getMaintenanceInitiator() const { return m_maintenanceInitiator; }
    virtual void enterMaintenanceMode(uint32_t userId, const TCHAR *comments);
    virtual void leaveMaintenanceMode(uint32_t userId);
