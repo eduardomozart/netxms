@@ -74,6 +74,7 @@ NetObj::NetObj() : NObject(), m_mutexProperties(MutexType::FAST), m_dashboards(0
    m_isHidden = false;
    m_isSystem = false;
    m_maintenanceEventId = 0;
+   m_maintenanceStartTime = 0;
    m_maintenanceInitiator = 0;
    m_inheritAccessRights = true;
    m_trustedObjects = nullptr;

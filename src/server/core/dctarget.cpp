@@ -1947,6 +1947,7 @@ void DataCollectionTarget::enterMaintenanceMode(uint32_t userId, const TCHAR *co
 
    lockProperties();
    m_maintenanceEventId = eventId;
+   m_maintenanceStartTime = time(nullptr);
    m_maintenanceInitiator = userId;
    m_stateBeforeMaintenance = m_state;
    setModified(MODIFY_COMMON_PROPERTIES | MODIFY_DATA_COLLECTION);
@@ -1983,6 +1984,7 @@ void DataCollectionTarget::leaveMaintenanceMode(uint32_t userId)
 
    lockProperties();
    m_maintenanceEventId = 0;
+   m_maintenanceStartTime = 0;
    m_maintenanceInitiator = 0;
    bool forcePoll = m_state != m_stateBeforeMaintenance;
    m_state = m_stateBeforeMaintenance;
