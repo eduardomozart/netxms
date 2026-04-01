@@ -3226,6 +3226,9 @@ AC_LANG_POP([C++])
 #--------------------------------------------------------------------
 
 if test "x$PLATFORM" = "xLinux"; then
+	AC_CHECK_HEADERS([linux/netlink.h],,
+		AC_MSG_ERROR([*** linux/netlink.h is required for Linux agent build. Please install linux-headers package. ***]),
+		[[ ]])
 	AC_CHECK_HEADERS([sys/reboot.h],,,[[ ]])
 	AC_CHECK_DECLS([reboot, RB_AUTOBOOT, RB_POWER_OFF, RB_HALT_SYSTEM],,,[
 #if HAVE_SYS_REBOOT_H
