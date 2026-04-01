@@ -1064,8 +1064,8 @@ String Alarm::requestAIAssistantComment(GenericClientSession *session) const
    prompt.append(L"Message: ").append(m_message).append(L"\n");
    prompt.append(L"Last change time: ").append(FormatTimestamp(m_lastChangeTime)).append(L"\n");
    char *promptUtf8 = UTF8StringFromWideString(prompt);
-   // Use "fast" slot for quick alarm explanations
-   char *response = QueryAIAssistantWithSlot(promptUtf8, object.get(), "fast");
+   // Use "fast" slot for quick alarm explanations (tools enabled for additional data lookups)
+   char *response = QueryAIAssistant(promptUtf8, object.get(), "fast");
    MemFree(promptUtf8);
    if (response == nullptr)
       return String();

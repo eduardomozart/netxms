@@ -520,9 +520,7 @@ static String GenerateDigestMessage(const wchar_t *channelName, const wchar_t *r
 
    // Try AI summary
    char *promptUtf8 = prompt.getUTF8String();
-   char *response = QueryAIAssistantWithSlot(promptUtf8, nullptr, "fast", 1);
-   if (response == nullptr)
-      response = QueryAIAssistantWithSlot(promptUtf8, nullptr, "default", 1);
+   char *response = QueryAIAssistant(promptUtf8, nullptr, "fast", false);
    MemFree(promptUtf8);
 
    if (response != nullptr)

@@ -213,7 +213,7 @@ private:
    std::string delegateToSkill(const char *skillName, const char *task);
 
 public:
-   Chat(NetObj *context = nullptr, json_t *eventData = nullptr, uint32_t userId = 0, const char *systemPrompt = nullptr, bool isInteractive = true);
+   Chat(NetObj *context = nullptr, json_t *eventData = nullptr, uint32_t userId = 0, const char *systemPrompt = nullptr, bool isInteractive = true, bool enableTools = true);
    ~Chat();
 
    uint32_t getId() const { return m_id; }
@@ -411,17 +411,12 @@ uint32_t NXCORE_EXPORTABLE DeleteAIAssistantChat(uint32_t chatId, uint32_t userI
 
 /**
  * Send single independent query to AI assistant
- */
-char NXCORE_EXPORTABLE *QueryAIAssistant(const char *prompt, NetObj *context, int maxIterations = 32);
-
-/**
- * Send single independent query to AI assistant using specific slot
  * @param prompt Query prompt
  * @param context Optional object context
- * @param slot Provider slot to use (e.g., "fast", "analytical")
- * @param maxIterations Maximum iterations for function calling
+ * @param slot Provider slot to use (e.g., "fast", "analytical"); falls back to "default" slot if requested slot is not configured
+ * @param enableTools If true, register functions and skills; if false, no tools and single iteration
  */
-char NXCORE_EXPORTABLE *QueryAIAssistantWithSlot(const char *prompt, NetObj *context, const char *slot, int maxIterations = 32);
+char NXCORE_EXPORTABLE *QueryAIAssistant(const char *prompt, NetObj *context = nullptr, const char *slot = nullptr, bool enableTools = true);
 
 /**
  * Register AI task

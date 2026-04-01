@@ -1013,7 +1013,7 @@ static VolatileCounter64 s_nextQuestionId = 0;
 /**
  * Chat constructor
  */
-Chat::Chat(NetObj *context, json_t *eventData, uint32_t userId, const char *systemPrompt, bool isInteractive)
+Chat::Chat(NetObj *context, json_t *eventData, uint32_t userId, const char *systemPrompt, bool isInteractive, bool enableTools)
 {
    m_id = InterlockedIncrement(&s_nextChatId);
    m_boundIncidentId = 0;
@@ -1025,7 +1025,10 @@ Chat::Chat(NetObj *context, json_t *eventData, uint32_t userId, const char *syst
    m_isInteractive = isInteractive;
    strlcpy(m_slot, isInteractive ? "interactive" : "background", sizeof(m_slot));
 
-   initializeFunctions();
+   if (enableTools)
+      initializeFunctions();
+   else
+      m_functionDeclarations = nullptr;
 
    m_messages = json_array();
    addMessage("system", (systemPrompt != nullptr) ? systemPrompt : s_systemPrompt);
@@ -1050,7 +1053,8 @@ Chat::Chat(NetObj *context, json_t *eventData, uint32_t userId, const char *syst
    {
       addMessage("system", p.c_str());
    }
-   addMessage("system", std::string("The following skills are available to you: ").append(GetRegisteredSkills()).c_str());
+   if (enableTools)
+      addMessage("system", std::string("The following skills are available to you: ").append(GetRegisteredSkills()).c_str());
    addMessage("system", s_securityBoundary);
 
    m_userId = userId;
@@ -1983,20 +1987,12 @@ json_t *Chat::getPendingQuestion()
 /**
  * Send single independent request to AI assistant
  */
-char NXCORE_EXPORTABLE *QueryAIAssistant(const char *prompt, NetObj *context, int maxIterations)
+char NXCORE_EXPORTABLE *QueryAIAssistant(const char *prompt, NetObj *context, const char *slot, bool enableTools)
 {
-   Chat chat(context);
-   return chat.sendRequest(prompt, maxIterations);
-}
-
-/**
- * Send single independent request to AI assistant using specific slot
- */
-char NXCORE_EXPORTABLE *QueryAIAssistantWithSlot(const char *prompt, NetObj *context, const char *slot, int maxIterations)
-{
-   Chat chat(context);
-   chat.setSlot(slot);
-   return chat.sendRequest(prompt, maxIterations);
+   Chat chat(context, nullptr, 0, nullptr, false, enableTools);
+   if (slot != nullptr)
+      chat.setSlot(slot);
+   return chat.sendRequest(prompt, enableTools ? 32 : 1);
 }
 
 /**
