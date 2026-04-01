@@ -248,9 +248,8 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
          node->getName(), node->getId(), port.portNumber, port.ifDescr, port.ifIndex);
       if (port.ifIndex != 0)
          ifc = node->findInterfaceByIndex(port.ifIndex);
-      if ((ifc == nullptr) && node->isBridge())
+      if ((ifc == nullptr) && node->isBridge() && !node->getDriver()->isLldpRemTableUsingIfIndex(node, node->getDriverData()))
          ifc = node->findBridgePort(port.portNumber);
-      // Note: some Juniper devices may have bridge port numbers for certain interfaces but still use ifIndex in LLDP local port list
       if (ifc == nullptr)  // unable to find interface by bridge port number or device is not a bridge
          ifc = node->findInterfaceByIndex(port.portNumber);
       if (ifc == nullptr)  // unable to find interface by bridge port number or interface index, try description
@@ -265,6 +264,14 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
    TCHAR ifName[130];
 	switch(idSubType)
 	{
+		case 1:	// Interface alias
+			mbcp_to_wchar((char *)id, (int)idLen, ifName, 128, "ISO-8859-1");
+			ifName[MIN(idLen, 127)] = 0;
+			nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteInterface(%s [%u]): ifAlias=\"%s\""), node->getName(), node->getId(), ifName);
+			ifc = node->findInterfaceByAlias(ifName);
+			if (ifc == nullptr)
+			   ifc = node->findInterfaceByName(ifName);
+			return ifc;
 		case 3:	// MAC address
 		   if ((idLen == 6) || (idLen == 8))
 		      return node->findInterfaceByMAC(MacAddress(id, idLen));
@@ -281,7 +288,7 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
 		   }
 		   return shared_ptr<Interface>();
 		case 4:	// Network address
-			if (id[0] == 1)	// IPv4
+			if ((id[0] == 1) && (idLen >= 5))	// IPv4
 			{
 				uint32_t ipAddr;
 				memcpy(&ipAddr, &id[1], sizeof(uint32_t));
@@ -301,7 +308,7 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
 			   {
 			      SNMP_Transport *snmp = node->createSnmpTransport();
 			      InterfaceId iid;
-			      if (driver->lldpNameToInterfaceId(snmp, node, node->getDriverData(), ifName, &iid))
+			      if ((snmp != nullptr) && driver->lldpNameToInterfaceId(snmp, node, node->getDriverData(), ifName, &iid))
 			      {
 			         switch(iid.type)
 			         {
