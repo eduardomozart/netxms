@@ -414,16 +414,22 @@ bool JuniperDriver::isLldpRemTableUsingIfIndex(const NObject *node, DriverData *
  */
 void JuniperDriver::getSSHDriverHints(SSHDriverHints *hints) const
 {
-   // JunOS prompt patterns:
-   // - Operational mode: user@hostname>
-   // - Configuration mode: user@hostname#
-   // - May include routing instance: user@hostname:instance>
-   hints->promptPattern = "^[\\w.-]+@[\\w.-]+(:[\\w.-]+)?[>%#]\\s*$";
-   hints->enabledPromptPattern = "^[\\w.-]+@[\\w.-]+(:[\\w.-]+)?#\\s*$";
+   // Some Juniper devices (or firmware versions) may drop into Unix shell
+   // instead of JunOS CLI after SSH login. Shell prompt examples:
+   //   root@:RE:0%    (no hostname, dual-RE)
+   //   root@switch:RE:0%
+   //   root@switch%
+   hints->promptPattern = "^[\\w.-]*@[\\w.-]*(:[\\w]+:\\d+)?%\\s*$";
 
-   // JunOS uses class-based authorization, not enable/disable model
-   // Some systems may still have "enable" equivalent via "start shell"
-   hints->enableCommand = nullptr;
+   // JunOS CLI prompt patterns (operational and configuration mode):
+   //   user@hostname>           (operational mode)
+   //   user@hostname#           (configuration mode)
+   //   user@hostname:instance>  (with routing instance)
+   hints->enabledPromptPattern = "^[\\w.-]+@[\\w.-]+(:[\\w.-]+)?[>#]\\s*$";
+
+   // Enter JunOS CLI from Unix shell; no-op if already in CLI
+   // (escalatePrivilege detects m_privileged=true and skips)
+   hints->enableCommand = "cli";
    hints->enablePromptPattern = nullptr;
 
    // Pagination control - use "set cli screen-length 0" in operational mode
@@ -441,6 +447,25 @@ void JuniperDriver::getSSHDriverHints(SSHDriverHints *hints) const
    // Timeouts (JunOS devices may be slower due to XML parsing)
    hints->commandTimeout = 60000;
    hints->connectTimeout = 20000;
+}
+
+/**
+ * Check if configuration backup is supported
+ */
+bool JuniperDriver::isConfigBackupSupported()
+{
+   return true;
+}
+
+/**
+ * Get running configuration from device
+ */
+bool JuniperDriver::getRunningConfig(DeviceBackupContext *ctx, ByteStream *output)
+{
+   SSHInteractiveChannel *ssh = ctx->getInteractiveSSH();
+   if (ssh == nullptr)
+      return false;
+   return ssh->executeCommand("show configuration", output);
 }
 
 /**

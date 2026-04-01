@@ -49,6 +49,8 @@ public:
    virtual void getModuleLayout(SNMP_Transport *snmp, NObject *node, DriverData *driverData, int module, NDD_MODULE_LAYOUT *layout) override;
    virtual bool isLldpRemTableUsingIfIndex(const NObject *node, DriverData *driverData) override;
    virtual void getSSHDriverHints(SSHDriverHints *hints) const override;
+   virtual bool isConfigBackupSupported() override;
+   virtual bool getRunningConfig(DeviceBackupContext *ctx, ByteStream *output) override;
 };
 
 /**
