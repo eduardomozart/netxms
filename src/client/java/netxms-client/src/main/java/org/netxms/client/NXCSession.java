@@ -75,6 +75,8 @@ import org.netxms.client.agent.config.AgentConfiguration;
 import org.netxms.client.agent.config.AgentConfigurationHandle;
 import org.netxms.client.ai.AiAgentTask;
 import org.netxms.client.ai.AiAssistantFunction;
+import org.netxms.client.ai.AiAssistantSkill;
+import org.netxms.client.ai.AiDisabledItem;
 import org.netxms.client.ai.AiFunctionCall;
 import org.netxms.client.ai.AiMessage;
 import org.netxms.client.ai.AiQuestion;
@@ -16078,6 +16080,88 @@ public class NXCSession
          fieldId += 10;
       }
       return functions;
+   }
+
+   /**
+    * Get list of registered AI assistant skills and functions with disabled status.
+    *
+    * @return array with three lists: [0] skills, [1] functions, [2] extra disabled items
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public Object[] getAiSkillsAndFunctions() throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_GET_AI_SKILLS_AND_FUNCTIONS);
+      sendMessage(msg);
+      NXCPMessage response = waitForRCC(msg.getMessageId());
+
+      // Parse skills
+      int skillCount = response.getFieldAsInt32(NXCPCodes.VID_NUM_SKILLS);
+      List<AiAssistantSkill> skills = new ArrayList<>(skillCount);
+      long fieldId = NXCPCodes.VID_SKILL_LIST_BASE;
+      for(int i = 0; i < skillCount; i++)
+      {
+         skills.add(new AiAssistantSkill(response, fieldId));
+         fieldId += 0x100;
+      }
+
+      // Parse functions
+      int funcCount = response.getFieldAsInt32(NXCPCodes.VID_NUM_ELEMENTS);
+      List<AiAssistantFunction> functions = new ArrayList<>(funcCount);
+      fieldId = NXCPCodes.VID_ELEMENT_LIST_BASE;
+      for(int i = 0; i < funcCount; i++)
+      {
+         functions.add(new AiAssistantFunction(response, fieldId));
+         fieldId += 0x100;
+      }
+
+      // Parse extra disabled items (not currently registered)
+      int extraCount = response.getFieldAsInt32(NXCPCodes.VID_NUM_DISABLED_EXTRAS);
+      List<AiDisabledItem> extras = new ArrayList<>(extraCount);
+      fieldId = NXCPCodes.VID_DISABLED_EXTRAS_BASE;
+      for(int i = 0; i < extraCount; i++)
+      {
+         extras.add(new AiDisabledItem(response, fieldId));
+         fieldId += 0x100;
+      }
+
+      return new Object[] { skills, functions, extras };
+   }
+
+   /**
+    * Add item to AI disabled list.
+    *
+    * @param type item type ('S' for skill, 'F' for function)
+    * @param name item name
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void addAiDisabledItem(char type, String name) throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_MODIFY_AI_DISABLED_LIST);
+      msg.setField(NXCPCodes.VID_IS_DELETED, false);
+      msg.setField(NXCPCodes.VID_ITEM_TYPE, String.valueOf(type));
+      msg.setField(NXCPCodes.VID_NAME, name);
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
+   }
+
+   /**
+    * Remove item from AI disabled list.
+    *
+    * @param type item type ('S' for skill, 'F' for function)
+    * @param name item name
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    */
+   public void removeAiDisabledItem(char type, String name) throws IOException, NXCException
+   {
+      final NXCPMessage msg = newMessage(NXCPCodes.CMD_MODIFY_AI_DISABLED_LIST);
+      msg.setField(NXCPCodes.VID_IS_DELETED, true);
+      msg.setField(NXCPCodes.VID_ITEM_TYPE, String.valueOf(type));
+      msg.setField(NXCPCodes.VID_NAME, name);
+      sendMessage(msg);
+      waitForRCC(msg.getMessageId());
    }
 
    /**

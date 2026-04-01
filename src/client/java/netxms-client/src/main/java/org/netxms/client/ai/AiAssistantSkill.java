@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2013-2025 Raden Solutions
+ * Copyright (C) 2013-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,31 +21,35 @@ package org.netxms.client.ai;
 import org.netxms.base.NXCPMessage;
 
 /**
- * Function for AI assistant
+ * AI assistant skill
  */
-public class AiAssistantFunction
+public class AiAssistantSkill
 {
    private String name;
    private String description;
    private boolean disabled;
+   private boolean supportsDelegation;
+   private String defaultMode;
 
    /**
-    * Create function object from NXCP message.
+    * Create skill object from NXCP message.
     *
     * @param msg NXCP message
-    * @param baseId base ID for function fields
+    * @param baseId base ID for skill fields
     */
-   public AiAssistantFunction(NXCPMessage msg, long baseId)
+   public AiAssistantSkill(NXCPMessage msg, long baseId)
    {
       name = msg.getFieldAsString(baseId);
       description = msg.getFieldAsString(baseId + 1);
       disabled = msg.getFieldAsBoolean(baseId + 2);
+      supportsDelegation = msg.getFieldAsBoolean(baseId + 3);
+      defaultMode = msg.getFieldAsString(baseId + 4);
    }
 
    /**
-    * Get function name.
+    * Get skill name.
     *
-    * @return function name
+    * @return skill name
     */
    public String getName()
    {
@@ -53,9 +57,9 @@ public class AiAssistantFunction
    }
 
    /**
-    * Get function description.
+    * Get skill description.
     *
-    * @return function description
+    * @return skill description
     */
    public String getDescription()
    {
@@ -63,22 +67,32 @@ public class AiAssistantFunction
    }
 
    /**
-    * Get JSON schema for function parameters.
-    *
-    * @return JSON schema or null
-    */
-   public String getSchema()
-   {
-      return null;
-   }
-
-   /**
-    * Check if this function is disabled by administrator.
+    * Check if this skill is disabled by administrator.
     *
     * @return true if disabled
     */
    public boolean isDisabled()
    {
       return disabled;
+   }
+
+   /**
+    * Check if this skill supports delegation.
+    *
+    * @return true if delegation is supported
+    */
+   public boolean isSupportsDelegation()
+   {
+      return supportsDelegation;
+   }
+
+   /**
+    * Get default execution mode.
+    *
+    * @return default execution mode ("loaded" or "delegated")
+    */
+   public String getDefaultMode()
+   {
+      return defaultMode;
    }
 }

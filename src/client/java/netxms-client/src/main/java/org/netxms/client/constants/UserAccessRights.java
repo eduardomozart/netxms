@@ -78,6 +78,7 @@ public final class UserAccessRights
    public static final long SYSTEM_ACCESS_VIEW_WELCOME_PAGE       = 0x08000000000000L;
    public static final long SYSTEM_ACCESS_SEARCH_NETWORK          = 0x10000000000000L;
    public static final long SYSTEM_ACCESS_USE_AI_ASSISTANT        = 0x20000000000000L;
+   public static final long SYSTEM_ACCESS_MANAGE_AI_SKILLS       = 0x40000000000000L;
 
 	// Object access rights
 	public static final int OBJECT_ACCESS_READ             = 0x00000001;

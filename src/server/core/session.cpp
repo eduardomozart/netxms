@@ -2106,6 +2106,12 @@ void ClientSession::processRequest(NXCPMessage *request)
       case CMD_GET_AI_ASSISTANT_FUNCTIONS:
          getAiAssistantFunctions(*request);
          break;
+      case CMD_GET_AI_SKILLS_AND_FUNCTIONS:
+         getAiSkillsAndFunctions(*request);
+         break;
+      case CMD_MODIFY_AI_DISABLED_LIST:
+         modifyAiDisabledList(*request);
+         break;
       case CMD_CALL_AI_ASSISTANT_FUNCTION:
          callAiAssistantFunction(*request);
          break;
@@ -19195,6 +19201,63 @@ void ClientSession::getAiAssistantFunctions(const NXCPMessage& request)
    {
       FillAIAssistantFunctionListMessage(&response);
       response.setField(VID_RCC, RCC_SUCCESS);
+   }
+   else
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(response);
+}
+
+/**
+ * Get list of AI skills and functions (with disabled status)
+ */
+void ClientSession::getAiSkillsAndFunctions(const NXCPMessage& request)
+{
+   NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_SKILLS) || checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+   {
+      FillAISkillsAndFunctionsMessage(&response);
+      response.setField(VID_RCC, RCC_SUCCESS);
+   }
+   else
+   {
+      response.setField(VID_RCC, RCC_ACCESS_DENIED);
+   }
+   sendMessage(response);
+}
+
+/**
+ * Modify AI disabled list (add/remove items)
+ */
+void ClientSession::modifyAiDisabledList(const NXCPMessage& request)
+{
+   NXCPMessage response(CMD_REQUEST_COMPLETED, request.getId());
+   if (checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_SKILLS))
+   {
+      bool add = !request.getFieldAsBoolean(VID_IS_DELETED);
+      TCHAR typeStr[2];
+      request.getFieldAsString(VID_ITEM_TYPE, typeStr, 2);
+      char name[128];
+      request.getFieldAsUtf8String(VID_NAME, name, 128);
+
+      bool success;
+      if (add)
+         success = AddAIDisabledItem(static_cast<char>(typeStr[0]), name);
+      else
+         success = RemoveAIDisabledItem(static_cast<char>(typeStr[0]), name);
+
+      if (success)
+      {
+         response.setField(VID_RCC, RCC_SUCCESS);
+         writeAuditLog(AUDIT_SYSCFG, true, 0, _T("AI %s \"%hs\" %s disabled list"),
+            (typeStr[0] == 'S') ? _T("skill") : _T("function"), name,
+            add ? _T("added to") : _T("removed from"));
+      }
+      else
+      {
+         response.setField(VID_RCC, RCC_DB_FAILURE);
+      }
    }
    else
    {

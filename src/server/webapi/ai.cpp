@@ -383,3 +383,99 @@ int H_AiChatDelete(Context *context)
    nxlog_debug_tag(DEBUG_TAG, 6, _T("H_DeleteChat: deleted chat %u"), chatId);
    return 204;
 }
+
+/**
+ * Handler for GET /v1/ai/skills-and-functions - get all registered skills, functions, and unmatched stop list entries
+ */
+int H_AiSkillsAndFunctions(Context *context)
+{
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_SKILLS) &&
+       !context->checkSystemAccessRights(SYSTEM_ACCESS_USE_AI_ASSISTANT))
+      return 403;
+
+   json_t *response = json_object();
+
+   json_t *skills = GetAISkillsAsJson();
+   json_object_set_new(response, "skills", skills);
+
+   json_t *functions = GetAIFunctionsAsJson();
+   json_object_set_new(response, "functions", functions);
+
+   json_t *extras = GetAIDisabledExtrasAsJson();
+   json_object_set_new(response, "disabledExtras", extras);
+
+   context->setResponseData(response);
+   json_decref(response);
+   return 200;
+}
+
+/**
+ * Handler for POST /v1/ai/disabled-items - add item to stop list
+ */
+int H_AiDisabledItemCreate(Context *context)
+{
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_SKILLS))
+      return 403;
+
+   json_t *request = context->getRequestDocument();
+   if (request == nullptr)
+      return 400;
+
+   const char *type = json_object_get_string_utf8(request, "type", nullptr);
+   if (type == nullptr || (type[0] != 'S' && type[0] != 'F') || type[1] != '\0')
+   {
+      context->setErrorResponse("Invalid or missing \"type\" field (must be \"S\" or \"F\")");
+      return 400;
+   }
+
+   const char *name = json_object_get_string_utf8(request, "name", nullptr);
+   if (name == nullptr || *name == '\0')
+   {
+      context->setErrorResponse("Invalid or missing \"name\" field");
+      return 400;
+   }
+
+   if (!AddAIDisabledItem(type[0], name))
+   {
+      context->setErrorResponse("Database failure");
+      return 500;
+   }
+
+   context->writeAuditLog(AUDIT_SYSCFG, true, 0, L"AI %s \"%hs\" added to disabled list", (type[0] == 'S') ? L"skill" : L"function", name);
+   return 204;
+}
+
+/**
+ * Handler for DELETE /v1/ai/disabled-items/:item-type/:item-name - remove item from stop list
+ */
+int H_AiDisabledItemDelete(Context *context)
+{
+   if (!context->checkSystemAccessRights(SYSTEM_ACCESS_MANAGE_AI_SKILLS))
+      return 403;
+
+   const wchar_t *itemType = context->getPlaceholderValue(L"item-type");
+   if (itemType == nullptr || (itemType[0] != 'S' && itemType[0] != 'F') || itemType[1] != 0)
+   {
+      context->setErrorResponse("Invalid item type (must be \"S\" or \"F\")");
+      return 400;
+   }
+
+   const wchar_t *itemName = context->getPlaceholderValue(L"item-name");
+   if (itemName == nullptr || *itemName == 0)
+   {
+      context->setErrorResponse("Invalid item name");
+      return 400;
+   }
+
+   char name[128];
+   wchar_to_utf8(itemName, -1, name, sizeof(name));
+
+   if (!RemoveAIDisabledItem(static_cast<char>(itemType[0]), name))
+   {
+      context->setErrorResponse("Database failure");
+      return 500;
+   }
+
+   context->writeAuditLog(AUDIT_SYSCFG, true, 0, L"AI %s \"%hs\" removed from disabled list", (itemType[0] == 'S') ? L"skill" : L"function", name);
+   return 204;
+}

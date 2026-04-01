@@ -54,6 +54,9 @@ int H_AiChatDelete(Context *context);
 int H_AiChatGetStatus(Context *context);
 int H_AiChatSendMessage(Context *context);
 int H_AiCharPollQuestion(Context *context);
+int H_AiDisabledItemCreate(Context *context);
+int H_AiDisabledItemDelete(Context *context);
+int H_AiSkillsAndFunctions(Context *context);
 int H_ServerActions(Context *context);
 int H_ServerActionDetails(Context *context);
 int H_ServerActionCreate(Context *context);
@@ -207,6 +210,15 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/ai/chat/:chat-id")
       .DELETE(H_AiChatDelete)
+      .build();
+   RouteBuilder("v1/ai/disabled-items")
+      .POST(H_AiDisabledItemCreate)
+      .build();
+   RouteBuilder("v1/ai/disabled-items/:item-type/:item-name")
+      .DELETE(H_AiDisabledItemDelete)
+      .build();
+   RouteBuilder("v1/ai/skills-and-functions")
+      .GET(H_AiSkillsAndFunctions)
       .build();
    RouteBuilder("v1/alarms")
       .GET(H_Alarms)

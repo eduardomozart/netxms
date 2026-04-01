@@ -24,6 +24,40 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.31 to 61.32
+ */
+static bool H_UpgradeFromV31()
+{
+   CHK_EXEC(CreateTable(
+      L"CREATE TABLE ai_disabled_items ("
+      L"  item_type char(1) not null,"
+      L"  item_name varchar(127) not null,"
+      L"  PRIMARY KEY(item_type,item_name))"));
+
+   // Add SYSTEM_ACCESS_MANAGE_AI_SKILLS to default "Admins" group
+   DB_RESULT hResult = SQLSelect(L"SELECT system_access FROM user_groups WHERE id=1073741825");
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+      {
+         uint64_t access = DBGetFieldUInt64(hResult, 0, 0);
+         access |= SYSTEM_ACCESS_MANAGE_AI_SKILLS;
+         wchar_t query[256];
+         nx_swprintf(query, 256, L"UPDATE user_groups SET system_access=" INT64_FMT L" WHERE id=1073741825", access);
+         CHK_EXEC(SQLQuery(query));
+      }
+      DBFreeResult(hResult);
+   }
+   else if (!g_ignoreErrors)
+   {
+      return false;
+   }
+
+   CHK_EXEC(SetMinorSchemaVersion(32));
+   return true;
+}
+
+/**
  * Upgrade from 61.30 to 61.31
  */
 static bool H_UpgradeFromV30()
@@ -877,6 +911,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 31, 61, 32, H_UpgradeFromV31 },
    { 30, 61, 31, H_UpgradeFromV30 },
    { 29, 61, 30, H_UpgradeFromV29 },
    { 28, 61, 29, H_UpgradeFromV28 },

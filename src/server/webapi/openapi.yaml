@@ -602,6 +602,148 @@ paths:
         - BearerAuth: []
       tags:
         - AI Chat
+  /v1/ai/skills-and-functions:
+    get:
+      summary: Get AI skills, functions, and disabled items
+      description: >-
+        Returns all registered AI skills and functions with their disabled status,
+        plus stop list entries that do not correspond to any registered entity.
+        Requires MANAGE_AI_SKILLS or USE_AI_ASSISTANT access right.
+      responses:
+        '200':
+          description: Skills, functions, and disabled extras retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  skills:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        disabled:
+                          type: boolean
+                        supportsDelegation:
+                          type: boolean
+                        defaultMode:
+                          type: string
+                          enum: [loaded, delegated]
+                  functions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        disabled:
+                          type: boolean
+                        parameters:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              type:
+                                type: string
+                  disabledExtras:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [S, F]
+                        name:
+                          type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient access rights
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Management
+  /v1/ai/disabled-items:
+    post:
+      summary: Add item to AI disabled list
+      description: >-
+        Add a skill or function name to the stop list. The item does not need to
+        correspond to a currently registered entity. Requires MANAGE_AI_SKILLS access right.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name]
+              properties:
+                type:
+                  type: string
+                  enum: [S, F]
+                  description: Item type - S for skill, F for function
+                name:
+                  type: string
+                  description: Name of the skill or function to disable
+            example:
+              type: F
+              name: some-function-name
+      responses:
+        '204':
+          description: Item added to disabled list successfully
+        '400':
+          description: Invalid or missing type/name
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient access rights
+        '500':
+          description: Database failure
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Management
+  /v1/ai/disabled-items/{item-type}/{item-name}:
+    delete:
+      summary: Remove item from AI disabled list
+      description: >-
+        Remove a skill or function name from the stop list. Requires MANAGE_AI_SKILLS access right.
+      parameters:
+        - name: item-type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [S, F]
+          description: Item type - S for skill, F for function
+        - name: item-name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the skill or function to re-enable
+      responses:
+        '204':
+          description: Item removed from disabled list successfully
+        '400':
+          description: Invalid item type or name
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient access rights
+        '500':
+          description: Database failure
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Management
   /v1/alarms:
     get:
       summary: List Alarms

@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2013-2025 Raden Solutions
+ * Copyright (C) 2013-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,31 +21,42 @@ package org.netxms.client.ai;
 import org.netxms.base.NXCPMessage;
 
 /**
- * Function for AI assistant
+ * Disabled AI item that is not currently registered (admin-added arbitrary name)
  */
-public class AiAssistantFunction
+public class AiDisabledItem
 {
    private String name;
-   private String description;
-   private boolean disabled;
+   private char type; // 'S' = skill, 'F' = function
 
    /**
-    * Create function object from NXCP message.
+    * Create from NXCP message.
     *
     * @param msg NXCP message
-    * @param baseId base ID for function fields
+    * @param baseId base ID for fields
     */
-   public AiAssistantFunction(NXCPMessage msg, long baseId)
+   public AiDisabledItem(NXCPMessage msg, long baseId)
    {
       name = msg.getFieldAsString(baseId);
-      description = msg.getFieldAsString(baseId + 1);
-      disabled = msg.getFieldAsBoolean(baseId + 2);
+      String typeStr = msg.getFieldAsString(baseId + 1);
+      type = (typeStr != null && !typeStr.isEmpty()) ? typeStr.charAt(0) : 'F';
    }
 
    /**
-    * Get function name.
+    * Create with explicit values.
     *
-    * @return function name
+    * @param name item name
+    * @param type item type ('S' for skill, 'F' for function)
+    */
+   public AiDisabledItem(String name, char type)
+   {
+      this.name = name;
+      this.type = type;
+   }
+
+   /**
+    * Get item name.
+    *
+    * @return item name
     */
    public String getName()
    {
@@ -53,32 +64,12 @@ public class AiAssistantFunction
    }
 
    /**
-    * Get function description.
+    * Get item type.
     *
-    * @return function description
+    * @return 'S' for skill, 'F' for function
     */
-   public String getDescription()
+   public char getType()
    {
-      return description;
-   }
-
-   /**
-    * Get JSON schema for function parameters.
-    *
-    * @return JSON schema or null
-    */
-   public String getSchema()
-   {
-      return null;
-   }
-
-   /**
-    * Check if this function is disabled by administrator.
-    *
-    * @return true if disabled
-    */
-   public boolean isDisabled()
-   {
-      return disabled;
+      return type;
    }
 }

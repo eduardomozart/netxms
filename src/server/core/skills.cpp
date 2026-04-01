@@ -23,6 +23,7 @@
 #include "nxcore.h"
 #include <nxai.h>
 #include <unordered_map>
+#include <unordered_set>
 
 #define DEBUG_TAG _T("ai.skills")
 
@@ -128,10 +129,14 @@ void NXCORE_EXPORTABLE RegisterAIAssistantSkill(const char *name, const char *de
 std::string GetRegisteredSkills()
 {
    json_t *output = json_array();
+   auto disabledSkills = GetAIDisabledSkills();
 
    s_skillsMutex.lock();
    for(const auto& pair : s_skills)
    {
+      if (disabledSkills.count(pair.first))
+         continue;
+
       const AssistantSkill& skill = *pair.second;
       json_t *skillObject = json_object();
       json_object_set_new(skillObject, "name", json_string(skill.name.c_str()));
@@ -146,10 +151,74 @@ std::string GetRegisteredSkills()
 }
 
 /**
+ * Get set of registered skill names
+ */
+std::unordered_set<std::string> GetRegisteredSkillNames()
+{
+   std::unordered_set<std::string> names;
+   s_skillsMutex.lock();
+   for(const auto& pair : s_skills)
+      names.insert(pair.first);
+   s_skillsMutex.unlock();
+   return names;
+}
+
+/**
+ * Fill NXCP message with registered skills list (including disabled status)
+ */
+void FillAISkillListMessage(NXCPMessage *msg)
+{
+   auto disabledSkills = GetAIDisabledSkills();
+
+   s_skillsMutex.lock();
+   msg->setField(VID_NUM_SKILLS, static_cast<uint32_t>(s_skills.size()));
+
+   uint32_t baseFieldId = VID_SKILL_LIST_BASE;
+   for(const auto& pair : s_skills)
+   {
+      const AssistantSkill& skill = *pair.second;
+      uint32_t fieldId = baseFieldId;
+      msg->setFieldFromUtf8String(fieldId++, skill.name.c_str());         // +0
+      msg->setFieldFromUtf8String(fieldId++, skill.description.c_str());  // +1
+      msg->setField(fieldId++, static_cast<uint16_t>(disabledSkills.count(skill.name) ? 1 : 0)); // +2 disabled flag
+      msg->setField(fieldId++, static_cast<uint16_t>(skill.supportsDelegation ? 1 : 0)); // +3
+      msg->setFieldFromUtf8String(fieldId++, skill.defaultMode == SkillExecutionMode::DELEGATED ? "delegated" : "loaded"); // +4
+      baseFieldId += 0x100;
+   }
+   s_skillsMutex.unlock();
+}
+
+/**
+ * Get registered skills as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetAISkillsAsJson()
+{
+   auto disabledSkills = GetAIDisabledSkills();
+
+   json_t *result = json_array();
+   LockGuard lockGuard(s_skillsMutex);
+   for (const auto& pair : s_skills)
+   {
+      const AssistantSkill& skill = *pair.second;
+      json_t *entry = json_object();
+      json_object_set_new(entry, "name", json_string(skill.name.c_str()));
+      json_object_set_new(entry, "description", json_string(skill.description.c_str()));
+      json_object_set_new(entry, "disabled", json_boolean(disabledSkills.count(skill.name) > 0));
+      json_object_set_new(entry, "supportsDelegation", json_boolean(skill.supportsDelegation));
+      json_object_set_new(entry, "defaultMode", json_string(skill.defaultMode == SkillExecutionMode::DELEGATED ? "delegated" : "loaded"));
+      json_array_append_new(result, entry);
+   }
+   return result;
+}
+
+/**
  * Load AI assistant skill into chat context
  */
 std::string Chat::loadSkill(const char *skillName)
 {
+   if (IsAISkillDisabled(skillName))
+      return std::string("Error: skill is disabled by administrator");
+
    s_skillsMutex.lock();
    auto it = s_skills.find(skillName);
    if (it == s_skills.end())
@@ -159,10 +228,13 @@ std::string Chat::loadSkill(const char *skillName)
    }
 
    const AssistantSkill& skill = *it->second;
+   auto disabledFunctions = GetAIDisabledFunctions();
 
-   // Register skill functions
+   // Register skill functions (skip disabled ones)
    for(const AssistantFunction& function : skill.functions)
    {
+      if (disabledFunctions.count(function.name))
+         continue;
       m_functions.emplace(function.name, make_shared<AssistantFunction>(function));
       nxlog_debug_tag(DEBUG_TAG, 6, L"Loaded AI assistant function \"%hs\" from skill \"%hs\"", function.name.c_str(), skill.name.c_str());
    }
@@ -179,6 +251,9 @@ std::string Chat::loadSkill(const char *skillName)
  */
 std::string Chat::delegateToSkill(const char *skillName, const char *task)
 {
+   if (IsAISkillDisabled(skillName))
+      return std::string("Error: skill is disabled by administrator");
+
    s_skillsMutex.lock();
    auto it = s_skills.find(skillName);
    if (it == s_skills.end())

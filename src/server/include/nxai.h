@@ -24,6 +24,7 @@
 #define _iris_h_
 
 #include <unordered_map>
+#include <unordered_set>
 
 #define AI_ASSISTANT_COMPONENT   L"AI-ASSISTANT"
 
@@ -290,6 +291,61 @@ std::string NXCORE_EXPORTABLE CallGlobalAIAssistantFunction(const char *name, js
  * Fill message with registered function list
  */
 void FillAIAssistantFunctionListMessage(NXCPMessage *msg);
+
+/**
+ * Fill message with registered skills and functions list (including disabled status)
+ */
+void FillAISkillsAndFunctionsMessage(NXCPMessage *msg);
+
+/**
+ * Load AI disabled items from database
+ */
+void LoadAIDisabledLists();
+
+/**
+ * Get snapshot of disabled skills set (for batch checking without repeated locking)
+ */
+std::unordered_set<std::string> NXCORE_EXPORTABLE GetAIDisabledSkills();
+
+/**
+ * Get snapshot of disabled functions set (for batch checking without repeated locking)
+ */
+std::unordered_set<std::string> NXCORE_EXPORTABLE GetAIDisabledFunctions();
+
+/**
+ * Check if a specific AI skill is disabled (convenience wrapper for single-item checks)
+ */
+bool NXCORE_EXPORTABLE IsAISkillDisabled(const std::string& name);
+
+/**
+ * Check if a specific AI function is disabled (convenience wrapper for single-item checks)
+ */
+bool NXCORE_EXPORTABLE IsAIFunctionDisabled(const std::string& name);
+
+/**
+ * Add item to AI disabled list (writes to DB and updates cache)
+ */
+bool NXCORE_EXPORTABLE AddAIDisabledItem(char type, const char *name);
+
+/**
+ * Remove item from AI disabled list (writes to DB and updates cache)
+ */
+bool NXCORE_EXPORTABLE RemoveAIDisabledItem(char type, const char *name);
+
+/**
+ * Get registered skills as JSON array (caller must call json_decref on result)
+ */
+json_t NXCORE_EXPORTABLE *GetAISkillsAsJson();
+
+/**
+ * Get registered functions as JSON array (caller must call json_decref on result)
+ */
+json_t NXCORE_EXPORTABLE *GetAIFunctionsAsJson();
+
+/**
+ * Get disabled items not matching any registered entity as JSON array (caller must call json_decref on result)
+ */
+json_t NXCORE_EXPORTABLE *GetAIDisabledExtrasAsJson();
 
 /**
  * Register AI assistant skill. This function intended to be called only during server core or module initialization.

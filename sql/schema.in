@@ -3210,6 +3210,16 @@ CREATE TABLE ai_message_recipients
 CREATE INDEX idx_ai_msg_recipients_user ON ai_message_recipients(user_id);
 
 /**
+ * AI assistant disabled items (stop list)
+ */
+CREATE TABLE ai_disabled_items
+(
+  item_type char(1) not null,
+  item_name varchar(127) not null,
+  PRIMARY KEY(item_type,item_name)
+) TABLE_TYPE;
+
+/**
  * Connection history (MAC address connection/disconnection/move tracking)
  */
 CREATE TABLE connection_history

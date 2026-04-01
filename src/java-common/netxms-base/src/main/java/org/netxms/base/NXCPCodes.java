@@ -533,6 +533,8 @@ public class NXCPCodes
    public static final int CMD_GET_L2_NETWORK_PATH = 0x0203;
    public static final int CMD_GET_CLOUD_CONNECTOR_NAMES = 0x0204;
    public static final int CMD_GET_CONNECTION_HISTORY = 0x0205;
+   public static final int CMD_GET_AI_SKILLS_AND_FUNCTIONS = 0x0206;
+   public static final int CMD_MODIFY_AI_DISABLED_LIST = 0x0207;
 
 	// CMD_RS_ - Reporting Server related codes
 	public static final int CMD_RS_LIST_REPORTS = 0x1100;
@@ -1514,7 +1516,12 @@ public class NXCPCodes
    public static final long VID_SNMP_TRAP_USM_METHODS = 973;
    public static final long VID_SNMP_TRAP_VERSION = 974;
    public static final long VID_ETHERNET_IP_ADDRESS = 975;
+   public static final long VID_NUM_SKILLS = 976;
+   public static final long VID_NUM_DISABLED_EXTRAS = 977;
+   public static final long VID_ITEM_TYPE = 978;
 
+   public static final long VID_SKILL_LIST_BASE = 0x50000000L;
+   public static final long VID_DISABLED_EXTRAS_BASE = 0x58000000L;
    public static final long VID_RESOURCE_TAG_LIST_BASE = 0x7D000000L;
    public static final long VID_DELETED_RULE_LIST_BASE = 0x7A000000L;
    public static final long VID_CONFLICT_LIST_BASE = 0x7B000000L;

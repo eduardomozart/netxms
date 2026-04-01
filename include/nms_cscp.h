@@ -715,6 +715,8 @@ typedef struct
 #define CMD_GET_L2_NETWORK_PATH           0x0203
 #define CMD_GET_CLOUD_CONNECTOR_NAMES     0x0204
 #define CMD_GET_CONNECTION_HISTORY        0x0205
+#define CMD_GET_AI_SKILLS_AND_FUNCTIONS  0x0206
+#define CMD_MODIFY_AI_DISABLED_LIST      0x0207
 
 #define CMD_RS_LIST_REPORTS               0x1100
 #define CMD_RS_GET_REPORT_DEFINITION      0x1101
@@ -1705,6 +1707,9 @@ typedef struct
 #define VID_SNMP_TRAP_USM_METHODS   ((uint32_t)973)
 #define VID_SNMP_TRAP_VERSION       ((uint32_t)974)
 #define VID_ETHERNET_IP_ADDRESS     ((uint32_t)975)
+#define VID_NUM_SKILLS              ((uint32_t)976)
+#define VID_NUM_DISABLED_EXTRAS     ((uint32_t)977)
+#define VID_ITEM_TYPE               ((uint32_t)978)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)
@@ -1718,6 +1723,8 @@ typedef struct
 // Map elements list base
 #define VID_ELEMENT_LIST_BASE       ((uint32_t)0x10000000)
 #define VID_LINK_LIST_BASE          ((uint32_t)0x40000000)
+#define VID_SKILL_LIST_BASE         ((uint32_t)0x50000000)
+#define VID_DISABLED_EXTRAS_BASE    ((uint32_t)0x58000000)
 
 // Node info list base
 #define VID_NODE_INFO_LIST_BASE     ((uint32_t)0x60000000)

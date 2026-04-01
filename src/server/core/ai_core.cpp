@@ -28,6 +28,7 @@
 #include <ai_messages.h>
 #include <ai_provider.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 
 #define DEBUG_TAG _T("ai.assistant")
@@ -45,6 +46,8 @@ void AITaskSchedulerThread(ThreadPool *aiTaskThreadPool);
 
 size_t GetRegisteredSkillCount();
 std::string GetRegisteredSkills();
+void FillAISkillListMessage(NXCPMessage *msg);
+std::unordered_set<std::string> GetRegisteredSkillNames();
 
 std::string F_AITaskList(json_t *arguments, uint32_t userId);
 std::string F_DeleteAITask(json_t *arguments, uint32_t userId);
@@ -72,6 +75,164 @@ static bool s_guardEnabled = true;
  */
 static AssistantFunctionSet s_globalFunctions;
 static Mutex s_globalFunctionsMutex(MutexType::FAST);
+
+/**
+ * Disabled items cache (stop list)
+ */
+static std::unordered_set<std::string> s_disabledSkills;
+static std::unordered_set<std::string> s_disabledFunctions;
+static RWLock s_disabledListLock;
+
+/**
+ * Load AI disabled items from database
+ */
+void LoadAIDisabledLists()
+{
+   std::unordered_set<std::string> skills;
+   std::unordered_set<std::string> functions;
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT item_type,item_name FROM ai_disabled_items");
+   if (hResult != nullptr)
+   {
+      int count = DBGetNumRows(hResult);
+      for (int i = 0; i < count; i++)
+      {
+         WCHAR type[2];
+         DBGetField(hResult, i, 0, type, 2);
+         char name[128];
+         DBGetFieldA(hResult, i, 1, name, 128);
+         if (type[0] == 'S')
+            skills.emplace(name);
+         else if (type[0] == 'F')
+            functions.emplace(name);
+      }
+      DBFreeResult(hResult);
+   }
+   DBConnectionPoolReleaseConnection(hdb);
+
+   s_disabledListLock.writeLock();
+   s_disabledSkills = std::move(skills);
+   s_disabledFunctions = std::move(functions);
+   s_disabledListLock.unlock();
+
+   nxlog_debug_tag(DEBUG_TAG, 3, L"AI disabled lists loaded: %d skills, %d functions",
+      static_cast<int>(s_disabledSkills.size()), static_cast<int>(s_disabledFunctions.size()));
+}
+
+/**
+ * Get snapshot of disabled skills set
+ */
+std::unordered_set<std::string> NXCORE_EXPORTABLE GetAIDisabledSkills()
+{
+   s_disabledListLock.readLock();
+   auto snapshot = s_disabledSkills;
+   s_disabledListLock.unlock();
+   return snapshot;
+}
+
+/**
+ * Get snapshot of disabled functions set
+ */
+std::unordered_set<std::string> NXCORE_EXPORTABLE GetAIDisabledFunctions()
+{
+   s_disabledListLock.readLock();
+   auto snapshot = s_disabledFunctions;
+   s_disabledListLock.unlock();
+   return snapshot;
+}
+
+/**
+ * Check if a specific AI skill is disabled
+ */
+bool NXCORE_EXPORTABLE IsAISkillDisabled(const std::string& name)
+{
+   s_disabledListLock.readLock();
+   bool disabled = s_disabledSkills.find(name) != s_disabledSkills.end();
+   s_disabledListLock.unlock();
+   return disabled;
+}
+
+/**
+ * Check if a specific AI function is disabled
+ */
+bool NXCORE_EXPORTABLE IsAIFunctionDisabled(const std::string& name)
+{
+   s_disabledListLock.readLock();
+   bool disabled = s_disabledFunctions.find(name) != s_disabledFunctions.end();
+   s_disabledListLock.unlock();
+   return disabled;
+}
+
+/**
+ * Add item to AI disabled list
+ */
+bool NXCORE_EXPORTABLE AddAIDisabledItem(char type, const char *name)
+{
+   WCHAR wname[128];
+   mb_to_wchar(name, -1, wname, 128);
+   WCHAR typeStr[2] = { static_cast<WCHAR>(type), 0 };
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   DB_STATEMENT hStmt = DBPrepare(hdb, L"INSERT INTO ai_disabled_items (item_type,item_name) VALUES (?,?)");
+   bool success = false;
+   if (hStmt != nullptr)
+   {
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, typeStr, DB_BIND_STATIC);
+      DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, wname, DB_BIND_STATIC);
+      success = DBExecute(hStmt);
+      DBFreeStatement(hStmt);
+   }
+   DBConnectionPoolReleaseConnection(hdb);
+
+   if (success)
+   {
+      s_disabledListLock.writeLock();
+      if (type == 'S')
+         s_disabledSkills.emplace(name);
+      else if (type == 'F')
+         s_disabledFunctions.emplace(name);
+      s_disabledListLock.unlock();
+      nxlog_debug_tag(DEBUG_TAG, 4, L"AI %s \"%hs\" added to disabled list",
+         (type == 'S') ? L"skill" : L"function", name);
+   }
+   return success;
+}
+
+/**
+ * Remove item from AI disabled list
+ */
+bool NXCORE_EXPORTABLE RemoveAIDisabledItem(char type, const char *name)
+{
+   WCHAR wname[128];
+   mb_to_wchar(name, -1, wname, 128);
+   WCHAR typeStr[2] = { static_cast<WCHAR>(type), 0 };
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   DB_STATEMENT hStmt = DBPrepare(hdb, L"DELETE FROM ai_disabled_items WHERE item_type=? AND item_name=?");
+   bool success = false;
+   if (hStmt != nullptr)
+   {
+      DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, typeStr, DB_BIND_STATIC);
+      DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, wname, DB_BIND_STATIC);
+      success = DBExecute(hStmt);
+      DBFreeStatement(hStmt);
+   }
+   DBConnectionPoolReleaseConnection(hdb);
+
+   if (success)
+   {
+      s_disabledListLock.writeLock();
+      if (type == 'S')
+         s_disabledSkills.erase(name);
+      else if (type == 'F')
+         s_disabledFunctions.erase(name);
+      s_disabledListLock.unlock();
+      nxlog_debug_tag(DEBUG_TAG, 4, L"AI %s \"%hs\" removed from disabled list",
+         (type == 'S') ? L"skill" : L"function", name);
+   }
+   return success;
+}
 
 /**
  * Thread-local storage for current chat context.
@@ -679,6 +840,9 @@ static std::string CallAIAssistantFunction(shared_ptr<AssistantFunction> functio
  */
 std::string NXCORE_EXPORTABLE CallGlobalAIAssistantFunction(const char *name, json_t *arguments, uint32_t userId)
 {
+   if (IsAIFunctionDisabled(name))
+      return std::string("Error: function is disabled by administrator");
+
    s_globalFunctionsMutex.lock();
    auto it = s_globalFunctions.find(name);
    if (it != s_globalFunctions.end())
@@ -697,6 +861,7 @@ std::string NXCORE_EXPORTABLE CallGlobalAIAssistantFunction(const char *name, js
 void FillAIAssistantFunctionListMessage(NXCPMessage *msg)
 {
    LockGuard lockGuard(s_globalFunctionsMutex);
+   auto disabledFunctions = GetAIDisabledFunctions();
 
    msg->setField(VID_NUM_ELEMENTS, static_cast<uint32_t>(s_globalFunctions.size()));
 
@@ -705,10 +870,11 @@ void FillAIAssistantFunctionListMessage(NXCPMessage *msg)
    {
       const AssistantFunction& function = *f.second;
       uint32_t fieldId = baseFieldId;
-      msg->setFieldFromUtf8String(fieldId++, function.name.c_str());
-      msg->setFieldFromUtf8String(fieldId++, function.description.c_str());
-      fieldId += 7;
-      msg->setField(fieldId++, static_cast<uint32_t>(function.parameters.size()));
+      msg->setFieldFromUtf8String(fieldId++, function.name.c_str());       // +0
+      msg->setFieldFromUtf8String(fieldId++, function.description.c_str()); // +1
+      msg->setField(fieldId++, static_cast<uint16_t>(disabledFunctions.count(function.name) ? 1 : 0)); // +2 disabled flag
+      fieldId += 6;                                                         // +3..+8 reserved
+      msg->setField(fieldId++, static_cast<uint32_t>(function.parameters.size())); // +9
       for(const auto& p : function.parameters)
       {
          msg->setFieldFromUtf8String(fieldId++, p.first.c_str());
@@ -716,6 +882,124 @@ void FillAIAssistantFunctionListMessage(NXCPMessage *msg)
       }
       baseFieldId += 0x100;
    }
+}
+
+/**
+ * Fill message with registered skills and functions list (including disabled status).
+ * Also includes disabled items that are not currently registered (admin-added arbitrary strings).
+ */
+void FillAISkillsAndFunctionsMessage(NXCPMessage *msg)
+{
+   FillAISkillListMessage(msg);
+   FillAIAssistantFunctionListMessage(msg);
+
+   // Include disabled items not currently registered (arbitrary admin-added names)
+   auto disabledSkills = GetAIDisabledSkills();
+   auto disabledFunctions = GetAIDisabledFunctions();
+
+   // Collect registered skill and function names to find extras
+   auto registeredSkillNames = GetRegisteredSkillNames();
+
+   s_globalFunctionsMutex.lock();
+   std::unordered_set<std::string> registeredFunctionNames;
+   for(const auto& pair : s_globalFunctions)
+      registeredFunctionNames.insert(pair.first);
+   s_globalFunctionsMutex.unlock();
+   uint32_t extraCount = 0;
+   uint32_t extraFieldId = VID_DISABLED_EXTRAS_BASE;
+
+   for(const auto& name : disabledSkills)
+   {
+      if (!registeredSkillNames.count(name))
+      {
+         msg->setFieldFromUtf8String(extraFieldId++, name.c_str()); // +0 name
+         msg->setFieldFromUtf8String(extraFieldId++, "S");          // +1 type
+         extraFieldId += 0x100 - 2;
+         extraCount++;
+      }
+   }
+   for(const auto& name : disabledFunctions)
+   {
+      if (!registeredFunctionNames.count(name))
+      {
+         msg->setFieldFromUtf8String(extraFieldId++, name.c_str()); // +0 name
+         msg->setFieldFromUtf8String(extraFieldId++, "F");          // +1 type
+         extraFieldId += 0x100 - 2;
+         extraCount++;
+      }
+   }
+   msg->setField(VID_NUM_DISABLED_EXTRAS, extraCount);
+}
+
+/**
+ * Get registered functions as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetAIFunctionsAsJson()
+{
+   auto disabledFunctions = GetAIDisabledFunctions();
+
+   json_t *result = json_array();
+   LockGuard lockGuard(s_globalFunctionsMutex);
+   for (const auto& f : s_globalFunctions)
+   {
+      const AssistantFunction& function = *f.second;
+      json_t *entry = json_object();
+      json_object_set_new(entry, "name", json_string(function.name.c_str()));
+      json_object_set_new(entry, "description", json_string(function.description.c_str()));
+      json_object_set_new(entry, "disabled", json_boolean(disabledFunctions.count(function.name) > 0));
+
+      json_t *params = json_array();
+      for (const auto& p : function.parameters)
+      {
+         json_t *param = json_object();
+         json_object_set_new(param, "name", json_string(p.first.c_str()));
+         json_object_set_new(param, "type", json_string(p.second.c_str()));
+         json_array_append_new(params, param);
+      }
+      json_object_set_new(entry, "parameters", params);
+
+      json_array_append_new(result, entry);
+   }
+   return result;
+}
+
+/**
+ * Get disabled items not matching any registered entity as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetAIDisabledExtrasAsJson()
+{
+   auto disabledSkills = GetAIDisabledSkills();
+   auto disabledFunctions = GetAIDisabledFunctions();
+   auto registeredSkillNames = GetRegisteredSkillNames();
+
+   s_globalFunctionsMutex.lock();
+   std::unordered_set<std::string> registeredFunctionNames;
+   for (const auto& pair : s_globalFunctions)
+      registeredFunctionNames.insert(pair.first);
+   s_globalFunctionsMutex.unlock();
+
+   json_t *result = json_array();
+   for (const auto& name : disabledSkills)
+   {
+      if (!registeredSkillNames.count(name))
+      {
+         json_t *entry = json_object();
+         json_object_set_new(entry, "type", json_string("S"));
+         json_object_set_new(entry, "name", json_string(name.c_str()));
+         json_array_append_new(result, entry);
+      }
+   }
+   for (const auto& name : disabledFunctions)
+   {
+      if (!registeredFunctionNames.count(name))
+      {
+         json_t *entry = json_object();
+         json_object_set_new(entry, "type", json_string("F"));
+         json_object_set_new(entry, "name", json_string(name.c_str()));
+         json_array_append_new(result, entry);
+      }
+   }
+   return result;
 }
 
 /**
@@ -939,11 +1223,17 @@ void Chat::enableVisualizationOutput()
  */
 void Chat::initializeFunctions()
 {
+   auto disabledFunctions = GetAIDisabledFunctions();
+
    s_globalFunctionsMutex.lock();
    for (const auto& pair : s_globalFunctions)
-      m_functions.emplace(pair.first, pair.second);
+   {
+      if (disabledFunctions.find(pair.first) == disabledFunctions.end())
+         m_functions.emplace(pair.first, pair.second);
+   }
    s_globalFunctionsMutex.unlock();
 
+   // Built-in meta-functions are exempt from the stop list
    m_functions.emplace("load-skill", make_shared<AssistantFunction>(
       "load-skill",
       "Load AI assistant skill into the current chat context. The skill's prompt and functions become permanently available in this conversation. "
@@ -1479,6 +1769,9 @@ char *Chat::takeAsyncErrorMessage()
  */
 std::string Chat::callFunction(const char *name, json_t *arguments)
 {
+   if (IsAIFunctionDisabled(name))
+      return std::string("Error: function is disabled by administrator");
+
    auto it = m_functions.find(name);
    if (it != m_functions.end())
    {
@@ -2386,6 +2679,8 @@ bool InitAIAssistant()
    }
 
    RegisterComponent(AI_ASSISTANT_COMPONENT);
+
+   LoadAIDisabledLists();
 
    RegisterAIAssistantFunction(
       "get-available-skills",

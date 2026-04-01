@@ -1008,6 +1008,8 @@ private:
    void deleteAiAssistantChat(const NXCPMessage& request);
    void requestAiAssistantComment(const NXCPMessage& request);
    void getAiAssistantFunctions(const NXCPMessage& request);
+   void getAiSkillsAndFunctions(const NXCPMessage& request);
+   void modifyAiDisabledList(const NXCPMessage& request);
    void callAiAssistantFunction(const NXCPMessage& request);
    void getAiAgentTasks(const NXCPMessage& request);
    void deleteAiAgentTask(const NXCPMessage& request);
