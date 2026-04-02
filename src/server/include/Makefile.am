@@ -15,6 +15,7 @@ serverinclude_HEADERS = \
 	ai_provider.h \
 	asset_management.h \
 	auth-token.h \
+	cloud-connector.h \
 	device-backup.h \
 	entity_mib.h \
 	hdlink.h \
