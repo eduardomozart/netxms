@@ -20,11 +20,6 @@
 
 #include "prometheus.h"
 #include <microhttpd.h>
-#ifndef _WIN32
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#endif
 
 static struct MHD_Daemon *s_daemon = nullptr;
 static char s_endpoint[256];
