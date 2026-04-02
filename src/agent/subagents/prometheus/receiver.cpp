@@ -1,6 +1,6 @@
 /*
 ** NetXMS Prometheus remote write receiver subagent
-** Copyright (C) 2025 Raden Solutions
+** Copyright (C) 2025-2026 Raden Solutions
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -20,9 +20,11 @@
 
 #include "prometheus.h"
 #include <microhttpd.h>
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 static struct MHD_Daemon *s_daemon = nullptr;
 static char s_endpoint[256];
