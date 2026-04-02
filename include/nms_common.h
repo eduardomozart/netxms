@@ -262,6 +262,7 @@ typedef int bool;
 #define HAVE_VSNPRINTF          1
 
 #define HAVE_GETADDRINFO        1
+#define HAVE_INET_PTON          1
 
 #define HAVE_STDARG_H           1
 
