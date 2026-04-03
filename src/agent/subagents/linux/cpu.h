@@ -277,7 +277,7 @@ void CpuStats::update(const uint64_t measurements[CPU_USAGE_NB_SOURCES])
       float onePercent = (float)totalDelta / 100.0; // 1% of total
       if (onePercent == 0)
       {
-         onePercent = 1; // TODO: why 1?
+         onePercent = 1; // Avoid division by zero; all deltas will also be 0, resulting in 0% usage
       }
 
       /* update detailed stats */

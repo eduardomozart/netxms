@@ -79,7 +79,7 @@ static void CpuUsageCollector()
       float onePercent = (float)totalDelta / 100.0; // 1% of total
       if (onePercent == 0)
       {
-         onePercent = 1; // TODO: why 1?
+         onePercent = 1; // Avoid division by zero; all deltas will also be 0, resulting in 0% usage
       }
 
       /* update detailed stats */

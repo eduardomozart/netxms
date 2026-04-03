@@ -234,13 +234,6 @@ static void CpuUsageCollector()
    // Get data for all cores
    if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &cpuCount, &infoArray, &count) == KERN_SUCCESS)
    {
-      // Assuming core count can't change during runtime
-      /*if (cpuCount != s_maxCPU)
-      {
-         // @todo: Add additional core initialization/de-initialization
-         s_maxCPU = cpuCount;
-      }*/
-
       if (s_currentSlot == CPU_USAGE_SLOTS)
       {
          s_currentSlot = 0;
