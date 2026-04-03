@@ -24,6 +24,27 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.32 to 61.33
+ */
+static bool H_UpgradeFromV32()
+{
+   CHK_EXEC(CreateEventTemplate(EVENT_ACTION_EXECUTION_FAILURE, _T("SYS_ACTION_EXECUTION_FAILURE"),
+      EVENT_SEVERITY_WARNING, 1, _T("3337d969-4fe3-4b48-9f22-4bb83abed368"),
+      _T("Execution of action \"%<actionName>\" (type: %<actionType>) failed"),
+      _T("Generated when server action execution fails.\r\n")
+      _T("Parameters:\r\n")
+      _T("   1) actionName - Action name\r\n")
+      _T("   2) actionType - Action type\r\n")
+      _T("   3) actionData - Action data (command, script name, etc.)\r\n")
+      _T("   4) ruleDescription - Event processing policy rule that triggered the action\r\n")
+      _T("   5) ruleGuid - Event processing policy rule GUID\r\n")
+      _T("   6) eventCode - Original event code that triggered the action\r\n")
+      _T("   7) eventId - Original event ID that triggered the action")));
+   CHK_EXEC(SetMinorSchemaVersion(33));
+   return true;
+}
+
+/**
  * Upgrade from 61.31 to 61.32
  */
 static bool H_UpgradeFromV31()
@@ -911,6 +932,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 32, 61, 33, H_UpgradeFromV32 },
    { 31, 61, 32, H_UpgradeFromV31 },
    { 30, 61, 31, H_UpgradeFromV30 },
    { 29, 61, 30, H_UpgradeFromV29 },

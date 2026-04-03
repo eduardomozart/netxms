@@ -265,6 +265,18 @@ struct ServerActionExecutionContext
    ~ServerActionExecutionContext()
    {
       WriteServerActionExecutionLog(eventId, eventCode, action->id, action->name, action->channelName, recipient, subject, data, ruleGuid, ruleDescription, success);
+      if (!success && (action->type != ServerActionType::NOTIFICATION))
+      {
+         EventBuilder(EVENT_ACTION_EXECUTION_FAILURE, g_dwMgmtNode)
+            .param(L"actionName", action->name)
+            .paramUtf8String(L"actionType", ServerActionTypeDescription(action->type))
+            .param(L"actionData", data.cstr())
+            .param(L"ruleDescription", ruleDescription)
+            .param(L"ruleGuid", ruleGuid)
+            .param(L"eventCode", eventCode)
+            .param(L"eventId", eventId)
+            .post();
+      }
       delete eventObject;
    }
 };

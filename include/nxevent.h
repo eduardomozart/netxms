@@ -221,6 +221,7 @@
 #define EVENT_MAC_CONNECTED                         166
 #define EVENT_MAC_DISCONNECTED                      167
 #define EVENT_MAC_MOVED                             168
+#define EVENT_ACTION_EXECUTION_FAILURE              169
 
 #define EVENT_SNMP_UNMATCHED_TRAP                   500
 #define EVENT_SNMP_COLD_START                       501
