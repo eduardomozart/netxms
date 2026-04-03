@@ -78,8 +78,6 @@ LONG H_Uname(const TCHAR *pszParam, const TCHAR *pArg, TCHAR *pValue, AbstractCo
 		snprintf(szBuff, sizeof(szBuff), "%s %s %s %s %s", utsName.sysname,
 				utsName.nodename, utsName.release, utsName.version,
 				utsName.machine);
-		// TODO: processor & platform
-
    		ret_mbstring(pValue, szBuff);
 
 		nRet = SYSINFO_RC_SUCCESS;
