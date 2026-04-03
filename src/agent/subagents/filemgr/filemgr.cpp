@@ -1050,11 +1050,79 @@ static void CH_GetFileDetails(NXCPMessage *request, NXCPMessage *response, Abstr
 /**
  * Convert file permissions into internal format
  */
+#ifdef _WIN32
+static uint16_t ConvertFilePermissions(const TCHAR *path)
+{
+   uint16_t accessRights = 0;
+
+   PSID ownerSid = nullptr;
+   PSID groupSid = nullptr;
+   PACL dacl = nullptr;
+   PSECURITY_DESCRIPTOR sd = nullptr;
+   if (GetNamedSecurityInfo(path, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+         &ownerSid, &groupSid, &dacl, nullptr, &sd) != ERROR_SUCCESS)
+      return 0;
+
+   if (dacl != nullptr)
+   {
+      TRUSTEE trustee;
+      ACCESS_MASK effectiveRights;
+
+      // Owner permissions
+      if (ownerSid != nullptr)
+      {
+         BuildTrusteeWithSid(&trustee, ownerSid);
+         if (GetEffectiveRightsFromAcl(dacl, &trustee, &effectiveRights) == ERROR_SUCCESS)
+         {
+            if (effectiveRights & FILE_GENERIC_READ)
+               accessRights |= (1 << 0);
+            if (effectiveRights & FILE_GENERIC_WRITE)
+               accessRights |= (1 << 1);
+            if (effectiveRights & FILE_GENERIC_EXECUTE)
+               accessRights |= (1 << 2);
+         }
+      }
+
+      // Group permissions
+      if (groupSid != nullptr)
+      {
+         BuildTrusteeWithSid(&trustee, groupSid);
+         if (GetEffectiveRightsFromAcl(dacl, &trustee, &effectiveRights) == ERROR_SUCCESS)
+         {
+            if (effectiveRights & FILE_GENERIC_READ)
+               accessRights |= (1 << 3);
+            if (effectiveRights & FILE_GENERIC_WRITE)
+               accessRights |= (1 << 4);
+            if (effectiveRights & FILE_GENERIC_EXECUTE)
+               accessRights |= (1 << 5);
+         }
+      }
+
+      // Everyone permissions
+      SID_IDENTIFIER_AUTHORITY worldAuthority = SECURITY_WORLD_SID_AUTHORITY;
+      PSID everyoneSid = nullptr;
+      if (AllocateAndInitializeSid(&worldAuthority, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyoneSid))
+      {
+         BuildTrusteeWithSid(&trustee, everyoneSid);
+         if (GetEffectiveRightsFromAcl(dacl, &trustee, &effectiveRights) == ERROR_SUCCESS)
+         {
+            if (effectiveRights & FILE_GENERIC_READ)
+               accessRights |= (1 << 6);
+            if (effectiveRights & FILE_GENERIC_WRITE)
+               accessRights |= (1 << 7);
+            if (effectiveRights & FILE_GENERIC_EXECUTE)
+               accessRights |= (1 << 8);
+         }
+         FreeSid(everyoneSid);
+      }
+   }
+
+   LocalFree(sd);
+   return accessRights;
+}
+#else
 static uint16_t ConvertFilePermissions(mode_t mode)
 {
-#ifdef _WIN32
-   return 0;   // FIXME: how to return correct permissions?
-#else
    uint16_t accessRights = 0;
    if (S_IRUSR & mode)
       accessRights |= (1 << 0);
@@ -1075,8 +1143,8 @@ static uint16_t ConvertFilePermissions(mode_t mode)
    if (S_IXOTH & mode)
       accessRights |= (1 << 8);
    return accessRights;
-#endif
 }
+#endif
 
 /**
  * Handler for "get file set details" command
@@ -1106,7 +1174,11 @@ static void CH_GetFileSetDetails(const NXCPMessage& request, NXCPMessage *respon
             if (!CalculateFileMD5Hash(fullPath, hash))
                memset(hash, 0, MD5_DIGEST_SIZE);
             response->setField(fieldId++, hash, MD5_DIGEST_SIZE);
+#ifdef _WIN32
+            response->setField(fieldId++, ConvertFilePermissions(fullPath));
+#else
             response->setField(fieldId++, ConvertFilePermissions(fs.st_mode));
+#endif
 #ifdef _WIN32
             TCHAR owner[1024];
             response->setField(fieldId++, GetFileOwner(fileName, owner, 1024));
