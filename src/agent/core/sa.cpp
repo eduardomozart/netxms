@@ -793,8 +793,13 @@ uint32_t UpdateUserAgentNotifications(uint64_t serverId, NXCPMessage *request)
 
    s_userAgentNotificationsLock.lock();
 
-   // FIXME: only delete notifications from current server
-   s_userAgentNotifications.clear();
+   Iterator<UserAgentNotification> it = s_userAgentNotifications.begin();
+   while (it.hasNext())
+   {
+      UserAgentNotification *n = it.next();
+      if (n->getId().serverId == serverId)
+         it.remove();
+   }
 
    TCHAR query[256];
    _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("DELETE FROM user_agent_notifications WHERE server_id=") INT64_FMT, serverId);
