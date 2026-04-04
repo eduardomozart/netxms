@@ -528,6 +528,7 @@ AgentConnection::AgentConnection(const InetAddress& addr, uint16_t port, const T
    m_fileUpdateConnection = false;
    m_downloadRequestId = 0;
    m_downloadActivityTimestamp = 0;
+   m_downloadInactivityTimeout = 300;
    m_bulkDataProcessing = 0;
    m_controlServer = false;
    m_masterServer = false;
@@ -2808,8 +2809,8 @@ NXCPMessage *AgentConnection::customRequest(NXCPMessage *request, const TCHAR *r
                   break;
                }
 
-               // Check if server didn't receive any updates from agent within 300 seconds
-               if (time(nullptr) - m_downloadActivityTimestamp > 300)
+               // Check if server didn't receive any updates from agent within configured inactivity timeout
+               if (time(nullptr) - m_downloadActivityTimestamp > m_downloadInactivityTimeout)
                {
                   msg->setField(VID_RCC, ERR_REQUEST_TIMEOUT);
                   break;

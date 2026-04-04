@@ -1182,6 +1182,7 @@ private:
 	TCHAR m_currentFileName[MAX_PATH];
 	uint32_t m_downloadRequestId;
 	time_t m_downloadActivityTimestamp;
+	uint32_t m_downloadInactivityTimeout;
 	Condition m_condFileDownload;
 	bool m_fileDownloadSucceeded;
 	std::function<void (size_t)> m_downloadProgressCallback;
@@ -1346,6 +1347,7 @@ public:
    void setSharedSecret(const TCHAR *secret);
 
    void setDeleteFileOnDownloadFailure(bool flag) { m_deleteFileOnDownloadFailure = flag; }
+   void setFileDownloadInactivityTimeout(uint32_t timeout) { m_downloadInactivityTimeout = timeout; }
    uint32_t cancelFileDownload();
 };
 
