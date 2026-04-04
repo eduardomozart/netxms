@@ -218,7 +218,6 @@ void ISCListener()
       TCHAR buffer[1024];
       nxlog_write_tag(NXLOG_ERROR, DEBUG_TAG, _T("Unable to bind socket for ISC listener (%s)"), GetLastSocketErrorText(buffer, 1024));
       closesocket(sock);
-      /* TODO: we should initiate shutdown from here */
       return;
    }
 

@@ -68,7 +68,6 @@ void BayStackDriver::analyzeDevice(SNMP_Transport *snmp, const SNMP_ObjectId& oi
 	{
 		slotSize = 128;
 	}
-	/* TODO: should OPtera Metro 1200 be there? */
 	else if (oid.startsWith({ 1, 3, 6, 1, 4, 1, 45, 3, 35 }) || // BayStack 450
 	         oid.startsWith({ 1, 3, 6, 1, 4, 1, 45, 3, 40 }) || // BPS2000
 	         oid.startsWith({ 1, 3, 6, 1, 4, 1, 45, 3, 43 }))   // BayStack 420
@@ -116,7 +115,6 @@ InterfaceList *BayStackDriver::getInterfaces(SNMP_Transport *snmp, NObject *node
 		return nullptr;
 
    // Translate interface names 
-	// TODO: does it really needed?
    for(int i = 0; i < ifList->size(); i++)
    {
 		InterfaceInfo *iface = ifList->get(i);

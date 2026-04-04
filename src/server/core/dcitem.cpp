@@ -3319,6 +3319,31 @@ void DCItem::setAnomalyProfile(json_t *profile)
 }
 
 /**
+ * Save anomaly profile directly to database (targeted update of two columns only)
+ */
+bool DCItem::saveAnomalyProfileToDatabase()
+{
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   DB_STATEMENT hStmt = DBPrepare(hdb, L"UPDATE items SET anomaly_profile=?,anomaly_profile_timestamp=? WHERE item_id=?");
+   if (hStmt == nullptr)
+   {
+      DBConnectionPoolReleaseConnection(hdb);
+      return false;
+   }
+
+   lock();
+   DBBind(hStmt, 1, DB_SQLTYPE_TEXT, m_anomalyProfile, DB_BIND_STATIC);
+   DBBind(hStmt, 2, DB_SQLTYPE_BIGINT, static_cast<int64_t>(m_anomalyProfileTimestamp));
+   DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, m_id);
+   bool success = DBExecute(hStmt);
+   unlock();
+
+   DBFreeStatement(hStmt);
+   DBConnectionPoolReleaseConnection(hdb);
+   return success;
+}
+
+/**
  * Check if current value is anomalous using AI profile
  * Returns true if anomaly detected
  */

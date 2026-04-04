@@ -1475,7 +1475,7 @@ bool NXCORE_EXPORTABLE DeleteNotificationChannel(const wchar_t *name);
 bool LookupDevicePortLayout(const SNMP_ObjectId& objectId, NDD_MODULE_LAYOUT *layout);
 
 void CheckForMgmtNode();
-shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData);
+shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData, uint32_t *rcc = nullptr);
 
 void NXCORE_EXPORTABLE EnumerateClientSessions(void (*callback)(ClientSession*, void*), void *context);
 template <typename C> static inline void EnumerateClientSessions(void (*callback)(ClientSession *, C *), C *context)

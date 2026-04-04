@@ -679,9 +679,7 @@ bool NXCORE_EXPORTABLE GenerateAnomalyProfile(const shared_ptr<DCItem>& dci, con
    dci->setAnomalyProfile(profileJson);
    json_decref(profileJson);
 
-   // Cause database update
-   // TODO: optimize to update only anomaly profile field
-   owner->markAsModified(MODIFY_DATA_COLLECTION);
+   dci->saveAnomalyProfileToDatabase();
 
    nxlog_debug_tag(DEBUG_TAG, 4, _T("GenerateAnomalyProfile: successfully generated profile for DCI \"%s\" [%u]"),
       dci->getName().cstr(), dci->getId());

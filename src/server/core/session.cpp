@@ -3050,7 +3050,9 @@ void ClientSession::modifyEventTemplate(const NXCPMessage& request)
    else
    {
       response.setField(VID_RCC, RCC_ACCESS_DENIED);
-      writeAuditLog(AUDIT_SYSCFG, false, 0, _T("Access denied on modify event template [%d]"), request.getFieldAsUInt32(VID_EVENT_CODE)); // TODO change message
+      TCHAR name[MAX_EVENT_NAME];
+      request.getFieldAsString(VID_NAME, name, MAX_EVENT_NAME);
+      writeAuditLog(AUDIT_SYSCFG, false, 0, _T("Access denied on modify event template %s [%u]"), name, request.getFieldAsUInt32(VID_EVENT_CODE));
    }
 
    sendMessage(response);
@@ -6390,6 +6392,7 @@ void ClientSession::createObject(const NXCPMessage& request)
          {
             // Create new object
             shared_ptr<NetObj> object;
+            uint32_t nodeCreateRCC = RCC_OBJECT_CREATION_FAILED;
             TCHAR deviceId[MAX_OBJECT_NAME];
             switch(objectClass)
             {
@@ -6510,7 +6513,7 @@ void ClientSession::createObject(const NXCPMessage& request)
                   NewNodeData newNodeData(request, ipAddr);
                   if ((parent != nullptr) && (parent->getObjectClass() == OBJECT_CLUSTER))
                      newNodeData.cluster = static_pointer_cast<Cluster>(parent);
-                  object = PollNewNode(&newNodeData);
+                  object = PollNewNode(&newNodeData, &nodeCreateRCC);
                   if (object != nullptr)
                   {
                      static_cast<Node&>(*object).setPrimaryHostName(nodePrimaryName);
@@ -6633,15 +6636,11 @@ void ClientSession::createObject(const NXCPMessage& request)
             }
             else
             {
-               // :DIRTY HACK:
-               // PollNewNode will return nullptr only if IP already
-               // in use. some new() can fail there too, but server will
-               // crash in that case
                if (objectClass == OBJECT_NODE)
                {
-                  response.setField(VID_RCC, RCC_IP_ADDRESS_CONFLICT);
-                  // Add to description IP of new created node and name of node with the same IP
-                  SetNodesConflictString(&response, zoneUIN, ipAddr);
+                  response.setField(VID_RCC, nodeCreateRCC);
+                  if (nodeCreateRCC == RCC_IP_ADDRESS_CONFLICT)
+                     SetNodesConflictString(&response, zoneUIN, ipAddr);
                }
                else if (objectClass == OBJECT_ZONE)
                {

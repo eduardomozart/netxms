@@ -23,6 +23,7 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.netxms.client.NXCSession;
 import org.netxms.client.packages.PackageDeploymentJob;
+import org.netxms.client.users.AbstractUserObject;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.modules.agentmanagement.views.DeploymentJobManager;
@@ -40,6 +41,7 @@ public class DeploymentJobComparator extends ViewerComparator
    {
       PackageDeploymentJob job1 = (PackageDeploymentJob)e1;
       PackageDeploymentJob job2 = (PackageDeploymentJob)e2;
+      NXCSession session = Registry.getSession();
       int result;
       switch((Integer)((SortableTableViewer)viewer).getTable().getSortColumn().getData("ID"))
       {
@@ -74,7 +76,6 @@ public class DeploymentJobComparator extends ViewerComparator
             result = Long.compare(job1.getId(), job2.getId());
             break;
          case DeploymentJobManager.COL_NODE:
-            NXCSession session = Registry.getSession();
             result = session.getObjectName(job1.getNodeId()).compareToIgnoreCase(session.getObjectName(job2.getNodeId()));
             break;
          case DeploymentJobManager.COL_PACKAGE_ID:
@@ -93,7 +94,7 @@ public class DeploymentJobComparator extends ViewerComparator
             result = job1.getStatus().toString().compareTo(job2.getStatus().toString());
             break;
          case DeploymentJobManager.COL_USER:
-            result = Long.compare(job1.getUserId(), job2.getUserId()); // FIXME: sort by user name
+            result = getUserName(session, job1.getUserId()).compareToIgnoreCase(getUserName(session, job2.getUserId()));
             break;
          case DeploymentJobManager.COL_VERSION:
             result = job1.getVersion().compareToIgnoreCase(job2.getVersion());
@@ -102,5 +103,14 @@ public class DeploymentJobComparator extends ViewerComparator
             result = 0;
       }
       return (((SortableTableViewer)viewer).getTable().getSortDirection() == SWT.UP) ? result : -result;
+   }
+
+   /**
+    * Get user name by ID
+    */
+   private static String getUserName(NXCSession session, int userId)
+   {
+      AbstractUserObject user = session.findUserDBObjectById(userId, null);
+      return (user != null) ? user.getName() : ("[" + Integer.toString(userId) + "]");
    }
 }

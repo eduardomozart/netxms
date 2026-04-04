@@ -142,7 +142,7 @@ NewNodeData::~NewNodeData()
  *
  * @param newNodeData data of new node
  */
-shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData)
+shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData, uint32_t *rcc)
 {
    TCHAR ipAddrText[64];
    nxlog_debug_tag(DEBUG_TAG, 4, _T("PollNode(%s/%d) zone %d"), newNodeData->ipAddr.toString(ipAddrText),
@@ -161,6 +161,8 @@ shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData)
       if (count >= 250)
       {
          nxlog_debug_tag(DEBUG_TAG, 4, _T("PollNode: creation of node \"%s\" blocked by license check"), ipAddrText);
+         if (rcc != nullptr)
+            *rcc = RCC_LICENSE_VIOLATION;
          return shared_ptr<Node>();
       }
    }
@@ -171,6 +173,8 @@ shared_ptr<Node> NXCORE_EXPORTABLE PollNewNode(NewNodeData *newNodeData)
        (FindSubnetByIP(newNodeData->zoneUIN, newNodeData->ipAddr) != nullptr)))
    {
       nxlog_debug_tag(DEBUG_TAG, 4, _T("PollNode: Node %s already exist in database"), ipAddrText);
+      if (rcc != nullptr)
+         *rcc = RCC_IP_ADDRESS_CONFLICT;
       return shared_ptr<Node>();
    }
 

@@ -5252,12 +5252,12 @@ String LIBNETXMS_EXPORTABLE SecondsToUptime(uint64_t arg, bool withSeconds)
    return sb;
 }
 
-static double DECIMAL_MULTIPLIERS[] = { 1L, 1000L, 1000000L, 1000000000L, 1000000000000L, 1000000000000000L };
-static double DECIMAL_MULTIPLIERS_SMALL[] = { 0.000000000000001, 0.000000000001, 0.000000001, 0.000001, 0.001, 1 };
-static double BINARY_MULTIPLIERS[] = { 1L, 0x400L, 0x100000L, 0x40000000L, 0x10000000000L, 0x4000000000000L }; //TODO: s_decimalMultipliers
-static const TCHAR *SUFFIX[] = { _T(""), _T(" k"), _T(" M"), _T(" G"), _T(" T"), _T(" P") };
-static const TCHAR *BINARY_SUFFIX[] = { _T(""), _T(" Ki"), _T(" Mi"), _T(" Gi"), _T(" Ti"), _T(" Pi") };
-static const TCHAR *SUFFIX_SMALL[] = { _T(" f"), _T(" p"), _T(" n"), _T(" μ"), _T(" m"), _T("") };
+static double s_decimalMultipliers[] = { 1L, 1000L, 1000000L, 1000000000L, 1000000000000L, 1000000000000000L };
+static double s_decimalMultipliersSmall[] = { 0.000000000000001, 0.000000000001, 0.000000001, 0.000001, 0.001, 1 };
+static double s_binaryMultipliers[] = { 1L, 0x400L, 0x100000L, 0x40000000L, 0x10000000000L, 0x4000000000000L };
+static const TCHAR *s_suffix[] = { _T(""), _T(" k"), _T(" M"), _T(" G"), _T(" T"), _T(" P") };
+static const TCHAR *s_binarySuffix[] = { _T(""), _T(" Ki"), _T(" Mi"), _T(" Gi"), _T(" Ti"), _T(" Pi") };
+static const TCHAR *s_suffixSmall[] = { _T(" f"), _T(" p"), _T(" n"), _T(" μ"), _T(" m"), _T("") };
 
 /**
  * Convert number to short form using decadic unit prefixes
@@ -5266,7 +5266,7 @@ static const TCHAR *SUFFIX_SMALL[] = { _T(" f"), _T(" p"), _T(" n"), _T(" μ"), 
 String LIBNETXMS_EXPORTABLE FormatNumber(double n, bool useBinaryMultipliers, int multiplierPower, int precision, const TCHAR *unit)
 {
    bool isSmallNumber = ((n > -0.01) && (n < 0.01) && n != 0 && multiplierPower <= 0) || multiplierPower < 0;
-   const double *multipliers = isSmallNumber ? DECIMAL_MULTIPLIERS_SMALL : useBinaryMultipliers ? BINARY_MULTIPLIERS : DECIMAL_MULTIPLIERS;
+   const double *multipliers = isSmallNumber ? s_decimalMultipliersSmall : useBinaryMultipliers ? s_binaryMultipliers : s_decimalMultipliers;
 
    int i = 0;
    if (multiplierPower != 0)
@@ -5288,7 +5288,7 @@ String LIBNETXMS_EXPORTABLE FormatNumber(double n, bool useBinaryMultipliers, in
    const TCHAR *suffix;
    if (i >= 0)
    {
-      suffix = isSmallNumber ? SUFFIX_SMALL[i] : (useBinaryMultipliers ? BINARY_SUFFIX[i] : SUFFIX[i]);
+      suffix = isSmallNumber ? s_suffixSmall[i] : (useBinaryMultipliers ? s_binarySuffix[i] : s_suffix[i]);
       _sntprintf(out, 128, _T("%.*f"), abs(precision), n / multipliers[i]);
    }
    else

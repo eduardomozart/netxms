@@ -641,6 +641,7 @@ public:
 	SharedString getAIHint() const { return GetAttributeWithLock(m_aiHint, m_mutex); }
 
 	void setAnomalyProfile(json_t *profile);
+	bool saveAnomalyProfileToDatabase();
 	bool checkAnomalyAIProfile(const ItemValue& value);
 
 	uint64_t getCacheMemoryUsage() const;

@@ -253,7 +253,7 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
       if (ifc == nullptr)  // unable to find interface by bridge port number or device is not a bridge
          ifc = node->findInterfaceByIndex(port.portNumber);
       if (ifc == nullptr)  // unable to find interface by bridge port number or interface index, try description
-         ifc = node->findInterfaceByName(port.ifDescr);  /* TODO: find by cached ifName value */
+         ifc = node->findInterfaceByName(port.ifDescr);
       if (ifc == nullptr)  // some devices may report interface alias as description in LLDP local port list
          ifc = node->findInterfaceByAlias(port.ifDescr);
       if (ifc != nullptr)
@@ -299,7 +299,7 @@ static shared_ptr<Interface> FindRemoteInterface(Node *node, uint32_t idSubType,
 			mbcp_to_wchar((char *)id, (int)idLen, ifName, 128, "ISO-8859-1");
 			ifName[MIN(idLen, 127)] = 0;
 		   nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteInterface(%s [%u]): ifName=\"%s\""), node->getName(), node->getId(), ifName);
-			ifc = node->findInterfaceByName(ifName);	/* TODO: find by cached ifName value */
+			ifc = node->findInterfaceByName(ifName);
 			if (ifc == nullptr)
 			{
 			   // Attempt to get alternative interface identification from driver

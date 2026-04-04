@@ -189,11 +189,6 @@ static uint32_t HandlerAccessPointListAdopted(SNMP_Variable *var, SNMP_Transport
    oid[(sizeof(oid) / sizeof(oid[0])) - 1] = apIndex;
 
    const TCHAR *model;
-   //TCHAR model[128];
-   // TODO: model=AP300, PN=WSAP-5100-050-WWR. Unadopted return only model, adopted return PN as model
-   //       and model (AP300). Need to decide, where to put this info.
-   // get AP model
-   //ret = SnmpGet(version, transport, NULL, oid, sizeof(oid) / sizeof(oid[0]), &model, sizeof(model), 0);
 
    // get serial
    if (ret == SNMP_ERR_SUCCESS)

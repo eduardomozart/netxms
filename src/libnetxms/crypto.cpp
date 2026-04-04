@@ -23,8 +23,11 @@
 
 #include "libnetxms.h"
 #include "ice.h"
+#include "sha2.h"
 #include <nxcpapi.h>
+#ifdef _WITH_ENCRYPTION
 #include <openssl/hmac.h>
+#endif
 
 #define DEBUG_TAG _T("crypto")
 
@@ -969,7 +972,40 @@ void LIBNETXMS_EXPORTABLE SignMessage(const void *message, size_t mlen, const BY
 #ifdef _WITH_ENCRYPTION
    HMAC(EVP_sha256(), key, static_cast<int>(klen), reinterpret_cast<const BYTE*>(message), mlen, signature, nullptr);
 #else
-   memset(signature, 0, SHA256_DIGEST_SIZE); // FIXME: use embedded HMAC-SHA256 implementation
+   BYTE keyBlock[SHA256_BLOCK_SIZE];
+   if (klen > SHA256_BLOCK_SIZE)
+   {
+      sha256_ctx kctx;
+      I_sha256_init(&kctx);
+      I_sha256_update(&kctx, key, static_cast<unsigned int>(klen));
+      I_sha256_final(&kctx, keyBlock);
+      memset(keyBlock + SHA256_DIGEST_SIZE, 0, SHA256_BLOCK_SIZE - SHA256_DIGEST_SIZE);
+   }
+   else
+   {
+      memcpy(keyBlock, key, klen);
+      if (klen < SHA256_BLOCK_SIZE)
+         memset(keyBlock + klen, 0, SHA256_BLOCK_SIZE - klen);
+   }
+
+   BYTE pad[SHA256_BLOCK_SIZE];
+   for (int i = 0; i < SHA256_BLOCK_SIZE; i++)
+      pad[i] = keyBlock[i] ^ 0x36;
+
+   sha256_ctx ctx;
+   I_sha256_init(&ctx);
+   I_sha256_update(&ctx, pad, SHA256_BLOCK_SIZE);
+   I_sha256_update(&ctx, reinterpret_cast<const unsigned char*>(message), static_cast<unsigned int>(mlen));
+   BYTE innerHash[SHA256_DIGEST_SIZE];
+   I_sha256_final(&ctx, innerHash);
+
+   for (int i = 0; i < SHA256_BLOCK_SIZE; i++)
+      pad[i] = keyBlock[i] ^ 0x5C;
+
+   I_sha256_init(&ctx);
+   I_sha256_update(&ctx, pad, SHA256_BLOCK_SIZE);
+   I_sha256_update(&ctx, innerHash, SHA256_DIGEST_SIZE);
+   I_sha256_final(&ctx, signature);
 #endif
 }
 

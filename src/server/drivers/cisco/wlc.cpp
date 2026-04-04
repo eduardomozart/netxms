@@ -167,8 +167,20 @@ bool CiscoWirelessControllerDriver::getVirtualizationType(SNMP_Transport *snmp, 
  */
 int CiscoWirelessControllerDriver::getClusterMode(SNMP_Transport *snmp, NObject *node, DriverData *driverData)
 {
-   /* TODO: check if other cluster modes possible */
-   return CLUSTER_MODE_STANDALONE;
+   uint32_t ssoConfig;
+   // cLHaApSsoConfig: enable(1), disable(2)
+   if (SnmpGetEx(snmp, _T(".1.3.6.1.4.1.9.9.615.1.2.1.0"), nullptr, 0, &ssoConfig, sizeof(uint32_t), 0, nullptr) != SNMP_ERR_SUCCESS)
+      return CLUSTER_MODE_STANDALONE;
+
+   if (ssoConfig != 1)
+      return CLUSTER_MODE_STANDALONE;
+
+   uint32_t primaryUnit;
+   // cLHaPrimaryUnit: true(1), false(2)
+   if (SnmpGetEx(snmp, _T(".1.3.6.1.4.1.9.9.615.1.2.2.0"), nullptr, 0, &primaryUnit, sizeof(uint32_t), 0, nullptr) != SNMP_ERR_SUCCESS)
+      return CLUSTER_MODE_STANDALONE;
+
+   return (primaryUnit == 1) ? CLUSTER_MODE_ACTIVE : CLUSTER_MODE_STANDBY;
 }
 
 /*
