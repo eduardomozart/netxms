@@ -339,15 +339,12 @@ static void encrypt_attr_style_1(char *secret, char *vector, VALUE_PAIR *vp)
 	vp->length = sizeof(salt);
 
 	/*
-	 * Fill in salt. Must be unique per attribute that uses it in the same 
+	 * Fill in salt. Must be unique per attribute that uses it in the same
 	 * packet, and the most significant bit must be set - see RFC 2868.
 	 *
-	 * FIXME: this _may_ be too simple. For now we just take the vp 
-	 * pointer, which should be different between attributes, xor-ed with 
-	 * the first longword of the vector to make it a little more unique.
-	 *
-	 * Oh, and sizeof(long) always == sizeof(void*) in our part of the
-	 * universe, right? (*BSD, Solaris, Linux, DEC Unix...)
+	 * We take the vp pointer, which should be different between attributes,
+	 * xor-ed with the first longword of the vector to make it a little more
+	 * unique.
 	 */
 #ifdef _WIN32
    salt = htons((WORD)((((ULONG_PTR)vp ^ *(ULONG_PTR *)vector) & 0xffff) | 0x8000));
@@ -489,11 +486,7 @@ static int rad_build_packet(AUTH_HDR *auth, int auth_len,
 		{
 
 			case PW_TYPE_STRING:
-				/*
-				 * FIXME: this is just to make sure but
-				 * should NOT be needed. In fact I have no
-				 * idea if it is needed :)
-				 */
+				/* Recalculate length as a safety net */
 				if (vp->length == 0 && vp->strvalue[0] != 0)
 				{
 					vp->length = (int)strlen(vp->strvalue);
@@ -577,11 +570,7 @@ static int rad_build_packet(AUTH_HDR *auth, int auth_len,
 		}
 	}
 
-	/*
-	 * Append the user message
-	 * FIXME: add multiple PW_REPLY_MESSAGEs if it
-	 * doesn't fit into one.
-	 */
+	/* Append the user message (messages longer than AUTH_STRING_LEN are dropped) */
 	if (msg && msg[0])
 	{
 		len = (int)strlen(msg);

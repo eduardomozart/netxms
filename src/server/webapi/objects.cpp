@@ -445,7 +445,7 @@ int H_ObjectExecuteAgentCommand(Context *context)
    if (rcc ==  ERR_SUCCESS)
    {
       responseCode = 201;
-      // TODO: audit
+      context->writeAuditLog(AUDIT_OBJECTS, true, node->getId(), _T("Executed agent command \"%s\" on object %s [%u]"), actionName, node->getName(), node->getId());
    }
    else
    {

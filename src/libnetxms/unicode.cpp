@@ -1381,7 +1381,7 @@ int LIBNETXMS_EXPORTABLE nx_vwscanf(const wchar_t *format, va_list args)
 #if HAVE_VWSCANF
    int rc = vwscanf(fmt, args);
 #else
-   int rc = -1; // FIXME: add workaround implementation
+#error vwscanf not available on this platform
 #endif
    FreeFormatBuffer(fmt);
    return rc;
@@ -1397,7 +1397,7 @@ int LIBNETXMS_EXPORTABLE nx_vfwscanf(FILE *fp, const wchar_t *format, va_list ar
 #if HAVE_VFWSCANF
    int rc = vfwscanf(fp, fmt, args);
 #else
-   int rc = -1; // FIXME: add workaround implementation
+#error vfwscanf not available on this platform
 #endif
    FreeFormatBuffer(fmt);
    return rc;
@@ -1413,7 +1413,7 @@ int LIBNETXMS_EXPORTABLE nx_vswscanf(const wchar_t *str, const wchar_t *format, 
 #if HAVE_VSWSCANF
    int rc = vswscanf(str, fmt, args);
 #else
-   int rc = -1; // FIXME: add workaround implementation
+#error vswscanf not available on this platform
 #endif
    FreeFormatBuffer(fmt);
    return rc;
