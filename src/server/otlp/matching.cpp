@@ -22,6 +22,7 @@
 
 #include "otlp.h"
 #include <uthash.h>
+#include <netxms-regex.h>
 
 /**
  * Matching rules loaded from database
