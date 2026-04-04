@@ -867,6 +867,107 @@ paths:
           description: Alarm with given ID does not exist
       security:
         - BearerAuth: []
+  /v1/connection-history:
+    get:
+      tags:
+        - Find
+      summary: Get connection history
+      description: Query the connection history table for MAC address connection/disconnection events. Requires SYSTEM_ACCESS_SEARCH_NETWORK.
+      parameters:
+        - name: macAddress
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by MAC address.
+        - name: nodeId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by node ID (matches switch_id or node_id).
+        - name: switchId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by switch ID.
+        - name: interfaceId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by interface ID.
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Start of time range (unix timestamp).
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: End of time range (unix timestamp).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1000
+            maximum: 10000
+          description: Maximum number of records to return (default 1000, max 10000).
+      responses:
+        '200':
+          description: Connection history records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    recordId:
+                      type: integer
+                      format: int64
+                      description: Record ID
+                    timestamp:
+                      type: integer
+                      description: Event timestamp (unix)
+                    macAddress:
+                      type: string
+                      description: MAC address
+                    ipAddress:
+                      type: string
+                      description: IP address
+                    nodeId:
+                      type: integer
+                      description: Node ID
+                    switchId:
+                      type: integer
+                      description: Switch ID
+                    interfaceId:
+                      type: integer
+                      description: Interface ID
+                    vlanId:
+                      type: integer
+                      description: VLAN ID
+                    eventType:
+                      type: integer
+                      description: Event type
+                    oldSwitchId:
+                      type: integer
+                      description: Previous switch ID
+                    oldInterfaceId:
+                      type: integer
+                      description: Previous interface ID
+        '401':
+          description: Unauthorized
+        '403':
+          description: User does not have SEARCH_NETWORK access
+      security:
+        - BearerAuth: []
   /v1/find/mac-address:
     get:
       summary: Find MAC address
