@@ -39,12 +39,9 @@ public class AlarmCategoryLabelProvider implements ITableLabelProvider
    public Image getColumnImage(Object element, int columnIndex)
    {
       return null;
-      //TODO: return (columnIndex == 0) ? getImage(element) : null;
    }
 
-   /*
-    * (non-Javadoc)
-    * 
+   /**
     * @see org.eclipse.jface.viewers.ITableLabelProvider#getColumnText(java.lang.Object, int)
     */
    @Override
@@ -65,29 +62,22 @@ public class AlarmCategoryLabelProvider implements ITableLabelProvider
    @Override
    public void addListener(ILabelProviderListener listener)
    {
-      // TODO Auto-generated method stub
-      
    }
 
    @Override
    public void dispose()
    {
-      // TODO Auto-generated method stub
-      
    }
 
    @Override
    public boolean isLabelProperty(Object element, String property)
    {
-      // TODO Auto-generated method stub
       return false;
    }
 
    @Override
    public void removeListener(ILabelProviderListener listener)
    {
-      // TODO Auto-generated method stub
-      
    }
 
 }

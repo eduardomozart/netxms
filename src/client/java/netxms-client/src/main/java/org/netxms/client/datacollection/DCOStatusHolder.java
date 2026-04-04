@@ -31,8 +31,8 @@ public class DCOStatusHolder
    /**
     * Status holder constructor
     *
-    * @param items TODO
-    * @param status TODO
+    * @param items array of data collection object identifiers
+    * @param status new status for given data collection objects
     */
    public DCOStatusHolder(long[] items, DataCollectionObjectStatus status)
    {
@@ -50,9 +50,9 @@ public class DCOStatusHolder
    }
 
    /**
-    * TODO
+    * Set data collection object identifiers
     *
-    * @param items TODO
+    * @param items array of data collection object identifiers
     */
    public void setDciIdArray(long[] items)
    {

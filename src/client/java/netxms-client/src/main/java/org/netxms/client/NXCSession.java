@@ -4155,7 +4155,7 @@ public class NXCSession
     * is case-insensitive.
     *
     * @param name object name to find
-    * @param filter TODO
+    * @param filter object filter to apply or null
     * @return object with matching name or null
     */
    public AbstractObject findObjectByName(final String name, ObjectFilter filter)
@@ -6315,7 +6315,7 @@ public class NXCSession
     * @param from       Start of time range or null for no limit
     * @param to         End of time range or null for no limit
     * @param maxRows    Maximum number of rows to retrieve or 0 for no limit
-    * @param valueType  TODO
+    * @param valueType  type of historical data to retrieve
     * @param delegateReadObject delegate object read access should be provided thought
     * @return DCI data set
     * @throws IOException  if socket I/O error occurs
@@ -6426,7 +6426,7 @@ public class NXCSession
     * @param from      Start of time range or null for no limit
     * @param to        End of time range or null for no limit
     * @param maxRows   Maximum number of rows to retrieve or 0 for no limit
-    * @param valueType TODO
+    * @param valueType type of historical data to retrieve
     * @param delegateReadObject delegate object read access should be provided thought
     * @return DCI data set
     * @throws IOException  if socket I/O error occurs
@@ -6447,7 +6447,7 @@ public class NXCSession
     * @param from      Start of time range or null for no limit
     * @param to        End of time range or null for no limit
     * @param maxRows   Maximum number of rows to retrieve or 0 for no limit
-    * @param valueType TODO
+    * @param valueType type of historical data to retrieve
     * @return DCI data set
     * @throws IOException  if socket I/O error occurs
     * @throws NXCException if NetXMS server returns an error or operation was timed out

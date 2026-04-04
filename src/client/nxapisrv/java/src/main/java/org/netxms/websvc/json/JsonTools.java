@@ -71,7 +71,6 @@ public class JsonTools
    public static Gson createGsonInstance(Class<?> adapterExclusion)
    {
       GsonBuilder builder = new GsonBuilder();
-      builder.setPrettyPrinting();  // FIXME: remove for production
       registerTypeAdapter(builder, Date.class, new DateAdapter(), adapterExclusion);
       registerTypeAdapter(builder, InetAddress.class, new InetAddressAdapter(), adapterExclusion);
       registerTypeAdapter(builder, InetAddressEx.class, new InetAddressExAdapter(), adapterExclusion);

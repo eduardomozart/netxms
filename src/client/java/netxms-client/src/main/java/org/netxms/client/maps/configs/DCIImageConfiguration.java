@@ -62,7 +62,7 @@ public class DCIImageConfiguration
    /**
     * Returns DCI array as a list
     *
-    * @return TODO
+    * @return list of DCI image rules
     */
    public List<DCIImageRule> getRulesAsList()
    {

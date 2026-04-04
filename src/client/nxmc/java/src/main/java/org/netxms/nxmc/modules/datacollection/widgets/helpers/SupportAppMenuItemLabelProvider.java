@@ -50,7 +50,6 @@ public class SupportAppMenuItemLabelProvider extends LabelProvider implements IT
    @Override
    public Color getForeground(Object element)
    {
-      // TODO Auto-generated method stub
       return null;
    }
 
@@ -60,7 +59,6 @@ public class SupportAppMenuItemLabelProvider extends LabelProvider implements IT
    @Override
    public Color getBackground(Object element)
    {
-      // TODO Auto-generated method stub
       return null;
    }
 
