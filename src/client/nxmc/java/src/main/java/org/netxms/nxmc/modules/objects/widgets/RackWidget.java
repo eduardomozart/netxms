@@ -301,15 +301,11 @@ public class RackWidget extends Canvas implements PaintListener, ImageUpdateList
 
          if ((c.getRearImage() != null) && !c.getRearImage().equals(NXCommon.EMPTY_GUID) && (side == RackOrientation.REAR))
          {
-            Image image = ImageProvider.getInstance().getImage(c.getRearImage());
-            Rectangle r = image.getBounds();
-            gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
+            ImageProvider.getInstance().renderImage(c.getRearImage(), gc, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
          }
          else if ((c.getFrontImage() != null) && !c.getFrontImage().equals(NXCommon.EMPTY_GUID) && (side == RackOrientation.FRONT))
          {
-            Image image = ImageProvider.getInstance().getImage(c.getFrontImage());
-            Rectangle r = image.getBounds();
-            gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
+            ImageProvider.getInstance().renderImage(c.getFrontImage(), gc, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
          }         
          else // Draw default representation
          {         
@@ -378,15 +374,11 @@ public class RackWidget extends Canvas implements PaintListener, ImageUpdateList
          }
          else if ((n.getRearRackImage() != null) && !n.getRearRackImage().equals(NXCommon.EMPTY_GUID) && side == RackOrientation.REAR)
          {
-            Image image = ImageProvider.getInstance().getImage(n.getRearRackImage());
-            Rectangle r = image.getBounds();
-            gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
+            ImageProvider.getInstance().renderImage(n.getRearRackImage(), gc, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
          }
          else if ((n.getFrontRackImage() != null) && !n.getFrontRackImage().equals(NXCommon.EMPTY_GUID) && side == RackOrientation.FRONT)
          {
-            Image image = ImageProvider.getInstance().getImage(n.getFrontRackImage());
-            Rectangle r = image.getBounds();
-            gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
+            ImageProvider.getInstance().renderImage(n.getFrontRackImage(), gc, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
          }         
          else // Draw default representation
          {

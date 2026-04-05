@@ -154,19 +154,21 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
       Image image = (view == RackOrientation.REAR) ? RackWidget.getImageDefaultRear() : RackWidget.getImageDefaultTop();
       UUID imageGuid = (view == RackOrientation.FRONT) ? chassis.getFrontRackImage() : chassis.getRearRackImage();
       if (!imageGuid.equals(NXCommon.EMPTY_GUID))
-         image = ImageProvider.getInstance().getImage(imageGuid);
-
-      Rectangle r = image.getBounds();
-      if(chassis.getRackHeight() == 1 || !imageGuid.equals(NXCommon.EMPTY_GUID))
       {
+         ImageProvider.getInstance().renderImage(imageGuid, gc, rect.x, rect.y, rect.width, rect.height);
+      }
+      else if (chassis.getRackHeight() == 1)
+      {
+         Rectangle r = image.getBounds();
          gc.drawImage(image, 0, 0, r.width, r.height, rect.x, rect.y, rect.width, rect.height);
       }
-      else 
+      else
       {
          Image imageMiddle = (view == RackOrientation.REAR) ? RackWidget.getImageDefaultRear() : RackWidget.getImageDefaultMiddle();
          Image imageBottom = (view == RackOrientation.REAR) ? RackWidget.getImageDefaultRear() : RackWidget.getImageDefaultBottom();
          int oneUnitHeight = rect.height/chassis.getRackHeight();
 
+         Rectangle r = image.getBounds();
          gc.drawImage(image, 0, 0, r.width, r.height, rect.x, rect.y, rect.width, oneUnitHeight);
          r = imageMiddle.getBounds();
          for (int i = 1; i < (chassis.getRackHeight() - 1); i++)
@@ -206,14 +208,8 @@ public class ChassisWidget extends Canvas implements PaintListener, DisposeListe
             imageGuid = placemet.getImage();
             if (!imageGuid.equals(NXCommon.EMPTY_GUID))
             {
-               image = null;
-               image = ImageProvider.getInstance().getImage(imageGuid);
-               if(image != null)
-               {
-                  r = image.getBounds();
-                  gc.drawImage(image, 0, 0, r.width, r.height, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
-                  imageMissing = false;
-               }
+               ImageProvider.getInstance().renderImage(imageGuid, gc, unitRect.x, unitRect.y, unitRect.width, unitRect.height);
+               imageMissing = false;
             }
             if (imageMissing)
             {

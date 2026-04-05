@@ -304,6 +304,12 @@ public class ImagePreview extends Composite
             SVGImage svg = SVGImage.createFromStream(new ByteArrayInputStream(imageDescriptor.getBinaryData()));
             int width = (svg.getWidth() > 0) ? (int)svg.getWidth() : 256;
             int height = (svg.getHeight() > 0) ? (int)svg.getHeight() : 256;
+            if ((width > 1024) || (height > 1024))
+            {
+               float scale = 1024.0f / Math.max(width, height);
+               width = Math.max(1, Math.round(width * scale));
+               height = Math.max(1, Math.round(height * scale));
+            }
             return ImageProviderTools.rasterizeSVG(display, svg, width, height);
          }
          catch(SVGParseException e)

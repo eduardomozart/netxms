@@ -63,6 +63,7 @@ public class ImageProvider
    private static final Logger logger = LoggerFactory.getLogger(ImageProvider.class);
 
    private static final int DEFAULT_SVG_SIZE = 256;
+   private static final int MAX_SVG_RASTER_SIZE = 4096;
    private static final int RASTER_CACHE_MAX_SIZE = 256;
 
    /**
@@ -555,6 +556,15 @@ public class ImageProvider
 
       int width = (svg.getWidth() > 0) ? (int)svg.getWidth() : defaultWidth;
       int height = (svg.getHeight() > 0) ? (int)svg.getHeight() : defaultHeight;
+
+      // Cap dimensions to prevent OOM on SVGs with large viewBox values (e.g. mm-based units)
+      if ((width > MAX_SVG_RASTER_SIZE) || (height > MAX_SVG_RASTER_SIZE))
+      {
+         float scale = (float)MAX_SVG_RASTER_SIZE / Math.max(width, height);
+         width = Math.max(1, Math.round(width * scale));
+         height = Math.max(1, Math.round(height * scale));
+      }
+
       return getRasterizedImage(guid, width, height);
    }
 
