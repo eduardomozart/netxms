@@ -199,6 +199,23 @@ struct ObjectRuleStats
 };
 
 /**
+ * Per object absence detection state
+ */
+struct AbsenceState
+{
+   time_t lastMatchTime;   // Last time the expected regex matched
+   time_t lastAlertTime;   // Last time an absence alert was fired
+   bool armed;             // Set to true after first match (prevents false alerts on startup)
+
+   AbsenceState()
+   {
+      lastMatchTime = 0;
+      lastAlertTime = 0;
+      armed = false;
+   }
+};
+
+/**
  * Metric defined by parser
  */
 struct LogParserMetric
@@ -212,6 +229,7 @@ struct LogParserMetric
 
 #ifdef _WIN32
 template class LIBNXLP_EXPORTABLE HashMap<uint32_t, ObjectRuleStats>;
+template class LIBNXLP_EXPORTABLE HashMap<uint32_t, AbsenceState>;
 template class LIBNXLP_EXPORTABLE HashMap<uint32_t, String>;
 template class LIBNXLP_EXPORTABLE StructArray<LogParserMetric>;
 #endif
@@ -256,6 +274,10 @@ private:
 	StructArray<LogParserMetric> m_metrics;
 	HashMap<uint32_t, ObjectRuleStats> m_objectCounters;
    HashMap<uint32_t, String> m_groupName;
+   bool m_isAbsenceRule;
+   int m_absenceInterval;
+   int m_absenceRealertInterval;
+   HashMap<uint32_t, AbsenceState> m_absenceState;
 
 	bool matchInternal(bool extMode, const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line,
 	         StringList *variables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName,
@@ -265,6 +287,7 @@ private:
    void incCheckCount(uint32_t objectId);
    void incMatchCount(uint32_t objectId);
    void updateGroupNames();
+   void recordAbsenceMatch(uint32_t objectId);
 
 public:
 	LogParserRule(LogParser *parser, const TCHAR *name,
@@ -303,6 +326,14 @@ public:
 
 	void setInverted(bool flag) { m_isInverted = flag; }
 	bool isInverted() const { return m_isInverted; }
+
+	void setAbsenceRule(bool flag) { m_isAbsenceRule = flag; }
+	bool isAbsenceRule() const { return m_isAbsenceRule; }
+	void setAbsenceInterval(int seconds) { m_absenceInterval = seconds; }
+	int getAbsenceInterval() const { return m_absenceInterval; }
+	void setAbsenceRealertInterval(int seconds) { m_absenceRealertInterval = seconds; }
+	int getAbsenceRealertInterval() const { return m_absenceRealertInterval; }
+	bool checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, void *userData);
 
 	void setBreakFlag(bool flag) { m_breakOnMatch = flag; }
 	bool getBreakFlag() const { return m_breakOnMatch; }
@@ -479,6 +510,8 @@ public:
 	bool matchLine(const TCHAR *line, const TCHAR *logName, uint32_t objectId = 0);
 	bool matchEvent(const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line, StringList *variables,
 	         uint64_t recordId, uint32_t objectId = 0, time_t timestamp = 0, const TCHAR *logName = nullptr, bool *saveToDatabase = nullptr);
+
+	void checkAbsenceRules(time_t now);
 
 	int getProcessedRecordsCount() const { return m_recordsProcessed; }
 	int getMatchedRecordsCount() const { return m_recordsMatched; }

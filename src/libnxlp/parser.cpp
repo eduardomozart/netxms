@@ -99,6 +99,9 @@ struct LogParser_XmlParserState
 	StringBuffer schedule;
    bool ignoreCase;
 	bool invertedRule;
+	bool absenceRule;
+	int absenceInterval;
+	int absenceRealertInterval;
 	bool breakFlag;
 	bool doNotSaveToDBFlag;
 	int repeatCount;
@@ -115,6 +118,9 @@ struct LogParser_XmlParserState
       parser = nullptr;
       ignoreCase = true;
 	   invertedRule = false;
+	   absenceRule = false;
+	   absenceInterval = 0;
+	   absenceRealertInterval = 0;
 	   breakFlag = false;
 	   doNotSaveToDBFlag = false;
 	   contextAction = CONTEXT_SET_AUTOMATIC;
@@ -421,6 +427,26 @@ bool LogParser::matchEvent(const TCHAR *source, uint32_t eventId, uint32_t level
 }
 
 /**
+ * Check all absence detection rules and fire events for expired ones
+ */
+void LogParser::checkAbsenceRules(time_t now)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (!rule->isAbsenceRule())
+         continue;
+
+      rule->m_absenceState.forEach(
+         [rule, now, this] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
+         {
+            rule->checkAbsence(objectId, now, m_cb, m_userData);
+            return _CONTINUE;
+         });
+   }
+}
+
+/**
  * Set associated file name
  */
 void LogParser::setFileName(const TCHAR *name)
@@ -583,6 +609,9 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->regexp.clear();
       ps->ignoreCase = true;
 		ps->invertedRule = false;
+		ps->absenceRule = false;
+		ps->absenceInterval = 0;
+		ps->absenceRealertInterval = 0;
 		ps->event.clear();
 		ps->context.clear();
 		ps->contextAction = CONTEXT_SET_AUTOMATIC;
@@ -628,6 +657,9 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->state = XML_STATE_MATCH;
       ps->ignoreCase = XMLGetAttrBoolean(attrs, "ignoreCase", true);
       ps->invertedRule = XMLGetAttrBoolean(attrs, "invert", false);
+		ps->absenceRule = XMLGetAttrBoolean(attrs, "absence", false);
+		ps->absenceInterval = XMLGetAttrInt(attrs, "absenceInterval", 0);
+		ps->absenceRealertInterval = XMLGetAttrInt(attrs, "absenceRealertInterval", 0);
 		ps->resetRepeat = XMLGetAttrBoolean(attrs, "reset", true);
 		ps->repeatCount = XMLGetAttrInt(attrs, "repeatCount", 0);
 		ps->repeatInterval = XMLGetAttrInt(attrs, "repeatInterval", 0);
@@ -846,6 +878,9 @@ static void EndElement(void *userData, const char *name)
 		}
 
 		rule->setInverted(ps->invertedRule);
+		rule->setAbsenceRule(ps->absenceRule);
+		rule->setAbsenceInterval(ps->absenceInterval);
+		rule->setAbsenceRealertInterval(ps->absenceRealertInterval);
 		rule->setBreakFlag(ps->breakFlag);
       rule->setDoNotSaveToDBFlag(ps->doNotSaveToDBFlag);
 

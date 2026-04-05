@@ -62,6 +62,8 @@ static NodeMatchingPolicy s_nodeMatchingPolicy = SOURCE_IP_THEN_HOSTNAME;
 static THREAD s_receiverThread = INVALID_THREAD_HANDLE;
 static THREAD s_processingThread = INVALID_THREAD_HANDLE;
 static THREAD s_writerThread = INVALID_THREAD_HANDLE;
+static THREAD s_absenceCheckThread = INVALID_THREAD_HANDLE;
+static Condition s_absenceCheckStop(true);
 static bool s_running = true;
 static bool s_alwaysUseServerTime = false;
 static bool s_enableStorage = true;
@@ -1273,6 +1275,22 @@ uint64_t GetNextSyslogId()
 }
 
 /**
+ * Syslog absence check thread - periodically checks absence detection rules
+ */
+static void SyslogAbsenceCheckThread()
+{
+   ThreadSetName("SyslogAbsCheck");
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread started");
+   while(!s_absenceCheckStop.wait(60000))
+   {
+      LockGuard lockGuard(s_parserLock);
+      if (s_parser != nullptr)
+         s_parser->checkAbsenceRules(time(nullptr));
+   }
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread stopped");
+}
+
+/**
  * Start built-in syslog server
  */
 void StartSyslogServer()
@@ -1309,6 +1327,7 @@ void StartSyslogServer()
    // Start processing thread
    s_processingThread = ThreadCreateEx(SyslogProcessingThread);
    s_writerThread = ThreadCreateEx(SyslogWriterThread);
+   s_absenceCheckThread = ThreadCreateEx(SyslogAbsenceCheckThread);
 
    if (ConfigReadBoolean(_T("Syslog.EnableListener"), false))
       s_receiverThread = ThreadCreateEx(SyslogReceiver);
@@ -1329,6 +1348,10 @@ void StopSyslogServer()
    // Stop writer thread - it must be done after processing thread already finished
    g_syslogWriteQueue.put(INVALID_POINTER_VALUE);
    ThreadJoin(s_writerThread);
+
+   // Stop absence check thread
+   s_absenceCheckStop.set();
+   ThreadJoin(s_absenceCheckThread);
 
    delete s_parser;
    CleanupLogParserLibrary();

@@ -671,6 +671,8 @@ bool LogParser::monitorFile(off_t startOffset)
 				goto stop_parser;
 			}
 
+			checkAbsenceRules(time(nullptr));
+
 			// Check if file name was changed
          TCHAR temp[MAX_PATH];
 			ExpandFileName(getFileName(), temp, MAX_PATH, true);
@@ -953,6 +955,8 @@ bool LogParser::monitorFile2(off_t startOffset)
 
       if (m_stopCondition.wait(m_fileCheckInterval))
          break;
+
+      checkAbsenceRules(time(nullptr));
    }
 
    nxlog_debug_tag(DEBUG_TAG, 0, _T("Parser thread for file \"%s\" stopped"), m_fileName);
@@ -1135,6 +1139,8 @@ bool LogParser::monitorFileWithSnapshot(off_t startOffset)
       DestroyFileSnapshot(snapshot);
       if (m_stopCondition.wait(m_fileCheckInterval))
          break;
+
+      checkAbsenceRules(time(nullptr));
    }
 
    CoUninitialize();

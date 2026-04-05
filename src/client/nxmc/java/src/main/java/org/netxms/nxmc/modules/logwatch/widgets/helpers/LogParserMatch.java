@@ -42,17 +42,29 @@ public class LogParserMatch
 
    @Attribute(required=false)
    private String reset = null;
-	
+
+   @Attribute(required=false)
+   private String absence = null;
+
+   @Attribute(required=false)
+   private Integer absenceInterval = null;
+
+   @Attribute(required=false)
+   private Integer absenceRealertInterval = null;
+
 	/**
 	 * Protected constructor for XML parser
 	 */
 	protected LogParserMatch()
 	{
 	}
-	
+
 	/**
-	 * @param event
-	 * @param parameterCount
+	 * @param match regular expression
+	 * @param invert invert match
+	 * @param repeatCount repeat count
+	 * @param repeatInterval repeat interval
+	 * @param reset reset repeat count on match
 	 */
 	public LogParserMatch(String match, boolean invert, Integer repeatCount, Integer repeatInterval, boolean reset)
 	{
@@ -171,7 +183,147 @@ public class LogParserMatch
          {
             unit++;
          }
-      }      
+      }
       return unit;
-   }   
+   }
+
+   /**
+    * @return the absence detection flag
+    */
+   public boolean getAbsence()
+   {
+      return LogParser.stringToBoolean(absence);
+   }
+
+   /**
+    * @param absence the absence detection flag to set
+    */
+   public void setAbsence(boolean absence)
+   {
+      this.absence = LogParser.booleanToString(absence);
+   }
+
+   /**
+    * @return the absence interval in seconds
+    */
+   public Integer getAbsenceInterval()
+   {
+      return absenceInterval == null ? 0 : absenceInterval;
+   }
+
+   /**
+    * @param absenceInterval the absence interval in seconds to set
+    */
+   public void setAbsenceInterval(Integer absenceInterval)
+   {
+      this.absenceInterval = absenceInterval;
+   }
+
+   /**
+    * @return the absence re-alert interval in seconds
+    */
+   public Integer getAbsenceRealertInterval()
+   {
+      return absenceRealertInterval == null ? 0 : absenceRealertInterval;
+   }
+
+   /**
+    * @param absenceRealertInterval the absence re-alert interval in seconds to set
+    */
+   public void setAbsenceRealertInterval(Integer absenceRealertInterval)
+   {
+      this.absenceRealertInterval = absenceRealertInterval;
+   }
+
+   /**
+    * @return the absence interval time range value (converted from seconds to appropriate unit)
+    */
+   public int getAbsenceTimeRange()
+   {
+      if (absenceInterval == null)
+         return 0;
+      int interval = absenceInterval;
+      if ((interval % 60) == 0)
+      {
+         interval = interval / 60;
+         if ((interval % 60) == 0)
+         {
+            interval = interval / 60;
+            if ((interval % 24) == 0)
+            {
+               interval = interval / 24;
+            }
+         }
+      }
+      return interval;
+   }
+
+   /**
+    * @return the absence interval time unit (0=seconds, 1=minutes, 2=hours, 3=days)
+    */
+   public int getAbsenceTimeUnit()
+   {
+      if (absenceInterval == null)
+         return 0;
+      int unit = 0;
+      if ((absenceInterval % 60) == 0)
+      {
+         unit++;
+         if ((absenceInterval % 3600) == 0)
+         {
+            unit++;
+            if ((absenceInterval % 86400) == 0)
+            {
+               unit++;
+            }
+         }
+      }
+      return unit;
+   }
+
+   /**
+    * @return the absence re-alert time range value (converted from seconds to appropriate unit)
+    */
+   public int getAbsenceRealertTimeRange()
+   {
+      if (absenceRealertInterval == null)
+         return 0;
+      int interval = absenceRealertInterval;
+      if ((interval % 60) == 0)
+      {
+         interval = interval / 60;
+         if ((interval % 60) == 0)
+         {
+            interval = interval / 60;
+            if ((interval % 24) == 0)
+            {
+               interval = interval / 24;
+            }
+         }
+      }
+      return interval;
+   }
+
+   /**
+    * @return the absence re-alert time unit (0=seconds, 1=minutes, 2=hours, 3=days)
+    */
+   public int getAbsenceRealertTimeUnit()
+   {
+      if (absenceRealertInterval == null)
+         return 0;
+      int unit = 0;
+      if ((absenceRealertInterval % 60) == 0)
+      {
+         unit++;
+         if ((absenceRealertInterval % 3600) == 0)
+         {
+            unit++;
+            if ((absenceRealertInterval % 86400) == 0)
+            {
+               unit++;
+            }
+         }
+      }
+      return unit;
+   }
 }

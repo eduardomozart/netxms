@@ -69,7 +69,7 @@ CaptureGroupsStore::CaptureGroupsStore(const TCHAR *line, int *offsets, int cgco
 LogParserRule::LogParserRule(LogParser *parser, const TCHAR *name, const TCHAR *regexp, bool ignoreCase,
       uint32_t eventCode, const TCHAR *eventName, const TCHAR *eventTag, int repeatInterval, int repeatCount,
       bool resetRepeat, const StructArray<LogParserMetric>& metrics)
-   : m_name(name), m_metrics(metrics), m_objectCounters(Ownership::True), m_groupName(Ownership::True)
+   : m_name(name), m_metrics(metrics), m_objectCounters(Ownership::True), m_groupName(Ownership::True), m_absenceState(Ownership::True)
 {
 	StringBuffer expandedRegexp;
 
@@ -89,6 +89,9 @@ LogParserRule::LogParserRule(LogParser *parser, const TCHAR *name, const TCHAR *
 	m_contextToChange = nullptr;
    m_ignoreCase = ignoreCase;
 	m_isInverted = false;
+	m_isAbsenceRule = false;
+	m_absenceInterval = 0;
+	m_absenceRealertInterval = 0;
 	m_breakOnMatch = false;
 	m_doNotSaveToDatabase = false;
 	m_description = nullptr;
@@ -119,7 +122,7 @@ LogParserRule::LogParserRule(LogParser *parser, const TCHAR *name, const TCHAR *
 /**
  * Copy constructor
  */
-LogParserRule::LogParserRule(LogParserRule *src, LogParser *parser) : m_name(src->m_name), m_metrics(src->m_metrics), m_objectCounters(Ownership::True), m_groupName(Ownership::True)
+LogParserRule::LogParserRule(LogParserRule *src, LogParser *parser) : m_name(src->m_name), m_metrics(src->m_metrics), m_objectCounters(Ownership::True), m_groupName(Ownership::True), m_absenceState(Ownership::True)
 {
 	m_parser = parser;
 	m_regexp = MemCopyString(src->m_regexp);
@@ -136,6 +139,9 @@ LogParserRule::LogParserRule(LogParserRule *src, LogParser *parser) : m_name(src
 	m_contextToChange = MemCopyString(src->m_contextToChange);
    m_ignoreCase = src->m_ignoreCase;
 	m_isInverted = src->m_isInverted;
+	m_isAbsenceRule = src->m_isAbsenceRule;
+	m_absenceInterval = src->m_absenceInterval;
+	m_absenceRealertInterval = src->m_absenceRealertInterval;
 	m_breakOnMatch = src->m_breakOnMatch;
 	m_description = MemCopyString(src->m_description);
    m_repeatInterval = src->m_repeatInterval;
@@ -271,6 +277,17 @@ bool LogParserRule::matchInternal(bool extMode, const TCHAR *source, uint32_t ev
 	{
 		m_parser->trace(7, _T("  regexp is invalid: %s"), m_regexp);
 		return false;
+	}
+
+	if (m_isAbsenceRule)
+	{
+		m_parser->trace(7, _T("  absence detection matching against regexp %s"), m_regexp);
+		if (_pcre_exec_t(m_preg, nullptr, reinterpret_cast<const PCRE_TCHAR*>(line), static_cast<int>(_tcslen(line)), 0, 0, m_pmatch, LOGWATCH_MAX_NUM_CAPTURE_GROUPS * 3) >= 0)
+		{
+			m_parser->trace(7, _T("  absence rule: expected pattern found, resetting timer for object %u"), objectId);
+			recordAbsenceMatch(objectId);
+		}
+		return false; // Absence rules never match directly - they fire from checkAbsence()
 	}
 
 	if (m_isInverted)
@@ -520,4 +537,89 @@ void LogParserRule::restoreCounters(const LogParserRule& rule)
          this->m_objectCounters.set(key, dst);
          return _CONTINUE;
       });
+   rule.m_absenceState.forEach(
+      [this] (const uint32_t& key, AbsenceState *src) -> EnumerationCallbackResult
+      {
+         AbsenceState *dst = new AbsenceState;
+         dst->lastMatchTime = src->lastMatchTime;
+         dst->lastAlertTime = src->lastAlertTime;
+         dst->armed = src->armed;
+         this->m_absenceState.set(key, dst);
+         return _CONTINUE;
+      });
+}
+
+/**
+ * Record a match for absence detection (resets the absence timer)
+ */
+void LogParserRule::recordAbsenceMatch(uint32_t objectId)
+{
+   AbsenceState *state = m_absenceState.get(objectId);
+   if (state == nullptr)
+   {
+      state = new AbsenceState;
+      m_absenceState.set(objectId, state);
+   }
+   state->lastMatchTime = time(nullptr);
+   state->lastAlertTime = 0;
+   state->armed = true;
+}
+
+/**
+ * Check if absence threshold has been exceeded for a given object.
+ * Returns true if an absence alert was fired.
+ */
+bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, void *userData)
+{
+   if (!m_isAbsenceRule || (m_absenceInterval <= 0))
+      return false;
+
+   AbsenceState *state = m_absenceState.get(objectId);
+   if (state == nullptr || !state->armed)
+      return false;
+
+   if ((now - state->lastMatchTime) <= m_absenceInterval)
+      return false;
+
+   // Check re-alert interval
+   if (state->lastAlertTime != 0)
+   {
+      if (m_absenceRealertInterval <= 0)
+         return false; // Already alerted, no re-alert configured
+      if ((now - state->lastAlertTime) <= m_absenceRealertInterval)
+         return false; // Not yet time to re-alert
+   }
+
+   m_parser->trace(5, _T("Absence rule \"%s\": expected pattern not seen for object %u within %d seconds"),
+         m_name.cstr(), objectId, m_absenceInterval);
+
+   state->lastAlertTime = now;
+
+   if ((cb != nullptr) && ((m_eventCode != 0) || (m_eventName != nullptr)))
+   {
+      CaptureGroupsStore captureGroups;
+      TCHAR absenceText[256];
+      _sntprintf(absenceText, 256, _T("Expected log entry not received within %d seconds"), m_absenceInterval);
+
+      LogParserCallbackData data;
+      data.captureGroups = &captureGroups;
+      data.eventCode = m_eventCode;
+      data.eventName = m_eventName;
+      data.eventTag = m_eventTag;
+      data.facility = 0;
+      data.logName = nullptr;
+      data.logRecordTimestamp = now;
+      data.objectId = objectId;
+      data.originalText = absenceText;
+      data.recordId = 0;
+      data.repeatCount = 1;
+      data.severity = 0;
+      data.source = nullptr;
+      data.userData = userData;
+      data.variables = nullptr;
+      cb(data);
+   }
+
+   incMatchCount(objectId);
+   return true;
 }
