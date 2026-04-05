@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,15 +18,19 @@
  */
 package org.netxms.nxmc.modules.imagelibrary;
 
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
+import org.eclipse.swt.widgets.Display;
+import org.netxms.ui.svg.SVGImage;
 
 /**
- * Image provider tools
+ * Platform-specific image provider tools (SWT desktop version).
  */
-class ImageProviderTools
+public class ImageProviderTools
 {
    /**
     * Create resized image based on original image and required size. Required size will be scaled to current device zoom level.
@@ -55,5 +59,45 @@ class ImageProviderTools
       }
 
       return new Image(originalImage.getDevice(), new DPIUtil.AutoScaleImageDataProvider(originalImage.getDevice(), imageData, imageData.width * 100 / requiredSize));
+   }
+
+   /**
+    * Rasterize SVG image to an off-screen SWT Image at the given dimensions with transparent background.
+    *
+    * @param display display to create image on
+    * @param svgImage parsed SVG image
+    * @param width target width in pixels
+    * @param height target height in pixels
+    * @return rasterized SWT image or null on failure
+    */
+   public static Image rasterizeSVG(Display display, SVGImage svgImage, int width, int height)
+   {
+      return svgImage.rasterize(display, width, height);
+   }
+
+   /**
+    * Render an image (raster or SVG) directly to a GC at the specified position and size.
+    *
+    * @param gc target graphics context
+    * @param rasterImage raster image (may be null if SVG)
+    * @param svgImage parsed SVG image (may be null if raster)
+    * @param x target x coordinate
+    * @param y target y coordinate
+    * @param width target width
+    * @param height target height
+    */
+   public static void renderImage(GC gc, Image rasterImage, SVGImage svgImage, int x, int y, int width, int height)
+   {
+      if (svgImage != null)
+      {
+         gc.setAdvanced(true);
+         gc.setAntialias(SWT.ON);
+         svgImage.render(gc, x, y, width, height);
+      }
+      else if (rasterImage != null)
+      {
+         Rectangle bounds = rasterImage.getBounds();
+         gc.drawImage(rasterImage, 0, 0, bounds.width, bounds.height, x, y, width, height);
+      }
    }
 }

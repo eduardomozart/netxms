@@ -285,6 +285,9 @@ public class ImageLibrary extends ConfigurationView
     */
    private String verifyImageFile(final String fileName) throws Exception
 	{
+      if (isSVGFile(fileName))
+         return "image/svg+xml";
+
       ImageData image = new ImageData(fileName);
 		String mimeType;
       switch(image.type)
@@ -314,6 +317,31 @@ public class ImageLibrary extends ConfigurationView
       }
       return mimeType;
 	}
+
+   /**
+    * Check if file is an SVG image by examining extension and content.
+    */
+   private static boolean isSVGFile(String fileName)
+   {
+      if (!fileName.toLowerCase().endsWith(".svg"))
+         return false;
+
+      // Verify file contains SVG content
+      try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(fileName)))
+      {
+         StringBuilder header = new StringBuilder();
+         char[] buffer = new char[1024];
+         int read = reader.read(buffer);
+         if (read > 0)
+            header.append(buffer, 0, read);
+         String content = header.toString().trim();
+         return content.contains("<svg") || content.startsWith("<?xml");
+      }
+      catch(Exception e)
+      {
+         return false;
+      }
+   }
 
 	/**
 	 * Add new image
@@ -393,11 +421,23 @@ public class ImageLibrary extends ConfigurationView
       if (selection.getFirstElement() instanceof LibraryImage)
       {
          LibraryImage imageDescriptor = (LibraryImage)selection.getFirstElement();
-         Image image = ImagePreview.createImageFromDescriptor(getDisplay(), imageDescriptor);
-         if (image != null)
+         if (imageDescriptor.isSVG())
          {
-            WidgetHelper.saveImageToFile(this, imageDescriptor.getName() + ".png", image);
-            image.dispose();
+            byte[] data = imageDescriptor.getBinaryData();
+            if (data != null)
+            {
+               WidgetHelper.saveTextToFile(this, imageDescriptor.getName() + ".svg", new String[] { "*.svg", "*.*" },
+                     new String[] { i18n.tr("SVG files"), i18n.tr("All files") }, new String(data, java.nio.charset.StandardCharsets.UTF_8));
+            }
+         }
+         else
+         {
+            Image image = ImagePreview.createImageFromDescriptor(getDisplay(), imageDescriptor);
+            if (image != null)
+            {
+               WidgetHelper.saveImageToFile(this, imageDescriptor.getName() + ".png", image);
+               image.dispose();
+            }
          }
       }
    }

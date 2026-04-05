@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2021 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,8 +37,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.netxms.client.LibraryImage;
 import org.netxms.nxmc.modules.imagelibrary.ImageProvider;
+import org.netxms.nxmc.modules.imagelibrary.ImageProviderTools;
 import org.netxms.nxmc.tools.FontTools;
 import org.netxms.nxmc.tools.WidgetHelper;
+import org.netxms.ui.svg.SVGImage;
+import org.netxms.ui.svg.SVGParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +56,7 @@ public class ImagePreview extends Composite
 
    private LibraryImage imageDescriptor;
    private Image image;
+   private SVGImage svgImage;
    private Label imageName;
    private Label imageSize;
    private Canvas imagePreview;
@@ -65,14 +69,14 @@ public class ImagePreview extends Composite
    public ImagePreview(Composite parent, int style)
    {
       super(parent, style);
-   
+
       headerFont = FontTools.createFont(HEADER_FONTS, +3, SWT.BOLD);
-      
+
       setBackground(getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-      
+
       GridLayout layout = new GridLayout();
       setLayout(layout);
-      
+
       imageName = new Label(this, SWT.NONE);
       imageName.setBackground(getBackground());
       imageName.setText("No image selected");
@@ -88,7 +92,7 @@ public class ImagePreview extends Composite
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
       imageSize.setLayoutData(gd);
-      
+
       imagePreview = new Canvas(this, SWT.DOUBLE_BUFFERED);
       imagePreview.setBackground(getBackground());
       gd = new GridData();
@@ -104,7 +108,7 @@ public class ImagePreview extends Composite
             drawImagePreview(e.gc);
          }
       });
-      
+
       addDisposeListener(new DisposeListener() {
          @Override
          public void widgetDisposed(DisposeEvent e)
@@ -115,10 +119,10 @@ public class ImagePreview extends Composite
          }
       });
    }
-   
+
    /**
     * Set new image to display
-    * 
+    *
     * @param imageDescriptor new image to display
     */
    public void setImage(LibraryImage imageDescriptor)
@@ -127,16 +131,54 @@ public class ImagePreview extends Composite
          return;
 
       this.imageDescriptor = imageDescriptor;
-      imageName.setText((imageDescriptor != null) ? imageDescriptor.getName() : "No image selected"); 
+      imageName.setText((imageDescriptor != null) ? imageDescriptor.getName() : "No image selected");
 
       if (image != null)
          image.dispose();
-      image = createImageFromDescriptor(getDisplay(), imageDescriptor);
+      image = null;
+      svgImage = null;
 
-      if (image != null)
+      if (imageDescriptor != null)
       {
-         Rectangle rect = image.getBounds();
-         imageSize.setText(String.format("%d x %d", rect.width, rect.height));
+         if (imageDescriptor.isSVG())
+         {
+            if (imageDescriptor.getBinaryData() != null)
+            {
+               try
+               {
+                  svgImage = SVGImage.createFromStream(new ByteArrayInputStream(imageDescriptor.getBinaryData()));
+               }
+               catch(SVGParseException e)
+               {
+                  logger.error("Cannot parse SVG image", e);
+               }
+            }
+
+            if (svgImage != null)
+            {
+               if ((svgImage.getWidth() > 0) && (svgImage.getHeight() > 0))
+                  imageSize.setText(String.format("SVG (%.0f x %.0f)", svgImage.getWidth(), svgImage.getHeight()));
+               else
+                  imageSize.setText("SVG");
+            }
+            else
+            {
+               imageSize.setText("");
+            }
+         }
+         else
+         {
+            image = createRasterImageFromDescriptor(getDisplay(), imageDescriptor);
+            if (image != null)
+            {
+               Rectangle rect = image.getBounds();
+               imageSize.setText(String.format("%d x %d", rect.width, rect.height));
+            }
+            else
+            {
+               imageSize.setText("");
+            }
+         }
       }
       else
       {
@@ -145,7 +187,7 @@ public class ImagePreview extends Composite
 
       imagePreview.redraw();
    }
-   
+
    /**
     * @param gc
     */
@@ -156,17 +198,23 @@ public class ImagePreview extends Composite
       rect.height -= 2;
       rect.x++;
       rect.y++;
-      if (image == null)
+
+      if (svgImage != null)
       {
-         if (rect.height > rect.width)
-            rect.height = rect.width;
-         else
-            rect.width = rect.height;
-         gc.drawRectangle(rect);
-         gc.drawLine(0, 0, rect.width, rect.height);
-         gc.drawLine(rect.width, 0, 0, rect.height);
+         // SVG: render directly to GC at canvas size, preserving aspect ratio
+         float aspect = svgImage.getAspectRatio();
+         int drawWidth = rect.width;
+         int drawHeight = rect.height;
+         if (aspect > 0)
+         {
+            if ((float)rect.width / rect.height > aspect)
+               drawWidth = (int)(rect.height * aspect);
+            else
+               drawHeight = (int)(rect.width / aspect);
+         }
+         ImageProviderTools.renderImage(gc, null, svgImage, rect.x, rect.y, drawWidth, drawHeight);
       }
-      else
+      else if (image != null)
       {
          Rectangle imageBounds = image.getBounds();
          if ((imageBounds.width > rect.width) || (imageBounds.height > rect.height))
@@ -192,20 +240,30 @@ public class ImagePreview extends Composite
             gc.drawImage(image, 0, 0);
          }
       }
+      else
+      {
+         if (rect.height > rect.width)
+            rect.height = rect.width;
+         else
+            rect.width = rect.height;
+         gc.drawRectangle(rect);
+         gc.drawLine(0, 0, rect.width, rect.height);
+         gc.drawLine(rect.width, 0, 0, rect.height);
+      }
    }
-   
+
    /**
-    * Create image from library descriptor
-    * 
-    * @param display
-    * @param imageDescriptor
-    * @return
+    * Create a raster SWT Image from library descriptor (non-SVG images only).
+    *
+    * @param display target display
+    * @param imageDescriptor library image descriptor
+    * @return SWT Image or null
     */
-   public static Image createImageFromDescriptor(Display display, LibraryImage imageDescriptor)
+   private static Image createRasterImageFromDescriptor(Display display, LibraryImage imageDescriptor)
    {
-      if (imageDescriptor == null)
+      if ((imageDescriptor == null) || imageDescriptor.isSVG())
          return null;
-      
+
       if (imageDescriptor.getBinaryData() != null)
       {
          try
@@ -218,8 +276,43 @@ public class ImagePreview extends Composite
             return null;
          }
       }
-      
+
       Image image = ImageProvider.getInstance().getImage(imageDescriptor.getGuid());
       return (image != null) ? new Image(display, image, SWT.IMAGE_COPY) : null;
+   }
+
+   /**
+    * Create image from library descriptor. For raster images, returns the raster image directly.
+    * For SVG images, rasterizes at a default size (256x256 or viewBox dimensions).
+    *
+    * @param display target display
+    * @param imageDescriptor library image descriptor
+    * @return SWT Image or null
+    */
+   public static Image createImageFromDescriptor(Display display, LibraryImage imageDescriptor)
+   {
+      if (imageDescriptor == null)
+         return null;
+
+      if (imageDescriptor.isSVG())
+      {
+         if (imageDescriptor.getBinaryData() == null)
+            return null;
+
+         try
+         {
+            SVGImage svg = SVGImage.createFromStream(new ByteArrayInputStream(imageDescriptor.getBinaryData()));
+            int width = (svg.getWidth() > 0) ? (int)svg.getWidth() : 256;
+            int height = (svg.getHeight() > 0) ? (int)svg.getHeight() : 256;
+            return ImageProviderTools.rasterizeSVG(display, svg, width, height);
+         }
+         catch(SVGParseException e)
+         {
+            logger.error("Cannot parse SVG image for rasterization", e);
+            return null;
+         }
+      }
+
+      return createRasterImageFromDescriptor(display, imageDescriptor);
    }
 }

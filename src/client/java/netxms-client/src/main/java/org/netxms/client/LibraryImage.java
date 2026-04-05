@@ -229,6 +229,16 @@ public class LibraryImage implements Comparable<LibraryImage>
 	}
 
 	/**
+	 * Check if this image is an SVG image.
+	 *
+	 * @return true if MIME type indicates SVG
+	 */
+	public boolean isSVG()
+	{
+		return "image/svg+xml".equalsIgnoreCase(mimeType);
+	}
+
+	/**
 	 * Get image MIME type.
 	 *
 	 * @return image MIME type

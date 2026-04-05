@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,13 +18,17 @@
  */
 package org.netxms.nxmc.modules.imagelibrary;
 
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.widgets.Display;
+import org.netxms.ui.svg.SVGImage;
 
 /**
- * Image provider tools
+ * Platform-specific image provider tools (RWT web version).
  */
-class ImageProviderTools
+public class ImageProviderTools
 {
    /**
     * Create resized image based on original image and required size.
@@ -39,5 +43,44 @@ class ImageProviderTools
       if ((imageData.width == requiredBaseSize) && (imageData.height == requiredBaseSize))
          return originalImage;
       return new Image(originalImage.getDevice(), imageData.scaledTo(requiredBaseSize, requiredBaseSize));
+   }
+
+   /**
+    * Rasterize SVG image. Not supported on RWT (no off-screen drawing).
+    *
+    * @param display display
+    * @param svgImage parsed SVG image
+    * @param width target width
+    * @param height target height
+    * @return always null on RWT
+    */
+   public static Image rasterizeSVG(Display display, SVGImage svgImage, int width, int height)
+   {
+      return null;
+   }
+
+   /**
+    * Render an image (raster or SVG) directly to a GC at the specified position and size.
+    * On RWT, SVG is rendered via GC operations that translate to browser-side canvas drawing.
+    *
+    * @param gc target graphics context
+    * @param rasterImage raster image (may be null if SVG)
+    * @param svgImage parsed SVG image (may be null if raster)
+    * @param x target x coordinate
+    * @param y target y coordinate
+    * @param width target width
+    * @param height target height
+    */
+   public static void renderImage(GC gc, Image rasterImage, SVGImage svgImage, int x, int y, int width, int height)
+   {
+      if (svgImage != null)
+      {
+         svgImage.render(gc, x, y, width, height);
+      }
+      else if (rasterImage != null)
+      {
+         Rectangle bounds = rasterImage.getBounds();
+         gc.drawImage(rasterImage, 0, 0, bounds.width, bounds.height, x, y, width, height);
+      }
    }
 }
