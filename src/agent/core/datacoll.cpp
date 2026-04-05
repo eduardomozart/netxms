@@ -1804,14 +1804,14 @@ void ClearDataCollectionConfiguration()
 }
 
 /**
- * Handler for data collector queue size
+ * Handler for data sender queue size
  */
-LONG H_DataCollectorQueueSize(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
+LONG H_DataSenderQueueSize(const TCHAR *cmd, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
 {
    if (!s_dataCollectorStarted)
       return SYSINFO_RC_UNSUPPORTED;
 
-   UINT32 count = 0;
+   uint32_t count = 0;
    s_serverSyncStatusLock.lock();
    Iterator<ServerSyncStatus> it = s_serverSyncStatus.begin();
    while(it.hasNext())

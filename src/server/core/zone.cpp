@@ -616,9 +616,11 @@ void Zone::updateProxyStatus(const shared_ptr<Node>& node, bool activeMode)
  */
 void Zone::updateProxyLoadData(shared_ptr<Node> node)
 {
-   double cpuLoad = node->getMetricFromAgentAsDouble(_T("System.CPU.LoadAvg15"), -1);
-   double dataCollectorLoad = node->getMetricFromAgentAsDouble(_T("Agent.ThreadPool.LoadAverage15(DATACOLL)"), -1);
-   int64_t dataSenderQueueSize = node->getMetricFromAgentAsInt32(_T("Agent.DataCollectorQueueSize"), -1);  // FIXME: rename to Agent.DataSenderQueueSize
+   double cpuLoad = node->getMetricFromAgentAsDouble(L"System.CPU.LoadAvg15", -1);
+   double dataCollectorLoad = node->getMetricFromAgentAsDouble(L"Agent.ThreadPool.LoadAverage15(DATACOLL)", -1);
+   // We use Agent.DataCollectorQueueSize instead of Agent.DataSenderQueueSize to maintain
+   // compatibility with agents before 6.1
+   int64_t dataSenderQueueSize = node->getMetricFromAgentAsInt32(L"Agent.DataCollectorQueueSize", -1);
    if ((cpuLoad >= 0) || (dataCollectorLoad >= 0) || (dataSenderQueueSize >= 0))
    {
       shared_ptr<ZoneProxy> p = m_proxyNodes.get(node->getId());

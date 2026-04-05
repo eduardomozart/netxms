@@ -285,7 +285,7 @@ public class Hyperlink extends AbstractHyperlink
             gc.drawText(textToDraw, bounds.x, bounds.y, true);
             if (underlined)
             {
-               int descent = 2; // FIXME: what is correct value? gc.getFontMetrics().getDescent();
+               int descent = 2; // RAP FontMetrics does not provide getDescent()
                int lineY = bounds.y + textHeight - descent + 1;
                gc.drawLine(bounds.x, lineY, bounds.x + textWidth, lineY);
             }

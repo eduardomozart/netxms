@@ -244,8 +244,7 @@ public class ObjectPopupDialog extends PopupDialog
     */
    private static void createSeparator(Composite parent) 
    {
-      // Label separator = new Label(parent, SWT.SEPARATOR | SWT.HORIZONTAL | SWT.LINE_DOT);
-      Label separator = new Label(parent, SWT.SEPARATOR | SWT.HORIZONTAL); // FIXME: update style when supported by RAP
+      Label separator = new Label(parent, SWT.SEPARATOR | SWT.HORIZONTAL);
       GridDataFactory.fillDefaults().align(SWT.FILL, SWT.CENTER).grab(true, false).applyTo(separator);
    }
 
