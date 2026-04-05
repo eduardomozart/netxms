@@ -614,7 +614,6 @@ public class LogParserEditor extends Composite
       parser.setSyslogParser(type);
       
 
-      if (type != LogParserType.POLICY)
       {
          Set<UUID> guids = new HashSet<UUID>();
          boolean unique = true;
@@ -629,12 +628,12 @@ public class LogParserEditor extends Composite
             }
             else if (guids.contains(rule.getGuid()))
             {
-               unique = false;          
+               unique = false;
                break;
             }
-            guids.add(rule.getGuid()); 
+            guids.add(rule.getGuid());
          }
-         
+
          if (!unique)
          {
             if (!MessageDialogHelper.openConfirm(getShell(), "Duplicate GUIDs", "Do you want to regenerate GUIDs for duplicate rules?"))
@@ -643,7 +642,7 @@ public class LogParserEditor extends Composite
                selectXmlEditor();
                return;
             }
-            
+
            guids.clear();
            for (LogParserRule rule : parser.getRules())
            {
@@ -651,7 +650,7 @@ public class LogParserEditor extends Composite
               {
                  rule.setGuid(UUID.randomUUID());
               }
-              guids.add(rule.getGuid()); 
+              guids.add(rule.getGuid());
            }
            fireModifyListeners();
          }
@@ -698,10 +697,7 @@ public class LogParserEditor extends Composite
    private void addRule()
    {
       LogParserRule rule = new LogParserRule();
-      if (type != LogParserType.POLICY)
-      {
-         rule.setGuid(UUID.randomUUID());
-      }
+      rule.setGuid(UUID.randomUUID());
       LogParserRuleEditor editor = createRuleEditor(rule);
       editor.moveAbove(addRuleLink);
       parser.getRules().add(rule);

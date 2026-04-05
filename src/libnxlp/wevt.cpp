@@ -400,7 +400,10 @@ bool LogParser::monitorEventLog(const TCHAR *markerPrefix)
 	{
 		nxlog_debug_tag(DEBUG_TAG, 1, _T("Start watching event log \"%s\""), &m_fileName[1]);
 		setStatus(LPS_RUNNING);
-		m_stopCondition.wait(INFINITE);
+		while(!m_stopCondition.wait(60000))
+		{
+			checkAbsenceRules(time(nullptr));
+		}
 		nxlog_debug_tag(DEBUG_TAG, 1, _T("Stop watching event log \"%s\""), &m_fileName[1]);
 		EvtClose(handle);
       success = true;

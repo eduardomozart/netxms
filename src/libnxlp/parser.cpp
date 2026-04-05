@@ -89,6 +89,7 @@ struct LogParser_XmlParserState
    StringBuffer context;
    StringBuffer description;
    StringBuffer ruleName;
+   uuid ruleGuid;
    StringBuffer agentAction;
    StringBuffer agentActionArgs;
 	int contextAction;
@@ -99,6 +100,9 @@ struct LogParser_XmlParserState
 	StringBuffer schedule;
    bool ignoreCase;
 	bool invertedRule;
+	bool absenceRule;
+	int absenceInterval;
+	int absenceRealertInterval;
 	bool breakFlag;
 	bool doNotSaveToDBFlag;
 	int repeatCount;
@@ -115,6 +119,9 @@ struct LogParser_XmlParserState
       parser = nullptr;
       ignoreCase = true;
 	   invertedRule = false;
+	   absenceRule = false;
+	   absenceInterval = 0;
+	   absenceRealertInterval = 0;
 	   breakFlag = false;
 	   doNotSaveToDBFlag = false;
 	   contextAction = CONTEXT_SET_AUTOMATIC;
@@ -421,6 +428,79 @@ bool LogParser::matchEvent(const TCHAR *source, uint32_t eventId, uint32_t level
 }
 
 /**
+ * Check all absence detection rules and fire events for expired ones
+ */
+void LogParser::checkAbsenceRules(time_t now)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (!rule->isAbsenceRule())
+         continue;
+
+      rule->m_absenceState.forEach(
+         [rule, now, this] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
+         {
+            rule->checkAbsence(objectId, now, m_cb, m_cbAction, m_userData);
+            return _CONTINUE;
+         });
+   }
+}
+
+/**
+ * Arm all absence rules that don't already have state for the given object.
+ * For file log parsers, this should be called at startup so that absence
+ * detection starts counting from agent restart rather than waiting for the
+ * first match.
+ */
+void LogParser::armAbsenceRules(time_t now, uint32_t objectId)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule() && rule->getAbsenceInterval() > 0)
+      {
+         rule->setAbsenceStateIfEmpty(objectId, now);
+      }
+   }
+}
+
+/**
+ * Enumerate all absence state entries across all rules (for saving to database)
+ */
+void LogParser::forEachAbsenceState(std::function<void (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)> callback) const
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule())
+         rule->forEachAbsenceState(callback);
+   }
+}
+
+/**
+ * Load absence state for a specific rule and object (from database)
+ */
+void LogParser::loadAbsenceState(const uuid& ruleGuid, uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule() && rule->getGuid().equals(ruleGuid))
+      {
+         rule->setAbsenceState(objectId, lastMatchTime, lastAlertTime);
+         TCHAR guidStr[64];
+         trace(5, _T("Loaded absence state for rule \"%s\" [%s] object %u: lastMatch=%lld, lastAlert=%lld"),
+               rule->getName(), ruleGuid.toString(guidStr), objectId,
+               static_cast<int64_t>(lastMatchTime), static_cast<int64_t>(lastAlertTime));
+         return;
+      }
+   }
+   TCHAR guidStr[64];
+   trace(5, _T("Cannot load absence state: rule with GUID %s not found or not an absence rule"), ruleGuid.toString(guidStr));
+}
+
+/**
  * Set associated file name
  */
 void LogParser::setFileName(const TCHAR *name)
@@ -583,6 +663,9 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->regexp.clear();
       ps->ignoreCase = true;
 		ps->invertedRule = false;
+		ps->absenceRule = false;
+		ps->absenceInterval = 0;
+		ps->absenceRealertInterval = 0;
 		ps->event.clear();
 		ps->context.clear();
 		ps->contextAction = CONTEXT_SET_AUTOMATIC;
@@ -606,6 +689,11 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->ruleContext = XMLGetAttr(attrs, "context");
       ps->ruleName = XMLGetAttr(attrs, "name");
 #endif
+      const char *guid = XMLGetAttr(attrs, "guid");
+      if (guid != nullptr)
+         ps->ruleGuid = uuid::parseA(guid);
+      else
+         ps->ruleGuid = uuid::generate();
 		ps->breakFlag = XMLGetAttrBoolean(attrs, "break", false);
       ps->doNotSaveToDBFlag = XMLGetAttrBoolean(attrs, "doNotSaveToDatabase", false);
 		ps->state = XML_STATE_RULE;
@@ -628,6 +716,9 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->state = XML_STATE_MATCH;
       ps->ignoreCase = XMLGetAttrBoolean(attrs, "ignoreCase", true);
       ps->invertedRule = XMLGetAttrBoolean(attrs, "invert", false);
+		ps->absenceRule = XMLGetAttrBoolean(attrs, "absence", false);
+		ps->absenceInterval = XMLGetAttrInt(attrs, "absenceInterval", 0);
+		ps->absenceRealertInterval = XMLGetAttrInt(attrs, "absenceRealertInterval", 0);
 		ps->resetRepeat = XMLGetAttrBoolean(attrs, "reset", true);
 		ps->repeatCount = XMLGetAttrInt(attrs, "repeatCount", 0);
 		ps->repeatInterval = XMLGetAttrInt(attrs, "repeatInterval", 0);
@@ -793,6 +884,7 @@ static void EndElement(void *userData, const char *name)
 		LogParserRule *rule = new LogParserRule(ps->parser, ps->ruleName, ps->regexp, ps->ignoreCase,
 		         eventCode, eventName, ps->eventTag, ps->repeatInterval, ps->repeatCount, ps->resetRepeat,
 		         ps->metrics);
+		rule->setGuid(ps->ruleGuid);
 		if (!ps->agentAction.isEmpty())
 		   rule->setAgentAction(ps->agentAction);
 		if (!ps->agentActionArgs.isEmpty())
@@ -846,6 +938,9 @@ static void EndElement(void *userData, const char *name)
 		}
 
 		rule->setInverted(ps->invertedRule);
+		rule->setAbsenceRule(ps->absenceRule);
+		rule->setAbsenceInterval(ps->absenceInterval);
+		rule->setAbsenceRealertInterval(ps->absenceRealertInterval);
 		rule->setBreakFlag(ps->breakFlag);
       rule->setDoNotSaveToDBFlag(ps->doNotSaveToDBFlag);
 

@@ -73,6 +73,11 @@ public class LogParserRuleEditor extends DashboardComposite
    private LabeledText name;
    private LabeledText regexp;
    private Button checkboxInvert;
+   private Button checkboxAbsence;
+   private Spinner absenceTimeRange;
+   private Combo absenceTimeUnits;
+   private Spinner absenceRealertTimeRange;
+   private Combo absenceRealertTimeUnits;
    private Button checkboxReset;
    private LabeledSpinner repeatCount;
    private Spinner timeRange;
@@ -263,10 +268,92 @@ public class LogParserRuleEditor extends DashboardComposite
          @Override
          public void widgetSelected(SelectionEvent e)
          {
+            if (checkboxInvert.getSelection())
+               checkboxAbsence.setSelection(false);
+            updateAbsenceFields();
             editor.fireModifyListeners();
          }
       });
       checkboxInvert.setSelection(rule.getMatch().getInvert());
+
+      checkboxAbsence = new Button(area, SWT.CHECK);
+      checkboxAbsence.setText(i18n.tr("Absence detection (alert when expected pattern is not seen)"));
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      checkboxAbsence.setLayoutData(gd);
+      checkboxAbsence.setSelection(rule.getMatch().getAbsence());
+      checkboxAbsence.addSelectionListener(new SelectionAdapter() {
+         @Override
+         public void widgetSelected(SelectionEvent e)
+         {
+            if (checkboxAbsence.getSelection())
+               checkboxInvert.setSelection(false);
+            updateAbsenceFields();
+            editor.fireModifyListeners();
+         }
+      });
+
+      Composite absenceConf = new Composite(area, SWT.NONE);
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      absenceConf.setLayoutData(gd);
+
+      layout = new GridLayout();
+      layout.numColumns = 4;
+      layout.marginWidth = 0;
+      absenceConf.setLayout(layout);
+
+      Composite absenceTimeGroup = new Composite(absenceConf, SWT.NONE);
+      layout = new GridLayout();
+      layout.marginWidth = 0;
+      layout.marginHeight = 0;
+      layout.horizontalSpacing = WidgetHelper.OUTER_SPACING;
+      layout.numColumns = 2;
+      absenceTimeGroup.setLayout(layout);
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      absenceTimeGroup.setLayoutData(gd);
+
+      absenceTimeRange = WidgetHelper.createLabeledSpinner(absenceTimeGroup, SWT.BORDER, i18n.tr("Expected within"), 1, 100000, WidgetHelper.DEFAULT_LAYOUT_DATA);
+      absenceTimeRange.setSelection(rule.getMatch().getAbsenceTimeRange());
+      absenceTimeRange.addModifyListener(listener);
+
+      absenceTimeUnits = WidgetHelper.createLabeledCombo(absenceTimeGroup, SWT.READ_ONLY, "", WidgetHelper.DEFAULT_LAYOUT_DATA);
+      absenceTimeUnits.add(i18n.tr("Seconds"));
+      absenceTimeUnits.add(i18n.tr("Minutes"));
+      absenceTimeUnits.add(i18n.tr("Hours"));
+      absenceTimeUnits.add(i18n.tr("Days"));
+      absenceTimeUnits.select(rule.getMatch().getAbsenceTimeUnit());
+      absenceTimeUnits.addModifyListener(listener);
+
+      Composite absenceRealertGroup = new Composite(absenceConf, SWT.NONE);
+      layout = new GridLayout();
+      layout.marginWidth = 0;
+      layout.marginHeight = 0;
+      layout.horizontalSpacing = WidgetHelper.OUTER_SPACING;
+      layout.numColumns = 2;
+      absenceRealertGroup.setLayout(layout);
+      gd = new GridData();
+      gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
+      absenceRealertGroup.setLayoutData(gd);
+
+      absenceRealertTimeRange = WidgetHelper.createLabeledSpinner(absenceRealertGroup, SWT.BORDER, i18n.tr("Re-alert every"), 0, 100000, WidgetHelper.DEFAULT_LAYOUT_DATA);
+      absenceRealertTimeRange.setSelection(rule.getMatch().getAbsenceRealertTimeRange());
+      absenceRealertTimeRange.addModifyListener(listener);
+
+      absenceRealertTimeUnits = WidgetHelper.createLabeledCombo(absenceRealertGroup, SWT.READ_ONLY, "", WidgetHelper.DEFAULT_LAYOUT_DATA);
+      absenceRealertTimeUnits.add(i18n.tr("Seconds"));
+      absenceRealertTimeUnits.add(i18n.tr("Minutes"));
+      absenceRealertTimeUnits.add(i18n.tr("Hours"));
+      absenceRealertTimeUnits.add(i18n.tr("Days"));
+      absenceRealertTimeUnits.select(rule.getMatch().getAbsenceRealertTimeUnit());
+      absenceRealertTimeUnits.addModifyListener(listener);
+
+      updateAbsenceFields();
 
       if (editor.getParserType() == LogParserType.POLICY)
       {
@@ -705,16 +792,31 @@ public class LogParserRuleEditor extends DashboardComposite
    public void save()
    {
       rule.setName(name.getText().trim());
+      LogParserMatch match;
       if (editor.getParserType() == LogParserType.POLICY)
       {
-         rule.setMatch(new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), intOrNull(repeatCount.getText()),
+         match = new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), intOrNull(repeatCount.getText()),
                Integer.parseInt(timeRange.getText()) * (int)Math.pow(60, timeUnits.getSelectionIndex()),
-               checkboxReset.getSelection()));
+               checkboxReset.getSelection());
       }
       else
       {
-         rule.setMatch(new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), null, 0, false));
+         match = new LogParserMatch(regexp.getText(), checkboxInvert.getSelection(), null, 0, false);
       }
+      match.setAbsence(checkboxAbsence.getSelection());
+      if (checkboxAbsence.getSelection())
+      {
+         int[] multipliers = { 1, 60, 3600, 86400 };
+         match.setAbsenceInterval(Integer.parseInt(absenceTimeRange.getText()) * multipliers[absenceTimeUnits.getSelectionIndex()]);
+         int realertValue = Integer.parseInt(absenceRealertTimeRange.getText());
+         match.setAbsenceRealertInterval(realertValue > 0 ? realertValue * multipliers[absenceRealertTimeUnits.getSelectionIndex()] : 0);
+      }
+      else
+      {
+         match.setAbsenceInterval(0);
+         match.setAbsenceRealertInterval(0);
+      }
+      rule.setMatch(match);
       rule.setEventId(facility.getText());
       rule.setSeverityOrLevel(intOrNull(severity.getText()));
       rule.setTagOrSource(tag.getText());
@@ -801,6 +903,27 @@ public class LogParserRuleEditor extends DashboardComposite
       catch(NumberFormatException e)
       {
          return null;
+      }
+   }
+
+   /**
+    * Update enabled state of absence detection fields
+    */
+   private void updateAbsenceFields()
+   {
+      boolean absenceEnabled = checkboxAbsence.getSelection();
+      absenceTimeRange.setEnabled(absenceEnabled);
+      absenceTimeUnits.setEnabled(absenceEnabled);
+      absenceRealertTimeRange.setEnabled(absenceEnabled);
+      absenceRealertTimeUnits.setEnabled(absenceEnabled);
+
+      // Disable repeat count/interval when absence is active (they don't apply)
+      if (editor.getParserType() == LogParserType.POLICY)
+      {
+         repeatCount.setEnabled(!absenceEnabled);
+         timeRange.setEnabled(!absenceEnabled);
+         timeUnits.setEnabled(!absenceEnabled);
+         checkboxReset.setEnabled(!absenceEnabled);
       }
    }
 

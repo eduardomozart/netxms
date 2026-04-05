@@ -309,6 +309,83 @@ static void DeleteOldFilePositions()
 }
 
 /**
+ * Save absence detection state for all parsers to local database
+ */
+static void SaveAbsenceState()
+{
+   DB_HANDLE hdb = AgentGetLocalDatabaseHandle();
+   if (hdb == nullptr)
+      return;
+
+   DBQuery(hdb, _T("DELETE FROM lp_absence_state"));
+
+   DB_STATEMENT hStmt = DBPrepare(hdb,
+      _T("INSERT INTO lp_absence_state (parser_type,rule_guid,object_id,last_match_time,last_alert_time) VALUES ('F',?,?,?,?)"), true);
+   if (hStmt == nullptr)
+      return;
+
+   int count = 0;
+   s_parserLock.lock();
+   for (int i = 0; i < s_parsers.size(); i++)
+   {
+      s_parsers.get(i)->forEachAbsenceState(
+         [hStmt, &count] (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)
+         {
+            TCHAR guidStr[64];
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleGuid.toString(guidStr), DB_BIND_STATIC);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
+            DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
+            DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
+            DBExecute(hStmt);
+            count++;
+         });
+   }
+   s_parserLock.unlock();
+
+   DBFreeStatement(hStmt);
+   nxlog_debug_tag(DEBUG_TAG, 5, _T("Saved %d absence state entries to local database"), count);
+}
+
+/**
+ * Load absence detection state from local database into all parsers
+ */
+static void LoadAbsenceState()
+{
+   DB_HANDLE hdb = AgentGetLocalDatabaseHandle();
+   if (hdb == nullptr)
+      return;
+
+   DB_RESULT hResult = DBSelect(hdb, _T("SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state"));
+   if (hResult == nullptr)
+      return;
+
+   int count = DBGetNumRows(hResult);
+   for (int i = 0; i < count; i++)
+   {
+      TCHAR guidStr[64];
+      DBGetField(hResult, i, 0, guidStr, 64);
+      uuid ruleGuid = uuid::parse(guidStr);
+      uint32_t objectId = DBGetFieldULong(hResult, i, 1);
+      time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
+      time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));
+
+      for (int j = 0; j < s_parsers.size(); j++)
+         s_parsers.get(j)->loadAbsenceState(ruleGuid, objectId, lastMatchTime, lastAlertTime);
+   }
+   DBFreeResult(hResult);
+   nxlog_debug_tag(DEBUG_TAG, 3, _T("Loaded %d absence state entries from local database"), count);
+}
+
+/**
+ * Periodically save absence state
+ */
+static void SaveAbsenceStateTimer()
+{
+   SaveAbsenceState();
+   AgentSetTimer(300000, SaveAbsenceStateTimer);  // every 5 minutes
+}
+
+/**
  * Restore parser file position from database
  */
 static off_t RestoreParserFilePosition(LogParser *parser)
@@ -361,6 +438,7 @@ static off_t RestoreParserFilePosition(LogParser *parser)
 static void SubagentShutdown()
 {
    SaveFilePositions();
+   SaveAbsenceState();
 
    for(int i = 0; i < s_parsers.size(); i++)
       s_parsers.get(i)->stop();
@@ -778,6 +856,15 @@ static bool SubagentInit(Config *config)
 			AddParserFromConfig(parsers->getValue(i), uuid::NULL_UUID);
 	}
    AddLogwatchPolicyFiles();
+
+   // Restore absence detection state from local database
+   LoadAbsenceState();
+
+   // Arm absence rules that weren't restored from DB (start counting from now)
+   time_t now = time(nullptr);
+   for (int i = 0; i < s_parsers.size(); i++)
+      s_parsers.get(i)->armAbsenceRules(now);
+
 	// Start parsing threads
    for (int i = 0; i < s_parsers.size(); i++)
 	{
@@ -807,6 +894,7 @@ static bool SubagentInit(Config *config)
    }
 
    AgentSetTimer(60000, SaveFilePositions);  // every minute
+   AgentSetTimer(300000, SaveAbsenceStateTimer);  // every 5 minutes
    DeleteOldFilePositions();
 
 	return true;
@@ -840,6 +928,7 @@ static void OnAgentNotify(UINT32 code, void *data)
 
       nxlog_debug_tag(DEBUG_TAG, 3, _T("Reloading parser for file %s"), p->getFileName());
       SaveParserPosition(p);
+      SaveAbsenceState();
       p->stop();
       s_parsers.remove(i);
       i--;
@@ -861,6 +950,18 @@ static void OnAgentNotify(UINT32 code, void *data)
          ((tail != '\\') && (tail != '/')) ? FS_PATH_SEPARATOR : _T(""),
          SUBDIR_LOGPARSER_POLICY FS_PATH_SEPARATOR, (const TCHAR *)n->guid.toString());
    AddParserFromConfig(policyFile, n->guid);
+
+   // Restore absence state for new parsers and arm any uninitialized rules
+   for (int i = 0; i < s_parsers.size(); i++)
+   {
+      LogParser *p = s_parsers.get(i);
+      if (p->getGuid().equals(n->guid))
+      {
+         LoadAbsenceState();
+         p->armAbsenceRules(time(nullptr));
+         break;
+      }
+   }
 
    // Start parsing threads
    for (int i = 0; i < s_parsers.size(); i++)

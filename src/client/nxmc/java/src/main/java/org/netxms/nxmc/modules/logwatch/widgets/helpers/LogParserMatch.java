@@ -42,17 +42,29 @@ public class LogParserMatch
 
    @Attribute(required=false)
    private String reset = null;
-	
+
+   @Attribute(required=false)
+   private String absence = null;
+
+   @Attribute(required=false)
+   private Integer absenceInterval = null;
+
+   @Attribute(required=false)
+   private Integer absenceRealertInterval = null;
+
 	/**
 	 * Protected constructor for XML parser
 	 */
 	protected LogParserMatch()
 	{
 	}
-	
+
 	/**
-	 * @param event
-	 * @param parameterCount
+	 * @param match regular expression
+	 * @param invert invert match
+	 * @param repeatCount repeat count
+	 * @param repeatInterval repeat interval
+	 * @param reset reset repeat count on match
 	 */
 	public LogParserMatch(String match, boolean invert, Integer repeatCount, Integer repeatInterval, boolean reset)
 	{
@@ -142,36 +154,149 @@ public class LogParserMatch
    {
       this.invert = LogParser.booleanToString(invert);
    }
-   
-   public int getTimeRagne()
+
+   /**
+    * Convert seconds to the best-fit time range value (dividing by the largest fitting unit).
+    *
+    * @param seconds total seconds (null treated as 0)
+    * @param includeDays if true, also consider days as a unit
+    * @return the display value in the best-fit unit
+    */
+   private static int toTimeRange(Integer seconds, boolean includeDays)
    {
-      if(repeatInterval == null)
+      if (seconds == null || seconds == 0)
          return 0;
-      int interval = repeatInterval;
-      if((interval % 60) == 0)
+      int interval = seconds;
+      if ((interval % 60) == 0)
       {
-         interval = interval/60;
-         if((interval % 60) == 0)
+         interval /= 60;
+         if ((interval % 60) == 0)
          {
-            interval = interval/60;
+            interval /= 60;
+            if (includeDays && (interval % 24) == 0)
+            {
+               interval /= 24;
+            }
          }
       }
       return interval;
    }
-   
-   public int getTimeUnit()
+
+   /**
+    * Determine the best-fit time unit index for a value in seconds.
+    * 0=seconds, 1=minutes, 2=hours, 3=days (if includeDays).
+    *
+    * @param seconds total seconds (null treated as 0)
+    * @param includeDays if true, also consider days as a unit
+    * @return the unit index
+    */
+   private static int toTimeUnit(Integer seconds, boolean includeDays)
    {
-      if (repeatInterval == null)
+      if (seconds == null || seconds == 0)
          return 0;
       int unit = 0;
-      if((repeatInterval % 60) == 0)
+      if ((seconds % 60) == 0)
       {
          unit++;
-         if((repeatInterval % 3600) == 0)
+         if ((seconds % 3600) == 0)
          {
             unit++;
+            if (includeDays && (seconds % 86400) == 0)
+            {
+               unit++;
+            }
          }
-      }      
+      }
       return unit;
-   }   
+   }
+
+   public int getTimeRagne()
+   {
+      return toTimeRange(repeatInterval, false);
+   }
+
+   public int getTimeUnit()
+   {
+      return toTimeUnit(repeatInterval, false);
+   }
+
+   /**
+    * @return the absence detection flag
+    */
+   public boolean getAbsence()
+   {
+      return LogParser.stringToBoolean(absence);
+   }
+
+   /**
+    * @param absence the absence detection flag to set
+    */
+   public void setAbsence(boolean absence)
+   {
+      this.absence = LogParser.booleanToString(absence);
+   }
+
+   /**
+    * @return the absence interval in seconds
+    */
+   public Integer getAbsenceInterval()
+   {
+      return absenceInterval == null ? 0 : absenceInterval;
+   }
+
+   /**
+    * @param absenceInterval the absence interval in seconds to set
+    */
+   public void setAbsenceInterval(Integer absenceInterval)
+   {
+      this.absenceInterval = absenceInterval;
+   }
+
+   /**
+    * @return the absence re-alert interval in seconds
+    */
+   public Integer getAbsenceRealertInterval()
+   {
+      return absenceRealertInterval == null ? 0 : absenceRealertInterval;
+   }
+
+   /**
+    * @param absenceRealertInterval the absence re-alert interval in seconds to set
+    */
+   public void setAbsenceRealertInterval(Integer absenceRealertInterval)
+   {
+      this.absenceRealertInterval = absenceRealertInterval;
+   }
+
+   /**
+    * @return the absence interval time range value (converted from seconds to appropriate unit)
+    */
+   public int getAbsenceTimeRange()
+   {
+      return toTimeRange(absenceInterval, true);
+   }
+
+   /**
+    * @return the absence interval time unit (0=seconds, 1=minutes, 2=hours, 3=days)
+    */
+   public int getAbsenceTimeUnit()
+   {
+      return toTimeUnit(absenceInterval, true);
+   }
+
+   /**
+    * @return the absence re-alert time range value (converted from seconds to appropriate unit)
+    */
+   public int getAbsenceRealertTimeRange()
+   {
+      return toTimeRange(absenceRealertInterval, true);
+   }
+
+   /**
+    * @return the absence re-alert time unit (0=seconds, 1=minutes, 2=hours, 3=days)
+    */
+   public int getAbsenceRealertTimeUnit()
+   {
+      return toTimeUnit(absenceRealertInterval, true);
+   }
 }
