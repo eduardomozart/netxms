@@ -1096,6 +1096,7 @@ void CommSession::openFile(NXCPMessage *response, TCHAR *szFullPath, uint32_t re
 struct FileSendContext
 {
    CommSession *session;
+   VolatileCounter *cancellationFlag;
    time_t lastProbeTime;
    uint32_t msgCount;
 };
@@ -1114,7 +1115,13 @@ static void SendFileProgressCallbackWithKeepalive(size_t bytesTransferred, void 
       NXCPMessage request(CMD_KEEPALIVE, static_cast<uint32_t>(now));
       context->session->sendMessage(request);
       NXCPMessage *response = context->session->waitForMessage(CMD_REQUEST_COMPLETED, request.getId(), 30000);
-      delete response;   // FIXME: do actual check and allow callback to abort file transfer?
+      if (response == nullptr)
+      {
+         // Server did not respond to keepalive - cancel file transfer
+         if (context->cancellationFlag != nullptr)
+            InterlockedIncrement(context->cancellationFlag);
+      }
+      delete response;
       context->lastProbeTime = now;
       context->msgCount = 0;
    }
@@ -1141,6 +1148,7 @@ bool CommSession::sendFile(uint32_t requestId, const TCHAR *file, off64_t offset
 
    FileSendContext context;
    context.session = this;
+   context.cancellationFlag = cancellationFlag;
    context.lastProbeTime = time(nullptr);
    context.msgCount = 0;
    return SendFileOverNXCP(m_channel.get(), requestId, file, m_encryptionContext.get(), offset, SendFileProgressCallbackWithKeepalive, &context,
