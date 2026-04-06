@@ -48,6 +48,9 @@
     <ClCompile Include="grafana.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="images.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="actions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -336,6 +336,7 @@
     <ClCompile Include="find.cpp" />
     <ClCompile Include="geoareas.cpp" />
     <ClCompile Include="grafana.cpp" />
+    <ClCompile Include="images.cpp" />
     <ClCompile Include="info.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="notifications.cpp" />

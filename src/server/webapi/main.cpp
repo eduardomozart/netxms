@@ -86,6 +86,9 @@ int H_GeoAreaCreate(Context *context);
 int H_GeoAreaUpdate(Context *context);
 int H_GeoAreaDelete(Context *context);
 int H_GrafanaDciList(Context *context);
+int H_ImageLibrary(Context *context);
+int H_ImageLibraryDetails(Context *context);
+int H_ImageLibraryData(Context *context);
 int H_FindMacAddress(Context *context);
 int H_GrafanaGetAlarms(Context *context);
 int H_GrafanaGetSummaryTable(Context *context);
@@ -273,6 +276,15 @@ static bool InitModule(Config *config)
       .GET(H_GeoAreaDetails)
       .PUT(H_GeoAreaUpdate)
       .DELETE(H_GeoAreaDelete)
+      .build();
+   RouteBuilder("v1/image-library")
+      .GET(H_ImageLibrary)
+      .build();
+   RouteBuilder("v1/image-library/:guid")
+      .GET(H_ImageLibraryDetails)
+      .build();
+   RouteBuilder("v1/image-library/:guid/data")
+      .GET(H_ImageLibraryData)
       .build();
    RouteBuilder("v1/notification-channels")
       .GET(H_NotificationChannels)
