@@ -125,6 +125,7 @@ LogParserRule::LogParserRule(LogParser *parser, const TCHAR *name, const TCHAR *
 LogParserRule::LogParserRule(LogParserRule *src, LogParser *parser) : m_name(src->m_name), m_metrics(src->m_metrics), m_objectCounters(Ownership::True), m_groupName(Ownership::True), m_absenceState(Ownership::True)
 {
 	m_parser = parser;
+	m_guid = src->m_guid;
 	m_regexp = MemCopyString(src->m_regexp);
    m_eventCode = src->m_eventCode;
 	m_eventName = MemCopyString(src->m_eventName);
@@ -639,14 +640,13 @@ void LogParserRule::setAbsenceState(uint32_t objectId, time_t lastMatchTime, tim
 /**
  * Enumerate all absence state entries
  */
-void LogParserRule::forEachAbsenceState(std::function<void (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)> callback) const
+void LogParserRule::forEachAbsenceState(std::function<void (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)> callback) const
 {
-   const TCHAR *rn = m_name.cstr();
    m_absenceState.forEach(
-      [rn, &callback] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
+      [this, &callback] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
       {
          if (state->armed)
-            callback(rn, objectId, state);
+            callback(m_guid, objectId, state);
          return _CONTINUE;
       });
 }

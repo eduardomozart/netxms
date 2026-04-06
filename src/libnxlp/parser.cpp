@@ -89,6 +89,7 @@ struct LogParser_XmlParserState
    StringBuffer context;
    StringBuffer description;
    StringBuffer ruleName;
+   uuid ruleGuid;
    StringBuffer agentAction;
    StringBuffer agentActionArgs;
 	int contextAction;
@@ -449,7 +450,7 @@ void LogParser::checkAbsenceRules(time_t now)
 /**
  * Enumerate all absence state entries across all rules (for saving to database)
  */
-void LogParser::forEachAbsenceState(std::function<void (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)> callback) const
+void LogParser::forEachAbsenceState(std::function<void (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)> callback) const
 {
    for(int i = 0; i < m_rules.size(); i++)
    {
@@ -462,20 +463,23 @@ void LogParser::forEachAbsenceState(std::function<void (const TCHAR *ruleName, u
 /**
  * Load absence state for a specific rule and object (from database)
  */
-void LogParser::loadAbsenceState(const TCHAR *ruleName, uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime)
+void LogParser::loadAbsenceState(const uuid& ruleGuid, uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime)
 {
    for(int i = 0; i < m_rules.size(); i++)
    {
       LogParserRule *rule = m_rules.get(i);
-      if (rule->isAbsenceRule() && !_tcscmp(rule->getName(), ruleName))
+      if (rule->isAbsenceRule() && rule->getGuid().equals(ruleGuid))
       {
          rule->setAbsenceState(objectId, lastMatchTime, lastAlertTime);
-         trace(5, _T("Loaded absence state for rule \"%s\" object %u: lastMatch=%lld, lastAlert=%lld"),
-               ruleName, objectId, static_cast<int64_t>(lastMatchTime), static_cast<int64_t>(lastAlertTime));
+         TCHAR guidStr[64];
+         trace(5, _T("Loaded absence state for rule \"%s\" [%s] object %u: lastMatch=%lld, lastAlert=%lld"),
+               rule->getName(), ruleGuid.toString(guidStr), objectId,
+               static_cast<int64_t>(lastMatchTime), static_cast<int64_t>(lastAlertTime));
          return;
       }
    }
-   trace(5, _T("Cannot load absence state: rule \"%s\" not found or not an absence rule"), ruleName);
+   TCHAR guidStr[64];
+   trace(5, _T("Cannot load absence state: rule with GUID %s not found or not an absence rule"), ruleGuid.toString(guidStr));
 }
 
 /**
@@ -667,6 +671,11 @@ static void StartElement(void *userData, const char *name, const char **attrs)
 		ps->ruleContext = XMLGetAttr(attrs, "context");
       ps->ruleName = XMLGetAttr(attrs, "name");
 #endif
+      const char *guid = XMLGetAttr(attrs, "guid");
+      if (guid != nullptr)
+         ps->ruleGuid = uuid::parseA(guid);
+      else
+         ps->ruleGuid = uuid::generate();
 		ps->breakFlag = XMLGetAttrBoolean(attrs, "break", false);
       ps->doNotSaveToDBFlag = XMLGetAttrBoolean(attrs, "doNotSaveToDatabase", false);
 		ps->state = XML_STATE_RULE;
@@ -857,6 +866,7 @@ static void EndElement(void *userData, const char *name)
 		LogParserRule *rule = new LogParserRule(ps->parser, ps->ruleName, ps->regexp, ps->ignoreCase,
 		         eventCode, eventName, ps->eventTag, ps->repeatInterval, ps->repeatCount, ps->resetRepeat,
 		         ps->metrics);
+		rule->setGuid(ps->ruleGuid);
 		if (!ps->agentAction.isEmpty())
 		   rule->setAgentAction(ps->agentAction);
 		if (!ps->agentActionArgs.isEmpty())

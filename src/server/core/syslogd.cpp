@@ -938,14 +938,15 @@ static void SaveAbsenceState()
    DBQuery(hdb, L"DELETE FROM lp_absence_state");
 
    DB_STATEMENT hStmt = DBPrepare(hdb,
-      L"INSERT INTO lp_absence_state (rule_name,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
+      L"INSERT INTO lp_absence_state (rule_guid,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
    if (hStmt != nullptr)
    {
       int count = 0;
       s_parser->forEachAbsenceState(
-         [hStmt, &count] (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)
+         [hStmt, &count] (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)
          {
-            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleName, DB_BIND_STATIC);
+            TCHAR guidStr[64];
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleGuid.toString(guidStr), DB_BIND_STATIC);
             DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
             DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
             DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
@@ -973,18 +974,19 @@ static void LoadAbsenceState()
    if (hdb == nullptr)
       return;
 
-   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_name,object_id,last_match_time,last_alert_time FROM lp_absence_state");
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state");
    if (hResult != nullptr)
    {
       int count = DBGetNumRows(hResult);
       for (int i = 0; i < count; i++)
       {
-         TCHAR ruleName[256];
-         DBGetField(hResult, i, 0, ruleName, 256);
+         TCHAR guidStr[64];
+         DBGetField(hResult, i, 0, guidStr, 64);
+         uuid ruleGuid = uuid::parse(guidStr);
          uint32_t objectId = DBGetFieldULong(hResult, i, 1);
          time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
          time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));
-         s_parser->loadAbsenceState(ruleName, objectId, lastMatchTime, lastAlertTime);
+         s_parser->loadAbsenceState(ruleGuid, objectId, lastMatchTime, lastAlertTime);
       }
       DBFreeResult(hResult);
       nxlog_debug_tag(DEBUG_TAG, 3, L"Loaded %d absence state entries from database", count);
