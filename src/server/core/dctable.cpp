@@ -1396,6 +1396,57 @@ void DCTable::getThresholdIdList(IntegerArray<uint32_t> *idList) const
 }
 
 /**
+ * Get severity of most critical active threshold. If no active threshold exists, returns SEVERITY_NORMAL.
+ */
+int DCTable::getThresholdSeverity() const
+{
+   int result = SEVERITY_NORMAL;
+   lock();
+   if (m_thresholds != nullptr)
+   {
+      for(int i = 0; i < m_thresholds->size(); i++)
+      {
+         DCTableThreshold *t = m_thresholds->get(i);
+         if (t->isActive())
+         {
+            shared_ptr<EventTemplate> e = FindEventTemplateByCode(t->getActivationEvent());
+            if (e != nullptr)
+               result = std::max(result, e->getSeverity());
+            if (result == SEVERITY_CRITICAL)
+               break;
+         }
+      }
+   }
+   unlock();
+   return result;
+}
+
+/**
+ * Create descriptor for this object
+ */
+shared_ptr<DCObjectInfo> DCTable::createDescriptorInternal() const
+{
+   shared_ptr<DCObjectInfo> info = DCObject::createDescriptorInternal();
+   if (m_thresholds != nullptr)
+   {
+      for(int i = 0; i < m_thresholds->size(); i++)
+      {
+         DCTableThreshold *t = m_thresholds->get(i);
+         if (t->isActive())
+         {
+            info->m_hasActiveThreshold = true;
+            shared_ptr<EventTemplate> e = FindEventTemplateByCode(t->getActivationEvent());
+            if (e != nullptr)
+               info->m_thresholdSeverity = std::max(info->m_thresholdSeverity, e->getSeverity());
+            if (info->m_thresholdSeverity == SEVERITY_CRITICAL)
+               break;
+         }
+      }
+   }
+   return info;
+}
+
+/**
  * Loads DCTable last value
  */
 void DCTable::loadCache()

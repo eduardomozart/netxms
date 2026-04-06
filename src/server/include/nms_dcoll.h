@@ -471,6 +471,7 @@ public:
 
    virtual void getEventList(HashSet<uint32_t> *eventList) const = 0;
    virtual bool isUsingEvent(uint32_t eventCode) const = 0;
+   virtual int getThresholdSeverity() const;
    virtual void getScriptDependencies(StringSet *dependencies) const;
    virtual json_t *toJson();
    virtual void updateFromImport(json_t *json);
@@ -626,7 +627,7 @@ public:
 	bool isInterpretSnmpRawValue() const { return (m_flags & DCF_RAW_VALUE_OCTET_STRING) ? true : false; }
 	uint16_t getSnmpRawValueType() const { return m_snmpRawValueType; }
 	bool hasActiveThreshold() const;
-   int getThresholdSeverity() const;
+   virtual int getThresholdSeverity() const override;
 	int getSampleCount() const { return m_sampleCount; }
 	int32_t getSampleSaveInterval() const { return m_sampleSaveInterval; }
 	const TCHAR *getPredictionEngine() const { return m_predictionEngine; }
@@ -951,7 +952,10 @@ public:
    virtual void fillLastValueMessage(NXCPMessage *msg) override;
    virtual json_t *lastValueToJSON() override;
 
+   virtual shared_ptr<DCObjectInfo> createDescriptorInternal() const override;
+
    int getColumnDataType(const TCHAR *name) const;
+   virtual int getThresholdSeverity() const override;
    const ObjectArray<DCTableColumn>& getColumns() const { return *m_columns; }
    shared_ptr<Table> getLastValue();
    void getThresholdIdList(IntegerArray<uint32_t> *idList) const;

@@ -1902,6 +1902,14 @@ static void FindScriptTemplateMacrosInText(const wchar_t *name, StringSet *depen
 }
 
 /**
+ * Get severity of active threshold. Base implementation returns SEVERITY_NORMAL.
+ */
+int DCObject::getThresholdSeverity() const
+{
+   return SEVERITY_NORMAL;
+}
+
+/**
  * Get all script dependencies for this object
  */
 void DCObject::getScriptDependencies(StringSet *dependencies) const

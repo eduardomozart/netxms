@@ -813,14 +813,7 @@ int DataCollectionTarget::getDciThresholdSeverity(uint32_t dciId)
       DCObject *object = m_dcObjects.get(i);
       if (object->getId() == dciId)
       {
-         if (object->getType() == DCO_TYPE_TABLE)
-         {
-            //TODO: add DCTable support
-         }
-         else
-         {
-            severity = static_cast<DCItem*>(object)->getThresholdSeverity();
-         }
+         severity = object->getThresholdSeverity();
          break;
       }
    }
