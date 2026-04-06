@@ -591,7 +591,7 @@ void AccessPoint::statusPollFromController(ClientSession *session, uint32_t requ
                         {
                            sendPollerMsg(POLLER_ERROR _T("      responded to ICMP ping\r\n"));
                            if (m_apState == AP_DOWN)
-                              state = m_prevState;  /* FIXME: get actual AP state here */
+                              state = m_prevState;  // Controller couldn't provide state, use last known state before AP went down
                         }
                         else
                         {
@@ -631,7 +631,7 @@ void AccessPoint::statusPollFromController(ClientSession *session, uint32_t requ
             {
                sendPollerMsg(POLLER_ERROR _T("      responded to ICMP ping\r\n"));
                if (m_apState == AP_DOWN)
-                  state = m_prevState;  /* FIXME: get actual AP state here */
+                  state = m_prevState;  // Controller couldn't provide state, use last known state before AP went down
             }
             else
             {

@@ -18097,9 +18097,8 @@ void ClientSession::executeSshCommand(const NXCPMessage& request)
  * VID_SEARCH_PATTERN            Search string
  *
  * Return values:
- * VID_NUM_ITEMS                 Number of found DCIs. Ofset 50
- * VID_DCI_VALUES_BASE           TODO:
- * ...
+ * VID_NUM_ITEMS                 Number of found DCIs
+ * VID_DCI_VALUES_BASE           DCI last value summaries, 50 fields per DCI
  * VID_RCC                       Request Completion Code
  */
 void ClientSession::findDci(const NXCPMessage &request)

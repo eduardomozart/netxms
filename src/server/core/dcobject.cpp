@@ -808,8 +808,6 @@ bool DCObject::isReadyForPolling(time_t currTime)
                String schedule = expandSchedule(m_schedules->get(i));
                if (MatchSchedule(schedule, &withSeconds, &tmCurrLocal, currTime))
                {
-                  // TODO: do we have to take care about the schedules with seconds
-                  // that trigger polling too often?
                   if (withSeconds || (currTime - m_tLastCheck >= 60) || (tmCurrLocal.tm_min != tmLastLocal.tm_min))
                   {
                      result = true;

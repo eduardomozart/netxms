@@ -390,7 +390,7 @@ static uint32_t ImportEvent(const ConfigEntry *event, bool overwrite, ImportCont
 /**
  * Import SNMP trap mappimg
  */
-static uint32_t ImportTrapMapping(const ConfigEntry& trap, bool overwrite, ImportContext *context, bool nxslV5) // TODO transactions needed?
+static uint32_t ImportTrapMapping(const ConfigEntry& trap, bool overwrite, ImportContext *context, bool nxslV5)
 {
    uint32_t rcc = RCC_INTERNAL_ERROR;
    shared_ptr<EventTemplate> eventTemplate = FindEventTemplate(trap.getSubEntryValue(_T("event"), 0, _T("")));
