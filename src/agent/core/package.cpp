@@ -196,7 +196,7 @@ uint32_t InstallSoftwarePackage(CommSession *session, const char *packageType, c
       return ERR_EXEC_FAILED;
    }
 
-   if (executor.waitForCompletion(600000))  // FIXME: what timeout to use?
+   if (executor.waitForCompletion(600000))  // Matches server-side Agent.Upgrade.WaitTime default
    {
       nxlog_write_tag(NXLOG_INFO, DEBUG_TAG, _T("Package installer successfully completed, command = %s"), commandLine.cstr());
       return ERR_SUCCESS;

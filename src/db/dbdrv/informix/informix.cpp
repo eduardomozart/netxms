@@ -812,9 +812,7 @@ static WCHAR *GetFieldUnbuffered(DBDRV_UNBUFFERED_RESULT hResult, int iColumn, W
 
 	if ((iColumn >= 0) && (iColumn < result->numColumns))
 	{
-		// At least on HP-UX driver expects length in chars, not bytes
-		// otherwise it crashes
-		// TODO: check other platforms
+		// HP-UX Informix ODBC driver expects length in chars, not bytes (crashes otherwise)
 		iResult = SQLGetData(result->sqlStatement, (short)iColumn + 1, SQL_C_WCHAR, pBuffer, iBufSize, &iDataSize);
 		if (((iResult != SQL_SUCCESS) && (iResult != SQL_SUCCESS_WITH_INFO)) || (iDataSize == SQL_NULL_DATA))
 		{
