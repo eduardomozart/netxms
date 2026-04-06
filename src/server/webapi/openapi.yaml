@@ -2314,6 +2314,153 @@ paths:
           description: Server side error (common reason is failed communication to agent). Response document may contain detailed failure reason.
       security:
         - BearerAuth: []
+  /v1/objects/{object-id}/topology/l2:
+    get:
+      summary: Get L2 (link layer) topology
+      description: Build an ad-hoc Layer 2 topology map centered on the given node. Returns the set of discovered objects and the links between them.
+      tags:
+        - Objects
+      parameters:
+        - name: object-id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Node object ID
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Discovery radius (number of hops from the root node). 0 means server default.
+        - name: useL1Topology
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Include physical (L1) topology information
+      responses:
+        '200':
+          description: L2 topology retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyMap'
+        '400':
+          description: Invalid object ID or object is not a node
+        '401':
+          description: Unauthorized
+        '403':
+          description: User does not have read access to given object
+        '404':
+          description: Object with given ID does not exist
+        '500':
+          description: Unable to build L2 topology
+      security:
+        - BearerAuth: []
+  /v1/objects/{object-id}/topology/ip:
+    get:
+      summary: Get IP topology
+      description: Build an ad-hoc IP topology map centered on the given node. Returns routers and subnets connected to the node.
+      tags:
+        - Objects
+      parameters:
+        - name: object-id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Node object ID
+        - name: radius
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Discovery radius (number of hops from the root node). 0 means server default.
+      responses:
+        '200':
+          description: IP topology retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyMap'
+        '400':
+          description: Invalid object ID or object is not a node
+        '401':
+          description: Unauthorized
+        '403':
+          description: User does not have read access to given object
+        '404':
+          description: Object with given ID does not exist
+      security:
+        - BearerAuth: []
+  /v1/objects/{object-id}/topology/ospf:
+    get:
+      summary: Get OSPF topology
+      description: Build an ad-hoc OSPF topology map centered on the given node. Returns the OSPF routing domain topology.
+      tags:
+        - Objects
+      parameters:
+        - name: object-id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Node object ID
+      responses:
+        '200':
+          description: OSPF topology retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyMap'
+        '400':
+          description: Invalid object ID or object is not a node
+        '401':
+          description: Unauthorized
+        '403':
+          description: User does not have read access to given object
+        '404':
+          description: Object with given ID does not exist
+        '500':
+          description: Unable to build OSPF topology
+      security:
+        - BearerAuth: []
+  /v1/objects/{object-id}/topology/internal:
+    get:
+      summary: Get internal communication topology
+      description: Build an ad-hoc internal communication topology map for the given object. Shows proxy relationships and agent tunnels.
+      tags:
+        - Objects
+      parameters:
+        - name: object-id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Data collection target object ID
+      responses:
+        '200':
+          description: Internal communication topology retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyMap'
+        '400':
+          description: Invalid object ID or object is not a data collection target
+        '401':
+          description: Unauthorized
+        '403':
+          description: User does not have read access to given object
+        '404':
+          description: Object with given ID does not exist
+        '500':
+          description: Unable to build internal communication topology
+      security:
+        - BearerAuth: []
   /v1/objects/{object-id}/status-explanation:
     get:
       summary: Get object status explanation
@@ -5785,6 +5932,51 @@ components:
           description: Object last change timestamp
         status:
           $ref: '#/components/schemas/Status'
+    TopologyMap:
+      type: object
+      description: Ad-hoc topology map containing discovered objects and the links between them
+      properties:
+        objects:
+          type: array
+          description: List of objects in the topology
+          items:
+            $ref: '#/components/schemas/ObjectSummary'
+        links:
+          type: array
+          description: Links between objects
+          items:
+            $ref: '#/components/schemas/TopologyLink'
+    TopologyLink:
+      type: object
+      description: A link between two objects in a topology map
+      properties:
+        object1:
+          type: integer
+          description: First object ID
+        object2:
+          type: integer
+          description: Second object ID
+        interface1:
+          type: integer
+          description: Interface ID on first object (0 if not applicable)
+        interface2:
+          type: integer
+          description: Interface ID on second object (0 if not applicable)
+        type:
+          type: integer
+          description: "Link type (0=normal, 1=VPN, 2=multilink, 3=agent tunnel, 4=agent proxy, 5=SSH proxy, 6=SNMP proxy, 7=ICMP proxy, 8=sensor proxy, 9=zone proxy, 10=WiFi client)"
+        name:
+          type: string
+          description: Link name
+        port1:
+          type: string
+          description: Port/connector name on first object
+        port2:
+          type: string
+          description: Port/connector name on second object
+        flags:
+          type: integer
+          description: Link flags
     ObjectQueryResult:
       type: object
       properties:

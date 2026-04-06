@@ -156,6 +156,10 @@ int H_SummaryTableDelete(Context *context);
 int H_GrafanaSummaryTablesList(Context *context);
 int H_TakeScreenshot(Context *context);
 int H_TcpProxyCreate(Context *context);
+int H_TopologyL2(Context *context);
+int H_TopologyIP(Context *context);
+int H_TopologyOSPF(Context *context);
+int H_TopologyInternal(Context *context);
 int H_Users(Context *context);
 int H_UserDetails(Context *context);
 int H_UserCreate(Context *context);
@@ -406,6 +410,18 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/objects/:object-id/take-screenshot")
       .GET(H_TakeScreenshot)
+      .build();
+   RouteBuilder("v1/objects/:object-id/topology/ip")
+      .GET(H_TopologyIP)
+      .build();
+   RouteBuilder("v1/objects/:object-id/topology/internal")
+      .GET(H_TopologyInternal)
+      .build();
+   RouteBuilder("v1/objects/:object-id/topology/l2")
+      .GET(H_TopologyL2)
+      .build();
+   RouteBuilder("v1/objects/:object-id/topology/ospf")
+      .GET(H_TopologyOSPF)
       .build();
    RouteBuilder("v1/objects/query")
       .POST(H_ObjectQuery)
