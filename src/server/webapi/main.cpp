@@ -85,6 +85,11 @@ int H_GeoAreaDetails(Context *context);
 int H_GeoAreaCreate(Context *context);
 int H_GeoAreaUpdate(Context *context);
 int H_GeoAreaDelete(Context *context);
+int H_ObjectCategories(Context *context);
+int H_ObjectCategoryDetails(Context *context);
+int H_ObjectCategoryCreate(Context *context);
+int H_ObjectCategoryUpdate(Context *context);
+int H_ObjectCategoryDelete(Context *context);
 int H_GrafanaDciList(Context *context);
 int H_ImageLibrary(Context *context);
 int H_ImageLibraryDetails(Context *context);
@@ -276,6 +281,15 @@ static bool InitModule(Config *config)
       .GET(H_GeoAreaDetails)
       .PUT(H_GeoAreaUpdate)
       .DELETE(H_GeoAreaDelete)
+      .build();
+   RouteBuilder("v1/object-categories")
+      .GET(H_ObjectCategories)
+      .POST(H_ObjectCategoryCreate)
+      .build();
+   RouteBuilder("v1/object-categories/:category-id")
+      .GET(H_ObjectCategoryDetails)
+      .PUT(H_ObjectCategoryUpdate)
+      .DELETE(H_ObjectCategoryDelete)
       .build();
    RouteBuilder("v1/image-library")
       .GET(H_ImageLibrary)

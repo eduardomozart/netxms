@@ -1052,6 +1052,7 @@ public:
    const uuid& getIcon() const { return m_icon; }
 
    void fillMessage(NXCPMessage *msg, uint32_t baseId);
+   json_t *toJson() const;
 };
 
 #ifdef _WIN32
@@ -6220,7 +6221,10 @@ ObjectArray<L1_NEIGHBOR_INFO> GetL1Neighbors(const Node *root);
 shared_ptr<ObjectCategory> NXCORE_EXPORTABLE GetObjectCategory(uint32_t id);
 shared_ptr<ObjectCategory> NXCORE_EXPORTABLE FindObjectCategoryByName(const TCHAR *name);
 uint32_t ModifyObjectCategory(const NXCPMessage& msg, uint32_t *categoryId);
-uint32_t DeleteObjectCategory(uint32_t id, bool forceDelete);
+uint32_t NXCORE_EXPORTABLE ModifyObjectCategory(uint32_t id, json_t *json, uint32_t *categoryId);
+uint32_t NXCORE_EXPORTABLE DeleteObjectCategory(uint32_t id, bool forceDelete);
+json_t NXCORE_EXPORTABLE *GetObjectCategoriesAsJson();
+json_t NXCORE_EXPORTABLE *GetObjectCategoryAsJson(uint32_t id);
 void ObjectCategoriesToMessage(NXCPMessage *msg);
 void LoadObjectCategories();
 

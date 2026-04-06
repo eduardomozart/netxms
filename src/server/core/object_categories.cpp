@@ -118,6 +118,71 @@ uint32_t DeleteObjectCategory(uint32_t id, bool forceDelete)
 }
 
 /**
+ * Create or modify object category from JSON
+ */
+uint32_t NXCORE_EXPORTABLE ModifyObjectCategory(uint32_t id, json_t *json, uint32_t *categoryId)
+{
+   json_t *jsonName = json_object_get(json, "name");
+   if (!json_is_string(jsonName))
+      return RCC_CATEGORY_NAME_EMPTY;
+
+   wchar_t name[MAX_OBJECT_NAME];
+   utf8_to_wchar(json_string_value(jsonName), -1, name, MAX_OBJECT_NAME);
+   if (name[0] == 0)
+      return RCC_CATEGORY_NAME_EMPTY;
+
+   if (id == 0)
+      id = CreateUniqueId(IDG_OBJECT_CATEGORY);
+
+   uuid icon = json_object_get_uuid(json, "icon");
+   uuid mapImage = json_object_get_uuid(json, "mapImage");
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   static const wchar_t *columns[] = {
+      L"name", L"icon", L"map_image", nullptr
+   };
+   DB_STATEMENT hStmt = DBPrepareMerge(hdb, L"object_categories", L"id", id, columns);
+   if (hStmt == nullptr)
+   {
+      DBConnectionPoolReleaseConnection(hdb);
+      return RCC_DB_FAILURE;
+   }
+
+   DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, name, DB_BIND_STATIC);
+   DBBind(hStmt, 2, DB_SQLTYPE_VARCHAR, icon);
+   DBBind(hStmt, 3, DB_SQLTYPE_VARCHAR, mapImage);
+   DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, id);
+   bool success = DBExecute(hStmt);
+   DBFreeStatement(hStmt);
+   DBConnectionPoolReleaseConnection(hdb);
+
+   if (!success)
+      return RCC_DB_FAILURE;
+
+   DB_HANDLE hdb2 = DBConnectionPoolAcquireConnection();
+   wchar_t query[256];
+   swprintf(query, 256, L"SELECT id,name,icon,map_image FROM object_categories WHERE id=%u", id);
+   DB_RESULT hResult = DBSelect(hdb2, query);
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+      {
+         auto category = make_shared<ObjectCategory>(hResult, 0);
+         s_objectCategories.put(category->getId(), category);
+
+         NXCPMessage notificationMessage(CMD_OBJECT_CATEGORY_UPDATE, 0);
+         category->fillMessage(&notificationMessage, VID_ELEMENT_LIST_BASE);
+         NotifyClientSessions(notificationMessage, NXC_CHANNEL_OBJECTS);
+      }
+      DBFreeResult(hResult);
+   }
+   DBConnectionPoolReleaseConnection(hdb2);
+
+   *categoryId = id;
+   return RCC_SUCCESS;
+}
+
+/**
  * Create or modify object category from NXCP message
  */
 uint32_t ModifyObjectCategory(const NXCPMessage& msg, uint32_t *categoryId)
@@ -207,4 +272,41 @@ void ObjectCategory::fillMessage(NXCPMessage *msg, uint32_t baseId)
    msg->setField(baseId++, m_name);
    msg->setField(baseId++, m_icon);
    msg->setField(baseId++, m_mapImage);
+}
+
+/**
+ * Serialize object category to JSON
+ */
+json_t *ObjectCategory::toJson() const
+{
+   json_t *root = json_object();
+   json_object_set_new(root, "id", json_integer(m_id));
+   json_object_set_new(root, "name", json_string_w(m_name));
+   json_object_set_new(root, "icon", m_icon.toJson());
+   json_object_set_new(root, "mapImage", m_mapImage.toJson());
+   return root;
+}
+
+/**
+ * Get all object categories as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetObjectCategoriesAsJson()
+{
+   json_t *output = json_array();
+   s_objectCategories.forEach(
+      [output](ObjectCategory *category) -> EnumerationCallbackResult
+      {
+         json_array_append_new(output, category->toJson());
+         return _CONTINUE;
+      });
+   return output;
+}
+
+/**
+ * Get single object category as JSON object or nullptr if not found
+ */
+json_t NXCORE_EXPORTABLE *GetObjectCategoryAsJson(uint32_t id)
+{
+   shared_ptr<ObjectCategory> category = s_objectCategories.get(id);
+   return (category != nullptr) ? category->toJson() : nullptr;
 }
