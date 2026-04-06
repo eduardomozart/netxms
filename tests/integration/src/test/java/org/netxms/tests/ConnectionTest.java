@@ -93,7 +93,7 @@ public class ConnectionTest extends AbstractSessionTest
             {
                Random rand = new Random();
                Thread.sleep(rand.nextInt(60000) + 1000);
-               session = connectAndLogin();
+               session = TestHelper.connect();
 
                session.syncObjects();
                session.syncEventTemplates();
