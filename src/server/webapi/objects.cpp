@@ -805,7 +805,7 @@ int H_ObjectSetMaintenance(Context *context)
    if (object == nullptr)
       return 404;
 
-   if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_MODIFY)) //TODO: check if there should be control maintenance?
+   if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_MAINTENANCE))
       return 403;
 
    if (!object->isMaintenanceApplicable())
