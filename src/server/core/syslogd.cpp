@@ -920,6 +920,80 @@ static void SyslogParserCallback(const LogParserCallbackData& data)
 }
 
 /**
+ * Save absence detection state to database.
+ * Must be called with s_parserLock held.
+ */
+static void SaveAbsenceState()
+{
+   if (s_parser == nullptr)
+      return;
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   if (hdb == nullptr)
+      return;
+
+   DBBegin(hdb);
+
+   // Clear existing state
+   DBQuery(hdb, L"DELETE FROM lp_absence_state");
+
+   DB_STATEMENT hStmt = DBPrepare(hdb,
+      L"INSERT INTO lp_absence_state (rule_name,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
+   if (hStmt != nullptr)
+   {
+      int count = 0;
+      s_parser->forEachAbsenceState(
+         [hStmt, &count] (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)
+         {
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleName, DB_BIND_STATIC);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
+            DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
+            DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
+            DBExecute(hStmt);
+            count++;
+         });
+      DBFreeStatement(hStmt);
+      nxlog_debug_tag(DEBUG_TAG, 5, L"Saved %d absence state entries to database", count);
+   }
+
+   DBCommit(hdb);
+   DBConnectionPoolReleaseConnection(hdb);
+}
+
+/**
+ * Load absence detection state from database into parser.
+ * Must be called with s_parserLock held and s_parser not null.
+ */
+static void LoadAbsenceState()
+{
+   if (s_parser == nullptr)
+      return;
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   if (hdb == nullptr)
+      return;
+
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_name,object_id,last_match_time,last_alert_time FROM lp_absence_state");
+   if (hResult != nullptr)
+   {
+      int count = DBGetNumRows(hResult);
+      for (int i = 0; i < count; i++)
+      {
+         TCHAR ruleName[256];
+         DBGetField(hResult, i, 0, ruleName, 256);
+         uint32_t objectId = DBGetFieldULong(hResult, i, 1);
+         time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
+         time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));
+         s_parser->loadAbsenceState(ruleName, objectId, lastMatchTime, lastAlertTime);
+      }
+      DBFreeResult(hResult);
+      nxlog_debug_tag(DEBUG_TAG, 3, L"Loaded %d absence state entries from database", count);
+   }
+
+   DBConnectionPoolReleaseConnection(hdb);
+}
+
+/**
  * Create syslog parser from config
  */
 static void CreateParserFromConfig()
@@ -948,6 +1022,8 @@ static void CreateParserFromConfig()
 			s_parser->setCallback(SyslogParserCallback);
 			if (prev != nullptr)
 			   s_parser->restoreCounters(prev);
+			else
+			   LoadAbsenceState(); // First load - restore from database
 			nxlog_debug_tag(DEBUG_TAG, 3, L"Syslog parser successfully created from config");
 		}
 		else
@@ -1281,11 +1357,22 @@ static void SyslogAbsenceCheckThread()
 {
    ThreadSetName("SyslogAbsCheck");
    nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread started");
+   int saveCounter = 0;
    while(!s_absenceCheckStop.wait(60000))
    {
       LockGuard lockGuard(s_parserLock);
       if (s_parser != nullptr)
+      {
          s_parser->checkAbsenceRules(time(nullptr));
+
+         // Save state to database every 5 minutes
+         saveCounter++;
+         if (saveCounter >= 5)
+         {
+            SaveAbsenceState();
+            saveCounter = 0;
+         }
+      }
    }
    nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread stopped");
 }
@@ -1352,6 +1439,12 @@ void StopSyslogServer()
    // Stop absence check thread
    s_absenceCheckStop.set();
    ThreadJoin(s_absenceCheckThread);
+
+   // Save absence state before shutting down
+   {
+      LockGuard lockGuard(s_parserLock);
+      SaveAbsenceState();
+   }
 
    delete s_parser;
    CleanupLogParserLibrary();

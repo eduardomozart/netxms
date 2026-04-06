@@ -24,6 +24,22 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.33 to 61.34
+ */
+static bool H_UpgradeFromV33()
+{
+   CHK_EXEC(CreateTable(
+      L"CREATE TABLE lp_absence_state ("
+      L"  rule_name varchar(255) not null,"
+      L"  object_id integer not null,"
+      L"  last_match_time integer not null,"
+      L"  last_alert_time integer not null,"
+      L"  PRIMARY KEY(rule_name,object_id))"));
+   CHK_EXEC(SetMinorSchemaVersion(34));
+   return true;
+}
+
+/**
  * Upgrade from 61.32 to 61.33
  */
 static bool H_UpgradeFromV32()
@@ -932,6 +948,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 33, 61, 34, H_UpgradeFromV33 },
    { 32, 61, 33, H_UpgradeFromV32 },
    { 31, 61, 32, H_UpgradeFromV31 },
    { 30, 61, 31, H_UpgradeFromV30 },

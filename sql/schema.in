@@ -2017,6 +2017,18 @@ SELECT create_hypertable('syslog', 'msg_timestamp', chunk_time_interval => inter
 #endif
 
 /*
+** Log parser absence detection state
+*/
+CREATE TABLE lp_absence_state
+(
+  rule_name varchar(255) not null,
+  object_id integer not null,
+  last_match_time integer not null,
+  last_alert_time integer not null,
+  PRIMARY KEY(rule_name,object_id)
+) TABLE_TYPE;
+
+/*
 ** Script library
 */
 CREATE TABLE script_library

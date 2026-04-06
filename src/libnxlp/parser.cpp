@@ -447,6 +447,38 @@ void LogParser::checkAbsenceRules(time_t now)
 }
 
 /**
+ * Enumerate all absence state entries across all rules (for saving to database)
+ */
+void LogParser::forEachAbsenceState(std::function<void (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)> callback) const
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule())
+         rule->forEachAbsenceState(callback);
+   }
+}
+
+/**
+ * Load absence state for a specific rule and object (from database)
+ */
+void LogParser::loadAbsenceState(const TCHAR *ruleName, uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule() && !_tcscmp(rule->getName(), ruleName))
+      {
+         rule->setAbsenceState(objectId, lastMatchTime, lastAlertTime);
+         trace(5, _T("Loaded absence state for rule \"%s\" object %u: lastMatch=%lld, lastAlert=%lld"),
+               ruleName, objectId, static_cast<int64_t>(lastMatchTime), static_cast<int64_t>(lastAlertTime));
+         return;
+      }
+   }
+   trace(5, _T("Cannot load absence state: rule \"%s\" not found or not an absence rule"), ruleName);
+}
+
+/**
  * Set associated file name
  */
 void LogParser::setFileName(const TCHAR *name)

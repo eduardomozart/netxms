@@ -623,3 +623,30 @@ bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallbac
    incMatchCount(objectId);
    return true;
 }
+
+/**
+ * Set absence state for a specific object (used when loading from database)
+ */
+void LogParserRule::setAbsenceState(uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime)
+{
+   AbsenceState *state = new AbsenceState;
+   state->lastMatchTime = lastMatchTime;
+   state->lastAlertTime = lastAlertTime;
+   state->armed = true;
+   m_absenceState.set(objectId, state);
+}
+
+/**
+ * Enumerate all absence state entries
+ */
+void LogParserRule::forEachAbsenceState(std::function<void (const TCHAR *ruleName, uint32_t objectId, const AbsenceState *state)> callback) const
+{
+   const TCHAR *rn = m_name.cstr();
+   m_absenceState.forEach(
+      [rn, &callback] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
+      {
+         if (state->armed)
+            callback(rn, objectId, state);
+         return _CONTINUE;
+      });
+}
