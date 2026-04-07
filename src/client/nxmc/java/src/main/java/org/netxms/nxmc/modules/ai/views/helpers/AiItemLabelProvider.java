@@ -21,14 +21,13 @@ package org.netxms.nxmc.modules.ai.views.helpers;
 import org.eclipse.jface.viewers.ITableColorProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.widgets.Display;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.ai.views.AiSkillsManager;
 import org.netxms.nxmc.modules.ai.views.AiSkillsManager.AiItemEntry;
 import org.netxms.nxmc.resources.ResourceManager;
+import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -37,7 +36,7 @@ import org.xnap.commons.i18n.I18n;
 public class AiItemLabelProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider
 {
    private final I18n i18n = LocalizationHelper.getI18n(AiItemLabelProvider.class);
-   private final Color disabledColor = Display.getCurrent().getSystemColor(SWT.COLOR_WIDGET_DISABLED_FOREGROUND);
+   private final Color disabledColor = WidgetHelper.getSystemColor(WidgetHelper.COLOR_WIDGET_DISABLED_FOREGROUND);
    private final Image imageFunction;
    private final Image imageSkill;
    private final Image imageUnknownElement;
