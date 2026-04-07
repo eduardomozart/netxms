@@ -526,8 +526,44 @@ Var
   dbInitCheckCreateDB: TNewCheckBox;
   dbInitType: TNewComboBox;
   dbInitServerLabel: TNewStaticText;
+  copyPasswordButton: TNewButton;
   taskPageShown, serverWasConfigured: Boolean;
   generatedAdminPassword: String;
+
+Const
+  CF_UNICODETEXT = 13;
+  GMEM_MOVEABLE = $0002;
+
+Function OpenClipboard(hWndNewOwner: Cardinal): Boolean; external 'OpenClipboard@user32.dll stdcall';
+Function EmptyClipboard(): Boolean; external 'EmptyClipboard@user32.dll stdcall';
+Function CloseClipboard(): Boolean; external 'CloseClipboard@user32.dll stdcall';
+Function SetClipboardData(uFormat: Cardinal; hMem: Cardinal): Cardinal; external 'SetClipboardData@user32.dll stdcall';
+Function GlobalAlloc(uFlags: Cardinal; dwBytes: Cardinal): Cardinal; external 'GlobalAlloc@kernel32.dll stdcall';
+Function GlobalLock(hMem: Cardinal): Cardinal; external 'GlobalLock@kernel32.dll stdcall';
+Function GlobalUnlock(hMem: Cardinal): Boolean; external 'GlobalUnlock@kernel32.dll stdcall';
+Function lstrcpyW(lpDest: Cardinal; lpSrc: String): Cardinal; external 'lstrcpyW@kernel32.dll stdcall';
+
+Function CopyTextToClipboard(text: String): Boolean;
+Var
+  hGlobal: Cardinal;
+  pGlobal: Cardinal;
+Begin
+  Result := False;
+  If OpenClipboard(0) Then Begin
+    EmptyClipboard();
+    hGlobal := GlobalAlloc(GMEM_MOVEABLE, (Length(text) + 1) * 2);
+    If hGlobal <> 0 Then Begin
+      pGlobal := GlobalLock(hGlobal);
+      If pGlobal <> 0 Then Begin
+        lstrcpyW(pGlobal, text);
+        GlobalUnlock(hGlobal);
+        If SetClipboardData(CF_UNICODETEXT, hGlobal) <> 0 Then
+          Result := True;
+      End;
+    End;
+    CloseClipboard();
+  End;
+End;
 
 #include "firewall.iss"
 
@@ -734,9 +770,29 @@ Begin
   dbInitDBAPassword.Enabled := False;
 End;
 
+Procedure CopyPasswordToClipboard(Sender: TObject);
+Begin
+  If generatedAdminPassword <> '' Then Begin
+    If CopyTextToClipboard(generatedAdminPassword) Then
+      copyPasswordButton.Caption := 'Copied!'
+    Else
+      copyPasswordButton.Caption := 'Copy failed';
+  End;
+End;
+
 Procedure InitializeWizard;
 Begin
   CreateDatabaseInitPage;
+
+  copyPasswordButton := TNewButton.Create(WizardForm);
+  copyPasswordButton.Parent := WizardForm.FinishedPage;
+  copyPasswordButton.Caption := 'Copy Password';
+  copyPasswordButton.Left := WizardForm.FinishedLabel.Left;
+  copyPasswordButton.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(8);
+  copyPasswordButton.Width := ScaleX(120);
+  copyPasswordButton.Height := ScaleY(25);
+  copyPasswordButton.Visible := False;
+  copyPasswordButton.OnClick := @CopyPasswordToClipboard;
 End;
 
 Procedure CurPageChanged(CurPageID: Integer);
@@ -755,6 +811,8 @@ Begin
       '   Password:  ' + generatedAdminPassword + #13#10 + #13#10 +
       'Please save this password - it will not be shown again.' + #13#10 +
       'You will be required to change it on first login.';
+    copyPasswordButton.Caption := 'Copy Password';
+    copyPasswordButton.Visible := True;
   End;
 End;
 
