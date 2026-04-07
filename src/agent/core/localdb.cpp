@@ -223,11 +223,12 @@ static const TCHAR *s_dbInitQueries[] =
    _T("  PRIMARY KEY(name,path))"),
 
    _T("CREATE TABLE lp_absence_state (")
-   _T("  rule_guid varchar(40) not null,")
+   _T("  parser_type char(1) not null,")
+   _T("  rule_guid varchar(36) not null,")
    _T("  object_id integer not null,")
    _T("  last_match_time integer not null,")
    _T("  last_alert_time integer not null,")
-   _T("  PRIMARY KEY(rule_guid,object_id))"),
+   _T("  PRIMARY KEY(parser_type,rule_guid,object_id))"),
 
    nullptr
 };

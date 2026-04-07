@@ -62,8 +62,7 @@ static NodeMatchingPolicy s_nodeMatchingPolicy = SOURCE_IP_THEN_HOSTNAME;
 static THREAD s_receiverThread = INVALID_THREAD_HANDLE;
 static THREAD s_processingThread = INVALID_THREAD_HANDLE;
 static THREAD s_writerThread = INVALID_THREAD_HANDLE;
-static THREAD s_absenceCheckThread = INVALID_THREAD_HANDLE;
-static Condition s_absenceCheckStop(true);
+static int s_absenceSaveCounter = 0;
 static bool s_running = true;
 static bool s_alwaysUseServerTime = false;
 static bool s_enableStorage = true;
@@ -934,11 +933,10 @@ static void SaveAbsenceState()
 
    DBBegin(hdb);
 
-   // Clear existing syslog state (prefixed with "S:")
-   DBQuery(hdb, L"DELETE FROM lp_absence_state WHERE rule_guid LIKE 'S:%'");
+   DBQuery(hdb, L"DELETE FROM lp_absence_state WHERE parser_type='S'");
 
    DB_STATEMENT hStmt = DBPrepare(hdb,
-      L"INSERT INTO lp_absence_state (rule_guid,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
+      L"INSERT INTO lp_absence_state (parser_type,rule_guid,object_id,last_match_time,last_alert_time) VALUES ('S',?,?,?,?)", true);
    if (hStmt != nullptr)
    {
       int count = 0;
@@ -946,9 +944,7 @@ static void SaveAbsenceState()
          [hStmt, &count] (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)
          {
             TCHAR guidStr[64];
-            TCHAR prefixedGuid[68];
-            _sntprintf(prefixedGuid, 68, L"S:%s", ruleGuid.toString(guidStr));
-            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, prefixedGuid, DB_BIND_STATIC);
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleGuid.toString(guidStr), DB_BIND_STATIC);
             DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
             DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
             DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
@@ -976,15 +972,15 @@ static void LoadAbsenceState()
    if (hdb == nullptr)
       return;
 
-   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state WHERE rule_guid LIKE 'S:%'");
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state WHERE parser_type='S'");
    if (hResult != nullptr)
    {
       int count = DBGetNumRows(hResult);
       for (int i = 0; i < count; i++)
       {
-         TCHAR prefixedGuid[68];
-         DBGetField(hResult, i, 0, prefixedGuid, 68);
-         uuid ruleGuid = uuid::parse(&prefixedGuid[2]); // Skip "S:" prefix
+         TCHAR guidStr[64];
+         DBGetField(hResult, i, 0, guidStr, 64);
+         uuid ruleGuid = uuid::parse(guidStr);
          uint32_t objectId = DBGetFieldULong(hResult, i, 1);
          time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
          time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));
@@ -1355,30 +1351,30 @@ uint64_t GetNextSyslogId()
 }
 
 /**
- * Syslog absence check thread - periodically checks absence detection rules
+ * Syslog absence check task - runs periodically via thread pool
  */
-static void SyslogAbsenceCheckThread()
+static void SyslogAbsenceCheckTask()
 {
-   ThreadSetName("SyslogAbsCheck");
-   nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread started");
-   int saveCounter = 0;
-   while(!s_absenceCheckStop.wait(60000))
-   {
-      LockGuard lockGuard(s_parserLock);
-      if (s_parser != nullptr)
-      {
-         s_parser->checkAbsenceRules(time(nullptr));
+   if (!s_running)
+      return;
 
-         // Save state to database every 5 minutes
-         saveCounter++;
-         if (saveCounter >= 5)
-         {
-            SaveAbsenceState();
-            saveCounter = 0;
-         }
+   s_parserLock.lock();
+   if (s_parser != nullptr)
+   {
+      s_parser->checkAbsenceRules(time(nullptr));
+
+      // Save state to database every 5 minutes
+      s_absenceSaveCounter++;
+      if (s_absenceSaveCounter >= 5)
+      {
+         SaveAbsenceState();
+         s_absenceSaveCounter = 0;
       }
    }
-   nxlog_debug_tag(DEBUG_TAG, 1, L"Syslog absence check thread stopped");
+   s_parserLock.unlock();
+
+   if (s_running)
+      ThreadPoolScheduleRelative(g_mainThreadPool, 60000, SyslogAbsenceCheckTask);
 }
 
 /**
@@ -1418,7 +1414,7 @@ void StartSyslogServer()
    // Start processing thread
    s_processingThread = ThreadCreateEx(SyslogProcessingThread);
    s_writerThread = ThreadCreateEx(SyslogWriterThread);
-   s_absenceCheckThread = ThreadCreateEx(SyslogAbsenceCheckThread);
+   ThreadPoolScheduleRelative(g_mainThreadPool, 60000, SyslogAbsenceCheckTask);
 
    if (ConfigReadBoolean(_T("Syslog.EnableListener"), false))
       s_receiverThread = ThreadCreateEx(SyslogReceiver);
@@ -1439,10 +1435,6 @@ void StopSyslogServer()
    // Stop writer thread - it must be done after processing thread already finished
    g_syslogWriteQueue.put(INVALID_POINTER_VALUE);
    ThreadJoin(s_writerThread);
-
-   // Stop absence check thread
-   s_absenceCheckStop.set();
-   ThreadJoin(s_absenceCheckThread);
 
    // Save absence state before shutting down
    {

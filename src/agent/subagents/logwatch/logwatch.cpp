@@ -320,7 +320,7 @@ static void SaveAbsenceState()
    DBQuery(hdb, _T("DELETE FROM lp_absence_state"));
 
    DB_STATEMENT hStmt = DBPrepare(hdb,
-      _T("INSERT INTO lp_absence_state (rule_guid,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)"), true);
+      _T("INSERT INTO lp_absence_state (parser_type,rule_guid,object_id,last_match_time,last_alert_time) VALUES ('F',?,?,?,?)"), true);
    if (hStmt == nullptr)
       return;
 

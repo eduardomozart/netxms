@@ -30,11 +30,12 @@ static bool H_UpgradeFromV33()
 {
    CHK_EXEC(CreateTable(
       L"CREATE TABLE lp_absence_state ("
-      L"  rule_guid varchar(40) not null,"
+      L"  parser_type char(1) not null,"
+      L"  rule_guid varchar(36) not null,"
       L"  object_id integer not null,"
       L"  last_match_time integer not null,"
       L"  last_alert_time integer not null,"
-      L"  PRIMARY KEY(rule_guid,object_id))"));
+      L"  PRIMARY KEY(parser_type,rule_guid,object_id))"));
    CHK_EXEC(SetMinorSchemaVersion(34));
    return true;
 }
