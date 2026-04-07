@@ -527,6 +527,7 @@ Var
   dbInitType: TNewComboBox;
   dbInitServerLabel: TNewStaticText;
   taskPageShown, serverWasConfigured: Boolean;
+  generatedAdminPassword: String;
 
 #include "firewall.iss"
 
@@ -746,6 +747,15 @@ Begin
       WizardSelectTasks('!initializeDatabase');
     End;
   End;
+  If (CurPageID = wpFinished) And WizardIsTaskSelected('initializeDatabase') And (generatedAdminPassword <> '') Then Begin
+    WizardForm.FinishedLabel.Caption :=
+      'Setup has finished installing NetXMS on your computer.' + #13#10 + #13#10 +
+      'IMPORTANT: Generated admin password for NetXMS server' + #13#10 +
+      '   Login:      admin' + #13#10 +
+      '   Password:  ' + generatedAdminPassword + #13#10 + #13#10 +
+      'Please save this password - it will not be shown again.' + #13#10 +
+      'You will be required to change it on first login.';
+  End;
 End;
 
 Function ShouldSkipPage(PageID: Integer): Boolean;
@@ -872,6 +882,20 @@ Begin
   Result := options;
 End;
 
+Function GenerateRandomPassword: String;
+Var
+  i, r: Integer;
+  charset, password: String;
+Begin
+  charset := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  password := '';
+  For i := 1 To 16 Do Begin
+    r := Random(Length(charset)) + 1;
+    password := password + charset[r];
+  End;
+  Result := password;
+End;
+
 Function GetDatabaseInitOptions(arg : String): String;
 Var options : String;
 Begin
@@ -879,6 +903,8 @@ Begin
   If dbInitCheckCreateDB.Checked Then Begin
     options := '-C "' + dbInitDBALogin.Text + '/' + dbInitDBAPassword.Text + '"';
   End;
+  generatedAdminPassword := GenerateRandomPassword;
+  options := options + ' -p ' + generatedAdminPassword;
   Result := options;
 End;
 
