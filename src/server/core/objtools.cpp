@@ -2125,6 +2125,9 @@ static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, json_t *to
 #define MENU_FILTER_REQUIRES_NODE_OS_MATCH           0x08
 #define MENU_FILTER_REQUIRES_TEMPLATE_MATCH          0x10
 #define MENU_FILTER_REQUIRES_CUSTOM_ATTRIBUTE_MATCH  0x40
+#define MENU_FILTER_REQUIRES_SSH                     0x80
+#define MENU_FILTER_REQUIRES_ETHERNET_IP             0x100
+#define MENU_FILTER_REQUIRES_MODBUS_TCP              0x200
 
 /**
  * Check if object tool's menu filter is applicable for given object.
@@ -2162,6 +2165,15 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
          return false;
 
       if ((filterFlags & MENU_FILTER_REQUIRES_AGENT) && !node.isNativeAgent())
+         return false;
+
+      if ((filterFlags & MENU_FILTER_REQUIRES_SSH) && !node.isSSHSupported())
+         return false;
+
+      if ((filterFlags & MENU_FILTER_REQUIRES_ETHERNET_IP) && !node.isEthernetIPSupported())
+         return false;
+
+      if ((filterFlags & MENU_FILTER_REQUIRES_MODBUS_TCP) && !node.isModbusTCPSupported())
          return false;
 
       if (filterFlags & MENU_FILTER_REQUIRES_OID_MATCH)
@@ -2207,7 +2219,7 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
    }
    else
    {
-      if (filterFlags & (MENU_FILTER_REQUIRES_SNMP | MENU_FILTER_REQUIRES_AGENT | MENU_FILTER_REQUIRES_OID_MATCH | MENU_FILTER_REQUIRES_NODE_OS_MATCH))
+      if (filterFlags & (MENU_FILTER_REQUIRES_SNMP | MENU_FILTER_REQUIRES_AGENT | MENU_FILTER_REQUIRES_SSH | MENU_FILTER_REQUIRES_ETHERNET_IP | MENU_FILTER_REQUIRES_MODBUS_TCP | MENU_FILTER_REQUIRES_OID_MATCH | MENU_FILTER_REQUIRES_NODE_OS_MATCH))
          return false;
    }
 

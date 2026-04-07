@@ -28,6 +28,9 @@ public class ObjectMenuFilter
    public static final int REQUIRES_TEMPLATE_MATCH          = 0x00000010;
    public static final int REQUIRES_WORKSTATION_OS_MATCH    = 0x00000020;
    public static final int REQUIRES_CUSTOM_ATTRIBUTE_MATCH  = 0x00000040;
+   public static final int REQUIRES_SSH                     = 0x00000080;
+   public static final int REQUIRES_ETHERNET_IP             = 0x00000100;
+   public static final int REQUIRES_MODBUS_TCP              = 0x00000200;
    
    private static Logger logger = LoggerFactory.getLogger(ObjectMenuFilter.class);
 
@@ -98,6 +101,15 @@ public class ObjectMenuFilter
          if (((flags & REQUIRES_AGENT) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_NATIVE_AGENT) == 0)
             return false; // Node does not have NetXMS agent
 
+         if (((flags & REQUIRES_SSH) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_SSH) == 0)
+            return false; // Node does not support SSH
+
+         if (((flags & REQUIRES_ETHERNET_IP) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_ETHERNET_IP) == 0)
+            return false; // Node does not support EtherNet/IP
+
+         if (((flags & REQUIRES_MODBUS_TCP) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_MODBUS_TCP) == 0)
+            return false; // Node does not support Modbus TCP
+
          if ((flags & REQUIRES_OID_MATCH) != 0)
          {
             if (!Glob.matchIgnoreCase(snmpOid, ((AbstractNode)object).getSnmpOID()))
@@ -138,7 +150,7 @@ public class ObjectMenuFilter
       }
       else
       {
-         if ((flags & (REQUIRES_SNMP | REQUIRES_AGENT | REQUIRES_OID_MATCH | REQUIRES_NODE_OS_MATCH)) != 0)
+         if ((flags & (REQUIRES_SNMP | REQUIRES_AGENT | REQUIRES_SSH | REQUIRES_ETHERNET_IP | REQUIRES_MODBUS_TCP | REQUIRES_OID_MATCH | REQUIRES_NODE_OS_MATCH)) != 0)
             return false;
       }
 

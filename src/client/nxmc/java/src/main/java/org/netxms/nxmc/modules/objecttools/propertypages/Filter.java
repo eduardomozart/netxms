@@ -46,6 +46,9 @@ public class Filter extends PropertyPage
 	private ObjectMenuFilter filter;
 	private Button checkAgent;
 	private Button checkSNMP;
+	private Button checkSSH;
+	private Button checkEthernetIP;
+	private Button checkModbusTCP;
 	private Button checkMatchOID;
 	private Button checkMatchNodeOS;
 	private Button checkMatchWorkstationOS;
@@ -108,7 +111,19 @@ public class Filter extends PropertyPage
 		checkSNMP = new Button(dialogArea, SWT.CHECK);
 		checkSNMP.setText(i18n.tr("Node should support SNMP"));
 		checkSNMP.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_SNMP) != 0);
-		
+
+		checkSSH = new Button(dialogArea, SWT.CHECK);
+		checkSSH.setText(i18n.tr("Node should support SSH"));
+		checkSSH.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_SSH) != 0);
+
+		checkEthernetIP = new Button(dialogArea, SWT.CHECK);
+		checkEthernetIP.setText(i18n.tr("Node should support EtherNet/IP"));
+		checkEthernetIP.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_ETHERNET_IP) != 0);
+
+		checkModbusTCP = new Button(dialogArea, SWT.CHECK);
+		checkModbusTCP.setText(i18n.tr("Node should support Modbus TCP"));
+		checkModbusTCP.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_MODBUS_TCP) != 0);
+
 		checkMatchOID = new Button(dialogArea, SWT.CHECK);
 		checkMatchOID.setText(i18n.tr("Node SNMP OID should match with the following template:"));
 		checkMatchOID.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_OID_MATCH) != 0);
@@ -270,6 +285,21 @@ public class Filter extends PropertyPage
 		   setFlag(ObjectMenuFilter.REQUIRES_SNMP);
 		else
 		   clearFlag(ObjectMenuFilter.REQUIRES_SNMP);
+
+		if (checkSSH.getSelection())
+		   setFlag(ObjectMenuFilter.REQUIRES_SSH);
+		else
+		   clearFlag(ObjectMenuFilter.REQUIRES_SSH);
+
+		if (checkEthernetIP.getSelection())
+		   setFlag(ObjectMenuFilter.REQUIRES_ETHERNET_IP);
+		else
+		   clearFlag(ObjectMenuFilter.REQUIRES_ETHERNET_IP);
+
+		if (checkModbusTCP.getSelection())
+		   setFlag(ObjectMenuFilter.REQUIRES_MODBUS_TCP);
+		else
+		   clearFlag(ObjectMenuFilter.REQUIRES_MODBUS_TCP);
 
 		if (checkMatchOID.getSelection())
 			setFlag(ObjectMenuFilter.REQUIRES_OID_MATCH);
