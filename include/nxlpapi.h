@@ -336,8 +336,9 @@ public:
 	int getAbsenceInterval() const { return m_absenceInterval; }
 	void setAbsenceRealertInterval(int seconds) { m_absenceRealertInterval = seconds; }
 	int getAbsenceRealertInterval() const { return m_absenceRealertInterval; }
-	bool checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, void *userData);
+	bool checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, LogParserActionCallback cbAction, void *userData);
 	void setAbsenceState(uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime);
+	void setAbsenceStateIfEmpty(uint32_t objectId, time_t now);
 	void forEachAbsenceState(std::function<void (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)> callback) const;
 
 	void setBreakFlag(bool flag) { m_breakOnMatch = flag; }
@@ -517,6 +518,7 @@ public:
 	         uint64_t recordId, uint32_t objectId = 0, time_t timestamp = 0, const TCHAR *logName = nullptr, bool *saveToDatabase = nullptr);
 
 	void checkAbsenceRules(time_t now);
+	void armAbsenceRules(time_t now, uint32_t objectId = 0);
 	void forEachAbsenceState(std::function<void (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)> callback) const;
 	void loadAbsenceState(const uuid& ruleGuid, uint32_t objectId, time_t lastMatchTime, time_t lastAlertTime);
 

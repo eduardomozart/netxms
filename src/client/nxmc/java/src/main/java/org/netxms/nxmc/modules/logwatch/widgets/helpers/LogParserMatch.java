@@ -154,37 +154,70 @@ public class LogParserMatch
    {
       this.invert = LogParser.booleanToString(invert);
    }
-   
-   public int getTimeRagne()
+
+   /**
+    * Convert seconds to the best-fit time range value (dividing by the largest fitting unit).
+    *
+    * @param seconds total seconds (null treated as 0)
+    * @param includeDays if true, also consider days as a unit
+    * @return the display value in the best-fit unit
+    */
+   private static int toTimeRange(Integer seconds, boolean includeDays)
    {
-      if(repeatInterval == null)
+      if (seconds == null || seconds == 0)
          return 0;
-      int interval = repeatInterval;
-      if((interval % 60) == 0)
+      int interval = seconds;
+      if ((interval % 60) == 0)
       {
-         interval = interval/60;
-         if((interval % 60) == 0)
+         interval /= 60;
+         if ((interval % 60) == 0)
          {
-            interval = interval/60;
+            interval /= 60;
+            if (includeDays && (interval % 24) == 0)
+            {
+               interval /= 24;
+            }
          }
       }
       return interval;
    }
-   
-   public int getTimeUnit()
+
+   /**
+    * Determine the best-fit time unit index for a value in seconds.
+    * 0=seconds, 1=minutes, 2=hours, 3=days (if includeDays).
+    *
+    * @param seconds total seconds (null treated as 0)
+    * @param includeDays if true, also consider days as a unit
+    * @return the unit index
+    */
+   private static int toTimeUnit(Integer seconds, boolean includeDays)
    {
-      if (repeatInterval == null)
+      if (seconds == null || seconds == 0)
          return 0;
       int unit = 0;
-      if((repeatInterval % 60) == 0)
+      if ((seconds % 60) == 0)
       {
          unit++;
-         if((repeatInterval % 3600) == 0)
+         if ((seconds % 3600) == 0)
          {
             unit++;
+            if (includeDays && (seconds % 86400) == 0)
+            {
+               unit++;
+            }
          }
       }
       return unit;
+   }
+
+   public int getTimeRagne()
+   {
+      return toTimeRange(repeatInterval, false);
+   }
+
+   public int getTimeUnit()
+   {
+      return toTimeUnit(repeatInterval, false);
    }
 
    /**
@@ -240,22 +273,7 @@ public class LogParserMatch
     */
    public int getAbsenceTimeRange()
    {
-      if (absenceInterval == null)
-         return 0;
-      int interval = absenceInterval;
-      if ((interval % 60) == 0)
-      {
-         interval = interval / 60;
-         if ((interval % 60) == 0)
-         {
-            interval = interval / 60;
-            if ((interval % 24) == 0)
-            {
-               interval = interval / 24;
-            }
-         }
-      }
-      return interval;
+      return toTimeRange(absenceInterval, true);
    }
 
    /**
@@ -263,22 +281,7 @@ public class LogParserMatch
     */
    public int getAbsenceTimeUnit()
    {
-      if (absenceInterval == null)
-         return 0;
-      int unit = 0;
-      if ((absenceInterval % 60) == 0)
-      {
-         unit++;
-         if ((absenceInterval % 3600) == 0)
-         {
-            unit++;
-            if ((absenceInterval % 86400) == 0)
-            {
-               unit++;
-            }
-         }
-      }
-      return unit;
+      return toTimeUnit(absenceInterval, true);
    }
 
    /**
@@ -286,22 +289,7 @@ public class LogParserMatch
     */
    public int getAbsenceRealertTimeRange()
    {
-      if (absenceRealertInterval == null)
-         return 0;
-      int interval = absenceRealertInterval;
-      if ((interval % 60) == 0)
-      {
-         interval = interval / 60;
-         if ((interval % 60) == 0)
-         {
-            interval = interval / 60;
-            if ((interval % 24) == 0)
-            {
-               interval = interval / 24;
-            }
-         }
-      }
-      return interval;
+      return toTimeRange(absenceRealertInterval, true);
    }
 
    /**
@@ -309,21 +297,6 @@ public class LogParserMatch
     */
    public int getAbsenceRealertTimeUnit()
    {
-      if (absenceRealertInterval == null)
-         return 0;
-      int unit = 0;
-      if ((absenceRealertInterval % 60) == 0)
-      {
-         unit++;
-         if ((absenceRealertInterval % 3600) == 0)
-         {
-            unit++;
-            if ((absenceRealertInterval % 86400) == 0)
-            {
-               unit++;
-            }
-         }
-      }
-      return unit;
+      return toTimeUnit(absenceRealertInterval, true);
    }
 }

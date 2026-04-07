@@ -911,11 +911,20 @@ public class LogParserRuleEditor extends DashboardComposite
     */
    private void updateAbsenceFields()
    {
-      boolean enabled = checkboxAbsence.getSelection();
-      absenceTimeRange.setEnabled(enabled);
-      absenceTimeUnits.setEnabled(enabled);
-      absenceRealertTimeRange.setEnabled(enabled);
-      absenceRealertTimeUnits.setEnabled(enabled);
+      boolean absenceEnabled = checkboxAbsence.getSelection();
+      absenceTimeRange.setEnabled(absenceEnabled);
+      absenceTimeUnits.setEnabled(absenceEnabled);
+      absenceRealertTimeRange.setEnabled(absenceEnabled);
+      absenceRealertTimeUnits.setEnabled(absenceEnabled);
+
+      // Disable repeat count/interval when absence is active (they don't apply)
+      if (editor.getParserType() == LogParserType.POLICY)
+      {
+         repeatCount.setEnabled(!absenceEnabled);
+         timeRange.setEnabled(!absenceEnabled);
+         timeUnits.setEnabled(!absenceEnabled);
+         checkboxReset.setEnabled(!absenceEnabled);
+      }
    }
 
    /**

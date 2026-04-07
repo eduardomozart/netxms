@@ -441,9 +441,27 @@ void LogParser::checkAbsenceRules(time_t now)
       rule->m_absenceState.forEach(
          [rule, now, this] (const uint32_t& objectId, AbsenceState *state) -> EnumerationCallbackResult
          {
-            rule->checkAbsence(objectId, now, m_cb, m_userData);
+            rule->checkAbsence(objectId, now, m_cb, m_cbAction, m_userData);
             return _CONTINUE;
          });
+   }
+}
+
+/**
+ * Arm all absence rules that don't already have state for the given object.
+ * For file log parsers, this should be called at startup so that absence
+ * detection starts counting from agent restart rather than waiting for the
+ * first match.
+ */
+void LogParser::armAbsenceRules(time_t now, uint32_t objectId)
+{
+   for(int i = 0; i < m_rules.size(); i++)
+   {
+      LogParserRule *rule = m_rules.get(i);
+      if (rule->isAbsenceRule() && rule->getAbsenceInterval() > 0)
+      {
+         rule->setAbsenceStateIfEmpty(objectId, now);
+      }
    }
 }
 

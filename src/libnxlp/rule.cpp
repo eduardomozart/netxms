@@ -570,7 +570,7 @@ void LogParserRule::recordAbsenceMatch(uint32_t objectId)
  * Check if absence threshold has been exceeded for a given object.
  * Returns true if an absence alert was fired.
  */
-bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, void *userData)
+bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallback cb, LogParserActionCallback cbAction, void *userData)
 {
    if (!m_isAbsenceRule || (m_absenceInterval <= 0))
       return false;
@@ -621,6 +621,9 @@ bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallbac
       cb(data);
    }
 
+   if ((cbAction != nullptr) && (m_agentAction != nullptr))
+      cbAction(m_agentAction, *m_agentActionArgs, userData);
+
    incMatchCount(objectId);
    return true;
 }
@@ -635,6 +638,22 @@ void LogParserRule::setAbsenceState(uint32_t objectId, time_t lastMatchTime, tim
    state->lastAlertTime = lastAlertTime;
    state->armed = true;
    m_absenceState.set(objectId, state);
+}
+
+/**
+ * Arm the absence rule for a given object if no state exists yet.
+ * Used to start the absence timer from agent startup.
+ */
+void LogParserRule::setAbsenceStateIfEmpty(uint32_t objectId, time_t now)
+{
+   if (m_absenceState.get(objectId) == nullptr)
+   {
+      AbsenceState *state = new AbsenceState;
+      state->lastMatchTime = now;
+      state->lastAlertTime = 0;
+      state->armed = true;
+      m_absenceState.set(objectId, state);
+   }
 }
 
 /**
