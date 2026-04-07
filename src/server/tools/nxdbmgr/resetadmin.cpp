@@ -21,25 +21,33 @@
 #include "nxdbmgr.h"
 
 /**
- * Reset "system" account password to default and unlock it
+ * Reset "system" account password and unlock it
  */
 void ResetSystemAccount()
 {
-	WriteToTerminal(_T("\n\n\x1b[1mWARNING!!!\x1b[0m\n"));
-	if (!GetYesNo(_T("This operation will unlock \"system\" user and change it's password to default (\"netxms\").\nAre you sure?")))
+   WriteToTerminal(_T("\n\n\x1b[1mWARNING!!!\x1b[0m\n"));
+   if (!GetYesNo(_T("This operation will unlock \"system\" user and set a new random password.\nAre you sure?")))
    {
-		return;
+      return;
    }
 
-	if (!ValidateDatabase())
+   if (!ValidateDatabase())
    {
-		return;
+      return;
    }
 
-	TCHAR query[256];
-	_sntprintf(query, 256, _T("UPDATE users SET password='3A445C0072CD69D9030CC6644020E5C4576051B1', flags=8, grace_logins=5, auth_method=0, auth_failures=0, disabled_until=0, last_login=%u WHERE id=0"),
-	         static_cast<unsigned int>(time(nullptr)));
+   TCHAR password[64];
+   GenerateRandomPassword(password, 16);
+
+   TCHAR hashStr[128];
+   HashPassword(password, hashStr, 128);
+
+   TCHAR query[512];
+   _sntprintf(query, 512, _T("UPDATE users SET password='%s', flags=8, grace_logins=5, auth_method=0, auth_failures=0, disabled_until=0, last_login=%u WHERE id=0"),
+            hashStr, static_cast<unsigned int>(time(nullptr)));
    SQLQuery(query);
 
-	_tprintf(_T("All done.\n"));
+   WriteToTerminal(_T("\nNew \"system\" account password: \x1b[1m"));
+   WriteToTerminal(password);
+   WriteToTerminal(_T("\x1b[0m\n\n"));
 }

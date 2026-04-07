@@ -146,7 +146,7 @@ bool ExecSQLBatch(const char *batchFile, bool showOutput)
 /**
  * Generate random password of given length using alphanumeric characters
  */
-static void GenerateRandomPassword(TCHAR *buffer, size_t length)
+void GenerateRandomPassword(TCHAR *buffer, size_t length)
 {
    static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
    BYTE *randomBytes = static_cast<BYTE*>(MemAlloc(length));

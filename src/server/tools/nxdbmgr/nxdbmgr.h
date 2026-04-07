@@ -83,6 +83,7 @@ void ResetMonitoringState();
 void SetUserPassword(const TCHAR *login);
 void UnlockUser(const TCHAR *login);
 void HashPassword(const TCHAR *password, TCHAR *hashStr, size_t hashStrSize);
+void GenerateRandomPassword(TCHAR *buffer, size_t length);
 
 bool LoadServerModules(wchar_t *moduleLoadList, bool quiet);
 bool EnumerateModuleTables(bool (*handler)(const wchar_t*, void*), void *userData);
