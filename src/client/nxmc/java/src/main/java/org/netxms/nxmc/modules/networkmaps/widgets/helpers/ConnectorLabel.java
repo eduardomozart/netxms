@@ -29,7 +29,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
-import org.netxms.nxmc.tools.ColorCache;
 import org.netxms.nxmc.tools.ColorConverter;
 
 /**
@@ -42,7 +41,6 @@ public class ConnectorLabel extends Label
    private static final Color DEFAULT_BORDER_COLOR = new Color(Display.getCurrent(), 64, 64, 64);
 
 	private Color backgroundColor = null;
-   private ColorCache cCache = new ColorCache();
    private MapLabelProvider labelProvider;
 
 	/**
@@ -91,8 +89,8 @@ public class ConnectorLabel extends Label
 	 */
 	private void initLabel()
 	{
-		setForegroundColor(backgroundColor == null ? DEFAULT_FOREGROUND_COLOR : 
-		   ColorConverter.selectTextColorByBackgroundColor(backgroundColor, cCache));
+		setForegroundColor(backgroundColor == null ? DEFAULT_FOREGROUND_COLOR :
+		   ColorConverter.selectTextColorByBackgroundColor(backgroundColor, labelProvider.getColors()));
 		setBackgroundColor(backgroundColor == null ? DEFAULT_BACKGROUND_COLOR : backgroundColor);
 	}
 

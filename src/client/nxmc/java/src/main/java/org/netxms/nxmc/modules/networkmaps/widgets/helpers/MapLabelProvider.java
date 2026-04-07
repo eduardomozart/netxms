@@ -374,6 +374,7 @@ public class MapLabelProvider extends LabelProvider implements IFigureProvider, 
       imgService.dispose();
       imgCircuit.dispose();
       imgCluster.dispose();
+      imgWirelessDomain.dispose();
       imgAccessPoint.dispose();
       imgInterface.dispose();
       imgOther.dispose();

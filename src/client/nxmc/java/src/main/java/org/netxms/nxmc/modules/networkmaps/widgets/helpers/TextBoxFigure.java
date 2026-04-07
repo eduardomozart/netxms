@@ -27,9 +27,9 @@ import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.widgets.Display;
 import org.netxms.client.maps.elements.NetworkMapTextBox;
 import org.netxms.nxmc.tools.ColorConverter;
+import org.netxms.nxmc.tools.FontTools;
 
 public class TextBoxFigure extends DecorationLayerAbstractFigure
 {
@@ -56,7 +56,9 @@ public class TextBoxFigure extends DecorationLayerAbstractFigure
       setLayoutManager(new BorderLayout());
 
       text = new Label(textBoxElement.getText());
-      text.setFont(new Font(Display.getCurrent(), "Verdana", textBoxElement.getFontSize(), SWT.NONE));
+      Font[] fonts = FontTools.getFonts(new String[] { "Verdana" }, textBoxElement.getFontSize(), SWT.NONE, 1);
+      if (fonts != null)
+         text.setFont(fonts[0]);
       text.setLabelAlignment(PositionConstants.CENTER);
       
       Dimension d = text.getPreferredSize();
