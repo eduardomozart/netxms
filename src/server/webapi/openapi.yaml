@@ -24,6 +24,8 @@ tags:
   - name: Server
     description: Server information and status
   - name: AI Chat
+  - name: AI Saved Prompts
+    description: Per-user saved prompts for the AI assistant
     description: AI assistant chat sessions
   - name: Object Tools
     description: Object tool management
@@ -746,6 +748,158 @@ paths:
         - BearerAuth: []
       tags:
         - AI Management
+  /v1/ai/saved-prompts:
+    get:
+      summary: List saved prompts
+      description: Retrieve all saved AI assistant prompts for the current user.
+      responses:
+        '200':
+          description: List of saved prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiSavedPrompt'
+        '403':
+          description: Insufficient access rights
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Saved Prompts
+    post:
+      summary: Create saved prompt
+      description: Create a new saved AI assistant prompt for the current user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - promptText
+              properties:
+                name:
+                  type: string
+                  description: Display name for the saved prompt
+                description:
+                  type: string
+                  description: Optional description
+                promptText:
+                  type: string
+                  description: The prompt text
+      responses:
+        '201':
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSavedPrompt'
+        '400':
+          description: Missing or invalid fields
+        '403':
+          description: Insufficient access rights
+        '500':
+          description: Database failure
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Saved Prompts
+  /v1/ai/saved-prompts/{prompt-id}:
+    get:
+      summary: Get saved prompt details
+      description: Retrieve a single saved AI assistant prompt by ID.
+      parameters:
+        - name: prompt-id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Saved prompt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSavedPrompt'
+        '400':
+          description: Invalid prompt ID
+        '403':
+          description: Insufficient access rights
+        '404':
+          description: Prompt not found
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Saved Prompts
+    put:
+      summary: Update saved prompt
+      description: Update an existing saved AI assistant prompt.
+      parameters:
+        - name: prompt-id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - promptText
+              properties:
+                name:
+                  type: string
+                  description: Display name for the saved prompt
+                description:
+                  type: string
+                  description: Optional description
+                promptText:
+                  type: string
+                  description: The prompt text
+      responses:
+        '200':
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSavedPrompt'
+        '400':
+          description: Missing or invalid fields
+        '403':
+          description: Insufficient access rights
+        '500':
+          description: Database failure
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Saved Prompts
+    delete:
+      summary: Delete saved prompt
+      description: Delete a saved AI assistant prompt.
+      parameters:
+        - name: prompt-id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Prompt deleted
+        '400':
+          description: Invalid prompt ID
+        '403':
+          description: Insufficient access rights
+        '500':
+          description: Database failure
+      security:
+        - BearerAuth: []
+      tags:
+        - AI Saved Prompts
   /v1/alarms:
     get:
       summary: List Alarms
@@ -4915,6 +5069,22 @@ paths:
         - Two-Factor Authentication
 components:
   schemas:
+    AiSavedPrompt:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique prompt identifier
+        name:
+          type: string
+          description: Display name for the saved prompt
+        description:
+          type: string
+          nullable: true
+          description: Optional description
+        promptText:
+          type: string
+          description: The prompt text
     LibraryImage:
       type: object
       properties:

@@ -38,7 +38,7 @@ void LoadLastEventId(DB_HANDLE hdb);
 /**
  * Constants
  */
-#define NUMBER_OF_GROUPS   38
+#define NUMBER_OF_GROUPS   39
 
 /**
  * Static data
@@ -55,7 +55,7 @@ static uint32_t s_freeIdTable[NUMBER_OF_GROUPS] =
       1, 1, 1, 1,
       1, 1, 1, 1,
       1, 1, 1, 1,
-      1, 1
+      1, 1, 1
    };
 static uint32_t s_idLimits[NUMBER_OF_GROUPS] =
    {
@@ -68,7 +68,7 @@ static uint32_t s_idLimits[NUMBER_OF_GROUPS] =
       0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
       0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
       0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE,
-      0xFFFFFFFE, 0xFFFFFFFE
+      0xFFFFFFFE, 0xFFFFFFFE, 0xFFFFFFFE
    };
 static const wchar_t *s_groupNames[NUMBER_OF_GROUPS] =
 {
@@ -109,7 +109,8 @@ static const wchar_t *s_groupNames[NUMBER_OF_GROUPS] =
    L"Incident Activity Records",
    L"Storage Class Migrations",
    L"Trusted Devices",
-   L"Connection History"
+   L"Connection History",
+   L"AI Saved Prompts"
 };
 
 /**
@@ -496,6 +497,15 @@ bool InitIdTable()
    {
       if (DBGetNumRows(hResult) > 0)
          s_freeIdTable[IDG_CONNECTION_HISTORY] = std::max(s_freeIdTable[IDG_CONNECTION_HISTORY], DBGetFieldULong(hResult, 0, 0) + 1);
+      DBFreeResult(hResult);
+   }
+
+   // Get first available AI saved prompt id
+   hResult = DBSelect(hdb, _T("SELECT max(id) FROM ai_saved_prompts"));
+   if (hResult != nullptr)
+   {
+      if (DBGetNumRows(hResult) > 0)
+         s_freeIdTable[IDG_AI_SAVED_PROMPT] = std::max(s_freeIdTable[IDG_AI_SAVED_PROMPT], DBGetFieldULong(hResult, 0, 0) + 1);
       DBFreeResult(hResult);
    }
 

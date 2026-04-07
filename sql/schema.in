@@ -3220,6 +3220,21 @@ CREATE TABLE ai_disabled_items
 ) TABLE_TYPE;
 
 /**
+ * AI assistant saved prompts (per-user)
+ */
+CREATE TABLE ai_saved_prompts
+(
+   id integer not null,
+   user_id integer not null,
+   name varchar(255) not null,
+   description varchar(2000) null,
+   prompt_text SQL_TEXT not null,
+   PRIMARY KEY(id)
+) TABLE_TYPE;
+
+CREATE INDEX idx_ai_saved_prompts_user ON ai_saved_prompts(user_id);
+
+/**
  * Connection history (MAC address connection/disconnection/move tracking)
  */
 CREATE TABLE connection_history

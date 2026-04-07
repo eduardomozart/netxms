@@ -24,6 +24,24 @@
 #include <nxevent.h>
 
 /**
+ * Upgrade from 61.33 to 61.34
+ */
+static bool H_UpgradeFromV33()
+{
+   CHK_EXEC(CreateTable(
+      L"CREATE TABLE ai_saved_prompts ("
+      L"  id integer not null,"
+      L"  user_id integer not null,"
+      L"  name varchar(255) not null,"
+      L"  description varchar(2000) null,"
+      L"  prompt_text $SQL:TEXT not null,"
+      L"  PRIMARY KEY(id))"));
+   CHK_EXEC(SQLQuery(L"CREATE INDEX idx_ai_saved_prompts_user ON ai_saved_prompts(user_id)"));
+   CHK_EXEC(SetMinorSchemaVersion(34));
+   return true;
+}
+
+/**
  * Upgrade from 61.32 to 61.33
  */
 static bool H_UpgradeFromV32()
@@ -932,6 +950,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 33, 61, 34, H_UpgradeFromV33 },
    { 32, 61, 33, H_UpgradeFromV32 },
    { 31, 61, 32, H_UpgradeFromV31 },
    { 30, 61, 31, H_UpgradeFromV30 },

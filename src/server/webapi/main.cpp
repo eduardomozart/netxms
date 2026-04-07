@@ -56,6 +56,11 @@ int H_AiChatSendMessage(Context *context);
 int H_AiCharPollQuestion(Context *context);
 int H_AiDisabledItemCreate(Context *context);
 int H_AiDisabledItemDelete(Context *context);
+int H_AiSavedPrompts(Context *context);
+int H_AiSavedPromptDetails(Context *context);
+int H_AiSavedPromptCreate(Context *context);
+int H_AiSavedPromptUpdate(Context *context);
+int H_AiSavedPromptDelete(Context *context);
 int H_AiSkillsAndFunctions(Context *context);
 int H_ServerActions(Context *context);
 int H_ServerActionDetails(Context *context);
@@ -228,6 +233,15 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/ai/disabled-items/:item-type/:item-name")
       .DELETE(H_AiDisabledItemDelete)
+      .build();
+   RouteBuilder("v1/ai/saved-prompts")
+      .GET(H_AiSavedPrompts)
+      .POST(H_AiSavedPromptCreate)
+      .build();
+   RouteBuilder("v1/ai/saved-prompts/:prompt-id")
+      .GET(H_AiSavedPromptDetails)
+      .PUT(H_AiSavedPromptUpdate)
+      .DELETE(H_AiSavedPromptDelete)
       .build();
    RouteBuilder("v1/ai/skills-and-functions")
       .GET(H_AiSkillsAndFunctions)

@@ -106,6 +106,7 @@
 #define IDG_SC_MIGRATION_TASK       35
 #define IDG_TRUSTED_DEVICE          36
 #define IDG_CONNECTION_HISTORY      37
+#define IDG_AI_SAVED_PROMPT         38
 
 /**** ID functions *****/
 bool InitIdTable();
