@@ -20,7 +20,6 @@ package org.netxms.nxmc.modules.dashboards.widgets;
 
 import java.util.Iterator;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
 import org.netxms.client.NXCSession;
 import org.netxms.client.dashboards.DashboardElement;
 import org.netxms.client.maps.NetworkMapLink;
@@ -97,7 +96,7 @@ public class ServiceComponentsElement extends ElementWidget
          mapWidget.getLabelProvider().setTranslucentLabelBackground((config.getFlags() & NetworkMap.MF_TRANSLUCENT_LABEL_BKGND) != 0);
          mapWidget.setConnectionRouter(config.getDefaultLinkRouting());
          if (config.getDefaultLinkColor() >= 0)
-            mapWidget.getLabelProvider().setDefaultLinkColor(new Color(mapWidget.getControl().getDisplay(), ColorConverter.rgbFromInt(config.getDefaultLinkColor())));
+            mapWidget.getLabelProvider().setDefaultLinkColor(colors.create(ColorConverter.rgbFromInt(config.getDefaultLinkColor())));
          mapWidget.setContent(mapPage);
       }
 
