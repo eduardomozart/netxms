@@ -934,8 +934,8 @@ static void SaveAbsenceState()
 
    DBBegin(hdb);
 
-   // Clear existing state
-   DBQuery(hdb, L"DELETE FROM lp_absence_state");
+   // Clear existing syslog state (prefixed with "S:")
+   DBQuery(hdb, L"DELETE FROM lp_absence_state WHERE rule_guid LIKE 'S:%'");
 
    DB_STATEMENT hStmt = DBPrepare(hdb,
       L"INSERT INTO lp_absence_state (rule_guid,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
@@ -946,7 +946,9 @@ static void SaveAbsenceState()
          [hStmt, &count] (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)
          {
             TCHAR guidStr[64];
-            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, ruleGuid.toString(guidStr), DB_BIND_STATIC);
+            TCHAR prefixedGuid[68];
+            _sntprintf(prefixedGuid, 68, L"S:%s", ruleGuid.toString(guidStr));
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, prefixedGuid, DB_BIND_STATIC);
             DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
             DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
             DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
@@ -974,15 +976,15 @@ static void LoadAbsenceState()
    if (hdb == nullptr)
       return;
 
-   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state");
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state WHERE rule_guid LIKE 'S:%'");
    if (hResult != nullptr)
    {
       int count = DBGetNumRows(hResult);
       for (int i = 0; i < count; i++)
       {
-         TCHAR guidStr[64];
-         DBGetField(hResult, i, 0, guidStr, 64);
-         uuid ruleGuid = uuid::parse(guidStr);
+         TCHAR prefixedGuid[68];
+         DBGetField(hResult, i, 0, prefixedGuid, 68);
+         uuid ruleGuid = uuid::parse(&prefixedGuid[2]); // Skip "S:" prefix
          uint32_t objectId = DBGetFieldULong(hResult, i, 1);
          time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
          time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));

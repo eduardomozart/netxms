@@ -38,6 +38,22 @@ bool g_ignoreAgentDbErrors = FALSE;
 static DB_HANDLE s_db = NULL;
 
 /**
+ * Upgrade from V18 to V19
+ */
+static BOOL H_UpgradeFromV18(int currVersion, int newVersion)
+{
+   CHK_EXEC(Query(
+      _T("CREATE TABLE lp_absence_state (")
+      _T("  rule_guid varchar(40) not null,")
+      _T("  object_id integer not null,")
+      _T("  last_match_time integer not null,")
+      _T("  last_alert_time integer not null,")
+      _T("  PRIMARY KEY(rule_guid,object_id))")));
+   CHK_EXEC(WriteMetadata(_T("SchemaVersion"), 19));
+   return TRUE;
+}
+
+/**
  * Upgrade from V17 to V18
  */
 static BOOL H_UpgradeFromV17(int currVersion, int newVersion)
@@ -561,6 +577,7 @@ static struct
    { 15, 16, H_UpgradeFromV15 },
    { 16, 17, H_UpgradeFromV16 },
    { 17, 18, H_UpgradeFromV17 },
+   { 18, 19, H_UpgradeFromV18 },
    { 0, 0, nullptr }
 };
 

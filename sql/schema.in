@@ -1515,7 +1515,7 @@ CREATE TABLE actions
 CREATE TABLE event_policy
 (
   rule_id integer not null,   // Rule number
-  rule_guid varchar(36) not null,
+  rule_guid varchar(40) not null,
   flags integer not null,
   comments SQL_TEXT null,
   filter_script SQL_TEXT null,
@@ -2021,7 +2021,7 @@ SELECT create_hypertable('syslog', 'msg_timestamp', chunk_time_interval => inter
 */
 CREATE TABLE lp_absence_state
 (
-  rule_guid varchar(36) not null,
+  rule_guid varchar(40) not null,
   object_id integer not null,
   last_match_time integer not null,
   last_alert_time integer not null,

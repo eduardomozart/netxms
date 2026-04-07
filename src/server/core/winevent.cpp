@@ -70,6 +70,8 @@ static LogParser *s_parser = nullptr;
 static Mutex s_parserLock;
 static THREAD s_writerThread = INVALID_THREAD_HANDLE;
 static THREAD s_processingThread = INVALID_THREAD_HANDLE;
+static THREAD s_absenceCheckThread = INVALID_THREAD_HANDLE;
+static Condition s_absenceCheckStop(true);
 static bool s_enableStorage = true;
 
 /**
@@ -311,6 +313,104 @@ static void WindwsEventParserCallback(const LogParserCallbackData& data)
 }
 
 /**
+ * Save absence detection state to database.
+ * Must be called with s_parserLock held.
+ */
+static void SaveWinEventAbsenceState()
+{
+   if (s_parser == nullptr)
+      return;
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   if (hdb == nullptr)
+      return;
+
+   DBBegin(hdb);
+   DBQuery(hdb, L"DELETE FROM lp_absence_state WHERE rule_guid LIKE 'W:%'");
+
+   DB_STATEMENT hStmt = DBPrepare(hdb,
+      L"INSERT INTO lp_absence_state (rule_guid,object_id,last_match_time,last_alert_time) VALUES (?,?,?,?)", true);
+   if (hStmt != nullptr)
+   {
+      s_parser->forEachAbsenceState(
+         [hStmt] (const uuid& ruleGuid, uint32_t objectId, const AbsenceState *state)
+         {
+            TCHAR guidStr[64];
+            TCHAR prefixedGuid[68];
+            _sntprintf(prefixedGuid, 68, L"W:%s", ruleGuid.toString(guidStr));
+            DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, prefixedGuid, DB_BIND_STATIC);
+            DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, objectId);
+            DBBind(hStmt, 3, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastMatchTime));
+            DBBind(hStmt, 4, DB_SQLTYPE_INTEGER, static_cast<uint32_t>(state->lastAlertTime));
+            DBExecute(hStmt);
+         });
+      DBFreeStatement(hStmt);
+   }
+
+   DBCommit(hdb);
+   DBConnectionPoolReleaseConnection(hdb);
+}
+
+/**
+ * Load absence detection state from database into parser.
+ * Must be called with s_parserLock held and s_parser not null.
+ */
+static void LoadWinEventAbsenceState()
+{
+   if (s_parser == nullptr)
+      return;
+
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   if (hdb == nullptr)
+      return;
+
+   DB_RESULT hResult = DBSelect(hdb, L"SELECT rule_guid,object_id,last_match_time,last_alert_time FROM lp_absence_state WHERE rule_guid LIKE 'W:%'");
+   if (hResult != nullptr)
+   {
+      int count = DBGetNumRows(hResult);
+      for (int i = 0; i < count; i++)
+      {
+         TCHAR prefixedGuid[68];
+         DBGetField(hResult, i, 0, prefixedGuid, 68);
+         uuid ruleGuid = uuid::parse(&prefixedGuid[2]); // Skip "W:" prefix
+         uint32_t objectId = DBGetFieldULong(hResult, i, 1);
+         time_t lastMatchTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 2));
+         time_t lastAlertTime = static_cast<time_t>(DBGetFieldULong(hResult, i, 3));
+         s_parser->loadAbsenceState(ruleGuid, objectId, lastMatchTime, lastAlertTime);
+      }
+      DBFreeResult(hResult);
+      nxlog_debug_tag(DEBUG_TAG, 3, L"Loaded %d Windows event absence state entries from database", count);
+   }
+
+   DBConnectionPoolReleaseConnection(hdb);
+}
+
+/**
+ * Windows event absence check thread
+ */
+static void WindowsEventAbsenceCheckThread()
+{
+   ThreadSetName("WinEvtAbsChk");
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Windows event absence check thread started");
+   int saveCounter = 0;
+   while(!s_absenceCheckStop.wait(60000))
+   {
+      LockGuard lockGuard(s_parserLock);
+      if (s_parser != nullptr)
+      {
+         s_parser->checkAbsenceRules(time(nullptr));
+         saveCounter++;
+         if (saveCounter >= 5)
+         {
+            SaveWinEventAbsenceState();
+            saveCounter = 0;
+         }
+      }
+   }
+   nxlog_debug_tag(DEBUG_TAG, 1, L"Windows event absence check thread stopped");
+}
+
+/**
  * Initialize parser on start on config change
  */
 void InitializeWindowsEventParser()
@@ -339,6 +439,8 @@ void InitializeWindowsEventParser()
          s_parser->setCallback(WindwsEventParserCallback);
          if (prev != nullptr)
             s_parser->restoreCounters(prev);
+         else
+            LoadWinEventAbsenceState();
          nxlog_debug_tag(DEBUG_TAG, 3, _T("Windows evnet parser successfully created from config"));
       }
       else
@@ -438,6 +540,7 @@ void StartWindowsEventProcessing()
 
    s_writerThread = ThreadCreateEx((g_dbSyntax == DB_SYNTAX_PGSQL) || (g_dbSyntax == DB_SYNTAX_TSDB) ? WindowsEventWriterThread_PGSQL :  WindowsEventWriterThread);
    s_processingThread = ThreadCreateEx(WindowsEventProcessingThread);
+   s_absenceCheckThread = ThreadCreateEx(WindowsEventAbsenceCheckThread);
 }
 
 /**
@@ -452,6 +555,15 @@ void StopWindowsEventProcessing()
    g_windowsEventWriterQueue.put(INVALID_POINTER_VALUE);
    nxlog_debug_tag(DEBUG_TAG, 3, _T("Waiting for Windows event writer to stop"));
    ThreadJoin(s_writerThread);
+
+   s_absenceCheckStop.set();
+   ThreadJoin(s_absenceCheckThread);
+
+   // Save absence state before shutting down
+   {
+      LockGuard lockGuard(s_parserLock);
+      SaveWinEventAbsenceState();
+   }
 
    CleanupLogParserLibrary();
 }

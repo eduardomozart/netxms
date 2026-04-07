@@ -928,6 +928,7 @@ static void OnAgentNotify(UINT32 code, void *data)
 
       nxlog_debug_tag(DEBUG_TAG, 3, _T("Reloading parser for file %s"), p->getFileName());
       SaveParserPosition(p);
+      SaveAbsenceState();
       p->stop();
       s_parsers.remove(i);
       i--;
@@ -949,6 +950,18 @@ static void OnAgentNotify(UINT32 code, void *data)
          ((tail != '\\') && (tail != '/')) ? FS_PATH_SEPARATOR : _T(""),
          SUBDIR_LOGPARSER_POLICY FS_PATH_SEPARATOR, (const TCHAR *)n->guid.toString());
    AddParserFromConfig(policyFile, n->guid);
+
+   // Restore absence state for new parsers and arm any uninitialized rules
+   for (int i = 0; i < s_parsers.size(); i++)
+   {
+      LogParser *p = s_parsers.get(i);
+      if (p->getGuid().equals(n->guid))
+      {
+         LoadAbsenceState();
+         p->armAbsenceRules(time(nullptr));
+         break;
+      }
+   }
 
    // Start parsing threads
    for (int i = 0; i < s_parsers.size(); i++)
