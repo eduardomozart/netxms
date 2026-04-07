@@ -33,6 +33,8 @@ tags:
     description: Network search operations
   - name: Geo Areas
     description: Geographic area management
+  - name: Object Categories
+    description: Object category management
   - name: Image Library
     description: Image library management
   - name: DCI Summary Tables
@@ -1336,6 +1338,153 @@ paths:
           description: Geo area not found.
         '409':
           description: Geo area is in use by one or more objects.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+  /v1/object-categories:
+    get:
+      tags:
+        - Object Categories
+      summary: Get all object categories
+      description: Retrieve the list of all configured object categories.
+      responses:
+        '200':
+          description: List of object categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ObjectCategory'
+        '401':
+          description: Unauthorized.
+      security:
+        - BearerAuth: []
+    post:
+      tags:
+        - Object Categories
+      summary: Create a new object category
+      description: Create a new object category. Requires MANAGE_OBJECT_CATEGORIES system access right.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectCategoryCreateUpdate'
+      responses:
+        '201':
+          description: Object category created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectCategory'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+  /v1/object-categories/{category-id}:
+    get:
+      tags:
+        - Object Categories
+      summary: Get object category details
+      description: Retrieve details of a specific object category.
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Object category ID.
+      responses:
+        '200':
+          description: Object category details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectCategory'
+        '400':
+          description: Invalid category ID.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Object category not found.
+      security:
+        - BearerAuth: []
+    put:
+      tags:
+        - Object Categories
+      summary: Update an object category
+      description: Update an existing object category. Requires MANAGE_OBJECT_CATEGORIES system access right.
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Object category ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectCategoryCreateUpdate'
+      responses:
+        '200':
+          description: Object category updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectCategory'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Object category not found.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+    delete:
+      tags:
+        - Object Categories
+      summary: Delete an object category
+      description: Delete an object category. Requires MANAGE_OBJECT_CATEGORIES system access right. Use force=true to delete even if the category is assigned to objects (resets those objects to no category).
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Object category ID.
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: Force deletion even if the category is assigned to objects.
+      responses:
+        '204':
+          description: Object category deleted successfully.
+        '400':
+          description: Invalid category ID.
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Object category not found.
+        '409':
+          description: Object category is in use by one or more objects.
         '500':
           description: Internal server error.
       security:
@@ -5158,6 +5307,39 @@ components:
                 type: number
                 format: double
                 description: Longitude in decimal degrees.
+    ObjectCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique object category identifier.
+        name:
+          type: string
+          description: Object category name.
+        icon:
+          type: string
+          format: uuid
+          description: UUID of the icon image from the image library.
+        mapImage:
+          type: string
+          format: uuid
+          description: UUID of the map image from the image library.
+    ObjectCategoryCreateUpdate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Object category name (cannot be empty).
+        icon:
+          type: string
+          format: uuid
+          description: UUID of the icon image from the image library.
+        mapImage:
+          type: string
+          format: uuid
+          description: UUID of the map image from the image library.
     ScheduledTask:
       type: object
       properties:
