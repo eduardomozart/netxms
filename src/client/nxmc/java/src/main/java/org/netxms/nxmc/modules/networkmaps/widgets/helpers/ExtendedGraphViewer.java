@@ -164,6 +164,8 @@ public class ExtendedGraphViewer extends GraphViewer
 				iconBack.dispose();
             if (backgroundTiles != null)
                backgroundTiles.dispose();
+            if ((backgroundLocation != null) && (backgroundImage != null))
+               backgroundImage.dispose();
 			}
 		});
 
