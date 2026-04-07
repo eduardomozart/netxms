@@ -341,11 +341,13 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="notifications.cpp" />
     <ClCompile Include="objects.cpp" />
+    <ClCompile Include="object_categories.cpp" />
     <ClCompile Include="objtools.cpp" />
     <ClCompile Include="schedules.cpp" />
     <ClCompile Include="scripts.cpp" />
     <ClCompile Include="sshkeys.cpp" />
     <ClCompile Include="tcpproxy.cpp" />
+    <ClCompile Include="topology.cpp" />
     <ClCompile Include="users.cpp" />
     <ClCompile Include="websvc.cpp" />
   </ItemGroup>

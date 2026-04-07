@@ -84,6 +84,12 @@
     <ClCompile Include="websvc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="object_categories.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="topology.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="webapi.h">

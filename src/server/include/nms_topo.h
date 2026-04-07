@@ -494,12 +494,12 @@ VrrpInfo *GetVRRPInfo(Node *node);
 
 const TCHAR NXCORE_EXPORTABLE *GetLinkLayerProtocolName(LinkLayerProtocol p);
 
-unique_ptr<NetworkMapObjectList> BuildIPTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius, bool includeEndNodes);
+unique_ptr<NetworkMapObjectList> NXCORE_EXPORTABLE BuildIPTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius, bool includeEndNodes);
 
 bool CollectOSPFInformation(Node *node, StructArray<OSPFArea> *areas, StructArray<OSPFInterface> *interfaces, StructArray<OSPFNeighbor> *neighbors);
 const TCHAR NXCORE_EXPORTABLE *OSPFNeighborStateToText(OSPFNeighborState state);
 const TCHAR NXCORE_EXPORTABLE *OSPFInterfaceStateToText(OSPFInterfaceState state);
 const TCHAR NXCORE_EXPORTABLE *OSPFInterfaceTypeToText(OSPFInterfaceType type);
-unique_ptr<NetworkMapObjectList> BuildOSPFTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius);
+unique_ptr<NetworkMapObjectList> NXCORE_EXPORTABLE BuildOSPFTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius);
 
 #endif   /* _nms_topo_h_ */

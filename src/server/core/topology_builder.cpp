@@ -184,7 +184,7 @@ static void BuildIPTopology(NetworkMapObjectList *topology, const shared_ptr<Nod
 /**
  * Build IP topology
  */
-unique_ptr<NetworkMapObjectList> BuildIPTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius, bool includeEndNodes)
+unique_ptr<NetworkMapObjectList> NXCORE_EXPORTABLE BuildIPTopology(const shared_ptr<Node>& root, NetworkMap *filterProvider, int radius, bool includeEndNodes)
 {
    int maxDepth = (radius <= 0) ? ConfigReadInt(_T("Topology.DefaultDiscoveryRadius"), 5) : radius;
    auto topology = make_unique<NetworkMapObjectList>();
