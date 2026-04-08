@@ -550,6 +550,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    if (address->agentConnection != nullptr)
    {
       data->flags |= NNF_IS_AGENT;
+      data->agentConnection = address->agentConnection;
       address->agentConnection->getParameter(_T("Agent.Version"), data->agentVersion, MAX_AGENT_VERSION_LEN);
       address->agentConnection->getParameter(_T("System.PlatformName"), data->platform, MAX_PLATFORM_NAME_LEN);
    }

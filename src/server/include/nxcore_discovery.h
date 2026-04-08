@@ -46,6 +46,7 @@ public:
    NetworkDeviceDriver *driver;
    DriverData *driverData;
    InterfaceList *ifList;
+   shared_ptr<AgentConnectionEx> agentConnection;
    int32_t zoneUIN;
    uint32_t flags;
    SNMP_Version snmpVersion;

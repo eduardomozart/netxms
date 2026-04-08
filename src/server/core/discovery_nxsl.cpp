@@ -114,11 +114,95 @@ NXSL_Value *NXSL_DiscoveredInterfaceClass::getAttr(NXSL_Object *object, const NX
 NXSL_DiscoveredInterfaceClass g_nxslDiscoveredInterfaceClass;
 
 /**
+ * DiscoveredNode::readAgentParameter(name) method
+ */
+NXSL_METHOD_DEFINITION(DiscoveredNode, readAgentParameter)
+{
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   DiscoveryFilterData *data = static_cast<DiscoveryFilterData*>(object->getData());
+   if (data->agentConnection != nullptr)
+   {
+      TCHAR buffer[MAX_RESULT_LENGTH];
+      uint32_t rcc = data->agentConnection->getParameter(argv[0]->getValueAsCString(), buffer, MAX_RESULT_LENGTH);
+      *result = (rcc == ERR_SUCCESS) ? vm->createValue(buffer) : vm->createValue();
+   }
+   else
+   {
+      *result = vm->createValue();
+   }
+   return 0;
+}
+
+/**
+ * DiscoveredNode::readAgentList(name) method
+ */
+NXSL_METHOD_DEFINITION(DiscoveredNode, readAgentList)
+{
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   DiscoveryFilterData *data = static_cast<DiscoveryFilterData*>(object->getData());
+   if (data->agentConnection != nullptr)
+   {
+      StringList *list;
+      uint32_t rcc = data->agentConnection->getList(argv[0]->getValueAsCString(), &list);
+      if (rcc == ERR_SUCCESS)
+      {
+         *result = vm->createValue(new NXSL_Array(vm, *list));
+         delete list;
+      }
+      else
+      {
+         *result = vm->createValue();
+      }
+   }
+   else
+   {
+      *result = vm->createValue();
+   }
+   return 0;
+}
+
+/**
+ * DiscoveredNode::readAgentTable(name) method
+ */
+NXSL_METHOD_DEFINITION(DiscoveredNode, readAgentTable)
+{
+   if (!argv[0]->isString())
+      return NXSL_ERR_NOT_STRING;
+
+   DiscoveryFilterData *data = static_cast<DiscoveryFilterData*>(object->getData());
+   if (data->agentConnection != nullptr)
+   {
+      Table *table;
+      uint32_t rcc = data->agentConnection->getTable(argv[0]->getValueAsCString(), &table);
+      if (rcc == ERR_SUCCESS)
+      {
+         *result = vm->createValue(vm->createObject(&g_nxslTableClass, new shared_ptr<Table>(table)));
+      }
+      else
+      {
+         *result = vm->createValue();
+      }
+   }
+   else
+   {
+      *result = vm->createValue();
+   }
+   return 0;
+}
+
+/**
  * Implementation of NXSL class "DiscoveredNode" - constructor
  */
 NXSL_DiscoveredNodeClass::NXSL_DiscoveredNodeClass() : NXSL_Class()
 {
    setName(_T("DiscoveredNode"));
+   NXSL_REGISTER_METHOD(DiscoveredNode, readAgentParameter, 1);
+   NXSL_REGISTER_METHOD(DiscoveredNode, readAgentList, 1);
+   NXSL_REGISTER_METHOD(DiscoveredNode, readAgentTable, 1);
 }
 
 /**
