@@ -5127,6 +5127,7 @@ AC_CONFIG_FILES([
 	src/server/drivers/tplink/Makefile
 	src/server/drivers/ubnt/Makefile
 	src/server/drivers/westerstrand/Makefile
+	src/server/drivers/zyxel/Makefile
 	src/server/hdlink/Makefile
 	src/server/hdlink/jira/Makefile
 	src/server/hdlink/redmine/Makefile
