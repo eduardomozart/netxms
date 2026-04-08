@@ -65,6 +65,7 @@ Source: "..\files\java\jetty-home\*"; Excludes: "webdefault.xml"; DestDir: "{app
 Source: "web\webdefault.xml"; DestDir: "{app}\jetty-home\etc"; Flags: ignoreversion; Components: webui
 ; Web applications and configuration
 Source: "web\api.war"; DestDir: "{app}\jetty-base\webapps"; Flags: ignoreversion; Components: api
+Source: "web\api.properties"; DestDir: "{app}\jetty-base\webapps"; Flags: ignoreversion; Components: api
 Source: "web\frontpage\*"; DestDir: "{app}\jetty-base\webapps\ROOT"; Flags: ignoreversion recursesubdirs; Components: webui
 Source: "web\jetty-base\*"; DestDir: "{app}\jetty-base"; Flags: onlyifdoesntexist recursesubdirs; Components: webui
 Source: "web\launcher.conf"; DestDir: "{app}\etc"; Flags: onlyifdoesntexist; Components: webui
