@@ -89,7 +89,6 @@ struct DiscoveredAddress
    bool ignoreFilter;
    DiscoveryFilterData *data;
    SNMP_Transport *snmpTransport;
-   shared_ptr<AgentConnectionEx> agentConnection;
    uint16_t agentPort;
    TCHAR agentSecret[MAX_SECRET_LENGTH];
    SSHCredentials sshCredentials;

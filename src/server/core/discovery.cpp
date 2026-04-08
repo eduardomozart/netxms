@@ -101,8 +101,11 @@ static bool IsActiveAddress(int32_t zoneUIN, const InetAddress& addr)
  * When fullCheck is true, all connectivity probes are performed and results are stored in the address structure.
  * When fullCheck is false, only basic reachability is checked and the function returns on first success.
  */
-static bool HostIsReachable(DiscoveredAddress *address, bool fullCheck)
+static bool HostIsReachable(DiscoveredAddress *address, bool fullCheck, shared_ptr<AgentConnectionEx> *preparedAgentConnection = nullptr)
 {
+   if (preparedAgentConnection != nullptr)
+      preparedAgentConnection->reset();
+
    const InetAddress& ipAddr = address->ipAddr;
    int32_t zoneUIN = address->zoneUIN;
    bool reachable = false;
@@ -247,7 +250,8 @@ static bool HostIsReachable(DiscoveredAddress *address, bool fullCheck)
       {
          if (fullCheck)
          {
-            address->agentConnection = agentConnection;
+            if (preparedAgentConnection != nullptr)
+               *preparedAgentConnection = agentConnection;
             address->agentPort = agentPort;
          }
          reachable = true;
@@ -525,7 +529,8 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    }
 
    // Check if host is reachable
-   if (!HostIsReachable(address, true))
+   shared_ptr<AgentConnectionEx> agentConnection;
+   if (!HostIsReachable(address, true, &agentConnection))
    {
       nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage1(%s): host is not reachable"), ipAddrText);
       return false;
@@ -547,11 +552,11 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
       data->driver = FindDriverForNode(ipAddrText, data->snmpObjectId, nullptr, address->snmpTransport);
       nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage1(%s): selected device driver %s"), ipAddrText, data->driver->getName());
    }
-   if (address->agentConnection != nullptr)
+   if (agentConnection != nullptr)
    {
       data->flags |= NNF_IS_AGENT;
-      address->agentConnection->getParameter(_T("Agent.Version"), data->agentVersion, MAX_AGENT_VERSION_LEN);
-      address->agentConnection->getParameter(_T("System.PlatformName"), data->platform, MAX_PLATFORM_NAME_LEN);
+      agentConnection->getParameter(_T("Agent.Version"), data->agentVersion, MAX_AGENT_VERSION_LEN);
+      agentConnection->getParameter(_T("System.PlatformName"), data->platform, MAX_PLATFORM_NAME_LEN);
    }
    if (address->sshPort != 0)
    {
@@ -561,7 +566,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    // Read interface list if possible
    if (data->flags & NNF_IS_AGENT)
    {
-      data->ifList = address->agentConnection->getInterfaceList();
+      data->ifList = agentConnection->getInterfaceList();
    }
    if ((data->ifList == nullptr) && (data->flags & NNF_IS_SNMP))
    {
@@ -583,7 +588,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    {
       // Check IP forwarding status
       TCHAR buffer[16];
-      if (address->agentConnection->getParameter(_T("Net.IP.Forwarding"), buffer, 16) == ERR_SUCCESS)
+      if (agentConnection->getParameter(_T("Net.IP.Forwarding"), buffer, 16) == ERR_SUCCESS)
       {
          if (_tcstoul(buffer, nullptr, 10) != 0)
             data->flags |= NNF_IS_ROUTER;
