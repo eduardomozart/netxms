@@ -97,21 +97,15 @@ static bool IsActiveAddress(int32_t zoneUIN, const InetAddress& addr)
 }
 
 /**
- * Check if host at given IP address is reachable by NetXMS server
+ * Check if host at given IP address is reachable by NetXMS server.
+ * When fullCheck is true, all connectivity probes are performed and results are stored in the address structure.
+ * When fullCheck is false, only basic reachability is checked and the function returns on first success.
  */
-static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool fullCheck, SNMP_Transport **transport,
-      shared_ptr<AgentConnection> *preparedAgentConnection, SSHCredentials *sshCredentials, uint16_t *sshPort)
+static bool HostIsReachable(DiscoveredAddress *address, bool fullCheck)
 {
+   const InetAddress& ipAddr = address->ipAddr;
+   int32_t zoneUIN = address->zoneUIN;
    bool reachable = false;
-
-   if (transport != nullptr)
-      *transport = nullptr;
-   if (preparedAgentConnection != nullptr)
-      preparedAgentConnection->reset();
-   if (sshCredentials != nullptr)
-      memset(sshCredentials, 0, sizeof(SSHCredentials));
-   if (sshPort != nullptr)
-      *sshPort = 0;
 
    uint32_t zoneProxy = 0;
    if (IsZoningEnabled() && (zoneUIN != 0))
@@ -183,8 +177,32 @@ static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool ful
 
       agentConnection->setCommandTimeout(g_agentCommandTimeout);
       uint32_t rcc;
+      uint16_t agentPort = AGENT_LISTEN_PORT;
       if (!agentConnection->connect(g_serverKey, &rcc))
       {
+         // If connection failed, try well-known agent ports
+         if (rcc == ERR_CONNECT_FAILED)
+         {
+            IntegerArray<uint16_t> knownPorts = GetWellKnownPorts(L"agent", zoneUIN);
+            for (int i = 0; (i < knownPorts.size()) && !IsShutdownInProgress(); i++)
+            {
+               uint16_t port = knownPorts.get(i);
+               if (port == AGENT_LISTEN_PORT)
+                  continue;
+               agentConnection->setPort(port);
+               if (agentConnection->connect(g_serverKey, &rcc))
+               {
+                  agentPort = port;
+                  break;
+               }
+               if ((rcc == ERR_AUTH_REQUIRED) || (rcc == ERR_AUTH_FAILED))
+               {
+                  agentPort = port;
+                  break;
+               }
+            }
+         }
+
          // If there are authentication problem, try default shared secret
          if ((rcc == ERR_AUTH_REQUIRED) || (rcc == ERR_AUTH_FAILED))
          {
@@ -213,6 +231,8 @@ static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool ful
                agentConnection->setSharedSecret(secrets.get(i));
                if (agentConnection->connect(g_serverKey, &rcc))
                {
+                  if (fullCheck)
+                     _tcslcpy(address->agentSecret, secrets.get(i), MAX_SECRET_LENGTH);
                   break;
                }
 
@@ -225,8 +245,11 @@ static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool ful
       }
       if (rcc == ERR_SUCCESS)
       {
-         if (preparedAgentConnection != nullptr)
-            *preparedAgentConnection = agentConnection;
+         if (fullCheck)
+         {
+            address->agentConnection = agentConnection;
+            address->agentPort = agentPort;
+         }
          reachable = true;
       }
       else
@@ -257,14 +280,16 @@ static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool ful
       SNMP_Transport *snmpTransport = SnmpCheckCommSettings(zoneProxy, ipAddr, &version, 0, nullptr, oids, zoneUIN, true);
       if (snmpTransport != nullptr)
       {
-         if (transport != nullptr)
+         if (fullCheck)
          {
             snmpTransport->setSnmpVersion(version);
-            *transport = snmpTransport;
-            snmpTransport = nullptr;   // prevent deletion
+            address->snmpTransport = snmpTransport;
+         }
+         else
+         {
+            delete snmpTransport;
          }
          reachable = true;
-         delete snmpTransport;
       }
    }
    else
@@ -279,7 +304,8 @@ static bool HostIsReachable(const InetAddress& ipAddr, int32_t zoneUIN, bool ful
    // *** SSH ***
    if (!(g_flags & AF_DISABLE_SSH_PROBE))
    {
-      if (SSHCheckCommSettings((zoneProxy != 0) ? zoneProxy : g_dwMgmtNode, ipAddr, zoneUIN, sshCredentials, sshPort))
+      if (SSHCheckCommSettings((zoneProxy != 0) ? zoneProxy : g_dwMgmtNode, ipAddr, zoneUIN,
+               fullCheck ? &address->sshCredentials : nullptr, fullCheck ? &address->sshPort : nullptr))
       {
          reachable = true;
       }
@@ -415,7 +441,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
          if (iface == nullptr)
             break;
 
-         if (!HostIsReachable(address->ipAddr, address->zoneUIN, false, nullptr, nullptr, nullptr, nullptr))
+         if (!HostIsReachable(address, false))
          {
             nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage1(%s): found existing interface with same MAC address, but new IP is not reachable"), ipAddrText);
             return false;
@@ -499,11 +525,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    }
 
    // Check if host is reachable
-   SNMP_Transport *snmpTransport = nullptr;
-   shared_ptr<AgentConnection> agentConnection;
-   SSHCredentials sshCredentials;
-   uint16_t sshPort;
-   if (!HostIsReachable(address->ipAddr, address->zoneUIN, true, &snmpTransport, &agentConnection, &sshCredentials, &sshPort))
+   if (!HostIsReachable(address, true))
    {
       nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage1(%s): host is not reachable"), ipAddrText);
       return false;
@@ -514,26 +536,24 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    address->data = data;
 
    // Basic communication settings
-   if (snmpTransport != nullptr)
+   if (address->snmpTransport != nullptr)
    {
-      address->snmpTransport = snmpTransport;
-
       data->flags |= NNF_IS_SNMP;
-      data->snmpVersion = snmpTransport->getSnmpVersion();
+      data->snmpVersion = address->snmpTransport->getSnmpVersion();
 
       // Get SNMP OID
-      SnmpGet(data->snmpVersion, snmpTransport, { 1, 3, 6, 1, 2, 1, 1, 2, 0 }, &data->snmpObjectId, 0, SG_OBJECT_ID_RESULT);
+      SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 3, 6, 1, 2, 1, 1, 2, 0 }, &data->snmpObjectId, 0, SG_OBJECT_ID_RESULT);
 
-      data->driver = FindDriverForNode(ipAddrText, data->snmpObjectId, nullptr, snmpTransport);
+      data->driver = FindDriverForNode(ipAddrText, data->snmpObjectId, nullptr, address->snmpTransport);
       nxlog_debug_tag(DEBUG_TAG_DISCOVERY, 4, _T("AcceptNewNodeStage1(%s): selected device driver %s"), ipAddrText, data->driver->getName());
    }
-   if (agentConnection != nullptr)
+   if (address->agentConnection != nullptr)
    {
       data->flags |= NNF_IS_AGENT;
-      agentConnection->getParameter(_T("Agent.Version"), data->agentVersion, MAX_AGENT_VERSION_LEN);
-      agentConnection->getParameter(_T("System.PlatformName"), data->platform, MAX_PLATFORM_NAME_LEN);
+      address->agentConnection->getParameter(_T("Agent.Version"), data->agentVersion, MAX_AGENT_VERSION_LEN);
+      address->agentConnection->getParameter(_T("System.PlatformName"), data->platform, MAX_PLATFORM_NAME_LEN);
    }
-   if (sshPort != 0)
+   if (address->sshPort != 0)
    {
       data->flags |= NNF_IS_SSH;
    }
@@ -541,19 +561,19 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    // Read interface list if possible
    if (data->flags & NNF_IS_AGENT)
    {
-      data->ifList = agentConnection->getInterfaceList();
+      data->ifList = address->agentConnection->getInterfaceList();
    }
    if ((data->ifList == nullptr) && (data->flags & NNF_IS_SNMP))
    {
-      data->driver->analyzeDevice(snmpTransport, data->snmpObjectId, data, &data->driverData);
-      data->ifList = data->driver->getInterfaces(snmpTransport, data, data->driverData, ConfigReadBoolean(_T("Objects.Interfaces.UseIfXTable"), true));
+      data->driver->analyzeDevice(address->snmpTransport, data->snmpObjectId, data, &data->driverData);
+      data->ifList = data->driver->getInterfaces(address->snmpTransport, data, data->driverData, ConfigReadBoolean(_T("Objects.Interfaces.UseIfXTable"), true));
    }
 
    // Check if node is a router
    if (data->flags & NNF_IS_SNMP)
    {
       uint32_t value;
-      if (SnmpGet(data->snmpVersion, snmpTransport, { 1, 3, 6, 1, 2, 1, 4, 1, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
+      if (SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 3, 6, 1, 2, 1, 4, 1, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
       {
          if (value == 1)
             data->flags |= NNF_IS_ROUTER;
@@ -563,7 +583,7 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
    {
       // Check IP forwarding status
       TCHAR buffer[16];
-      if (agentConnection->getParameter(_T("Net.IP.Forwarding"), buffer, 16) == ERR_SUCCESS)
+      if (address->agentConnection->getParameter(_T("Net.IP.Forwarding"), buffer, 16) == ERR_SUCCESS)
       {
          if (_tcstoul(buffer, nullptr, 10) != 0)
             data->flags |= NNF_IS_ROUTER;
@@ -576,28 +596,28 @@ static bool AcceptNewNodeStage1(DiscoveredAddress *address)
       TCHAR buffer[256];
 
       // Check if node is a bridge
-      if (SnmpGet(data->snmpVersion, snmpTransport, { 1, 3, 6, 1, 2, 1, 17, 1, 1, 0 }, buffer, sizeof(buffer), 0) == SNMP_ERR_SUCCESS)
+      if (SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 3, 6, 1, 2, 1, 17, 1, 1, 0 }, buffer, sizeof(buffer), 0) == SNMP_ERR_SUCCESS)
       {
          data->flags |= NNF_IS_BRIDGE;
       }
 
       // Check for CDP (Cisco Discovery Protocol) support
       uint32_t value;
-      if (SnmpGet(data->snmpVersion, snmpTransport, { 1, 3, 6, 1, 4, 1, 9, 9, 23, 1, 3, 1, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
+      if (SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 3, 6, 1, 4, 1, 9, 9, 23, 1, 3, 1, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
       {
          if (value == 1)
             data->flags |= NNF_IS_CDP;
       }
 
       // Check for NDP/SONMP (Nortel Networks topology discovery protocol) support
-      if (SnmpGet(data->snmpVersion, snmpTransport, { 1, 3, 6, 1, 4, 1, 45, 1, 6, 13, 1, 2, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
+      if (SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 3, 6, 1, 4, 1, 45, 1, 6, 13, 1, 2, 0 }, &value, sizeof(uint32_t), 0) == SNMP_ERR_SUCCESS)
       {
          if (value == 1)
             data->flags |= NNF_IS_SONMP;
       }
 
       // Check for LLDP (Link Layer Discovery Protocol) support
-      if (SnmpGet(data->snmpVersion, snmpTransport, { 1, 0, 8802, 1, 1, 2, 1, 3, 2, 0 }, buffer, sizeof(buffer), 0) == SNMP_ERR_SUCCESS)
+      if (SnmpGet(data->snmpVersion, address->snmpTransport, { 1, 0, 8802, 1, 1, 2, 1, 3, 2, 0 }, buffer, sizeof(buffer), 0) == SNMP_ERR_SUCCESS)
       {
          data->flags |= NNF_IS_LLDP;
       }
@@ -806,6 +826,17 @@ static void ProcessDiscoveredAddressStage2(DiscoveredAddress *address)
       if (address->snmpTransport != nullptr)
       {
          newNodeData->snmpSecurity = new SNMP_SecurityContext(address->snmpTransport->getSecurityContext());
+         newNodeData->snmpPort = address->snmpTransport->getPort();
+         newNodeData->snmpVersion = address->snmpTransport->getSnmpVersion();
+      }
+      newNodeData->agentPort = address->agentPort;
+      _tcslcpy(newNodeData->agentSecret, address->agentSecret, MAX_SECRET_LENGTH);
+      if (address->sshPort != 0)
+      {
+         _tcslcpy(newNodeData->sshLogin, address->sshCredentials.login, MAX_USER_NAME);
+         _tcslcpy(newNodeData->sshPassword, address->sshCredentials.password, MAX_PASSWORD);
+         newNodeData->sshKeyId = address->sshCredentials.keyId;
+         newNodeData->sshPort = address->sshPort;
       }
       CreateDiscoveredNode(newNodeData);
    }

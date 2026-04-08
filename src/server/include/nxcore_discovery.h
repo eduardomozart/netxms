@@ -89,6 +89,11 @@ struct DiscoveredAddress
    bool ignoreFilter;
    DiscoveryFilterData *data;
    SNMP_Transport *snmpTransport;
+   shared_ptr<AgentConnectionEx> agentConnection;
+   uint16_t agentPort;
+   TCHAR agentSecret[MAX_SECRET_LENGTH];
+   SSHCredentials sshCredentials;
+   uint16_t sshPort;
 
    DiscoveredAddress(const InetAddress& _ipAddr, int32_t _zoneUIN, uint32_t _sourceNodeId, DiscoveredAddressSourceType _sourceType) : ipAddr(_ipAddr)
    {
@@ -98,6 +103,10 @@ struct DiscoveredAddress
       ignoreFilter = false;
       data = nullptr;
       snmpTransport = nullptr;
+      agentPort = AGENT_LISTEN_PORT;
+      agentSecret[0] = 0;
+      memset(&sshCredentials, 0, sizeof(SSHCredentials));
+      sshPort = 0;
    }
 
    ~DiscoveredAddress()

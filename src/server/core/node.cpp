@@ -251,8 +251,8 @@ Node::Node(const NewNodeData *newNodeData, uint32_t flags) : super(Pollable::STA
    m_zoneUIN = newNodeData->zoneUIN;
    m_agentPort = newNodeData->agentPort;
    m_agentCacheMode = AGENT_CACHE_DEFAULT;
-   m_agentSecret[0] = 0;
-   m_snmpVersion = SNMP_VERSION_2C;
+   _tcslcpy(m_agentSecret, newNodeData->agentSecret, MAX_SECRET_LENGTH);
+   m_snmpVersion = newNodeData->snmpVersion;
    m_snmpPort = newNodeData->snmpPort;
    if (newNodeData->snmpSecurity != nullptr)
       m_snmpSecurity = new SNMP_SecurityContext(newNodeData->snmpSecurity);
@@ -345,7 +345,7 @@ Node::Node(const NewNodeData *newNodeData, uint32_t flags) : super(Pollable::STA
    m_snmpTrapLastTotal = 0;
    m_snmpTrapStormLastCheckTime = 0;
    m_snmpTrapStormActualDuration = 0;
-   m_sshKeyId = 0;
+   m_sshKeyId = newNodeData->sshKeyId;
    m_sshPort = newNodeData->sshPort;
    m_sshProxy = newNodeData->sshProxyId;
    m_vncPort = newNodeData->vncPort;

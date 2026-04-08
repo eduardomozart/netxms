@@ -868,13 +868,16 @@ struct NXCORE_EXPORTABLE NewNodeData
    TCHAR sshLogin[MAX_USER_NAME];
    TCHAR sshPassword[MAX_PASSWORD];
    uint16_t sshPort;
+   uint32_t sshKeyId;
    TCHAR vncPassword[MAX_PASSWORD];
    uint16_t vncPort;
    shared_ptr<Cluster> cluster;
    int32_t zoneUIN;
    bool doConfPoll;
    NodeOrigin origin;
+   TCHAR agentSecret[MAX_SECRET_LENGTH];
    SNMP_SecurityContext *snmpSecurity;
+   SNMP_Version snmpVersion;
    uuid agentId;
 
    NewNodeData(const InetAddress& ipAddress);

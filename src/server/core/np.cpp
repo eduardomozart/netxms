@@ -52,13 +52,16 @@ NewNodeData::NewNodeData(const InetAddress& ipAddress) : ipAddr(ipAddress)
    sshLogin[0] = 0;
    sshPassword[0] = 0;
    sshPort = SSH_PORT;
+   sshKeyId = 0;
    vncProxyId = 0;
    vncPassword[0] = 0;
    vncPort = 5900;
    zoneUIN = 0;
    doConfPoll = false;
    origin = NODE_ORIGIN_MANUAL;
+   agentSecret[0] = 0;
    snmpSecurity = nullptr;
+   snmpVersion = SNMP_VERSION_2C;
    webServiceProxyId = 0;
 }
 
@@ -84,13 +87,16 @@ NewNodeData::NewNodeData(const InetAddress& ipAddress, const MacAddress& macAddr
    sshLogin[0] = 0;
    sshPassword[0] = 0;
    sshPort = SSH_PORT;
+   sshKeyId = 0;
    vncProxyId = 0;
    vncPassword[0] = 0;
    vncPort = 5900;
    zoneUIN = 0;
    doConfPoll = false;
    origin = NODE_ORIGIN_MANUAL;
+   agentSecret[0] = 0;
    snmpSecurity = nullptr;
+   snmpVersion = SNMP_VERSION_2C;
    webServiceProxyId = 0;
 }
 
@@ -118,13 +124,16 @@ NewNodeData::NewNodeData(const NXCPMessage& msg, const InetAddress& ipAddress) :
    msg.getFieldAsString(VID_SSH_LOGIN, sshLogin, MAX_USER_NAME);
    msg.getFieldAsString(VID_SSH_PASSWORD, sshPassword, MAX_PASSWORD);
    sshPort = msg.getFieldAsUInt16(VID_SSH_PORT);
+   sshKeyId = 0;
    vncProxyId = msg.getFieldAsUInt32(VID_VNC_PROXY);
    msg.getFieldAsString(VID_VNC_PASSWORD, vncPassword, MAX_PASSWORD);
    vncPort = msg.getFieldAsUInt16(VID_VNC_PORT);
    zoneUIN = msg.getFieldAsUInt32(VID_ZONE_UIN);
    doConfPoll = false;
    origin = NODE_ORIGIN_MANUAL;
+   agentSecret[0] = 0;
    snmpSecurity = nullptr;
+   snmpVersion = SNMP_VERSION_2C;
    webServiceProxyId = msg.getFieldAsUInt32(VID_WEB_SERVICE_PROXY);
 }
 
