@@ -812,6 +812,7 @@ Begin
       'Please save this password - it will not be shown again.' + #13#10 +
       'You will be required to change it on first login.';
     copyPasswordButton.Caption := 'Copy Password';
+    copyPasswordButton.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(8);
     copyPasswordButton.Visible := True;
   End;
 End;
