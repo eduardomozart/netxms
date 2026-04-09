@@ -373,7 +373,7 @@ static bool InitModule(Config *config)
       .POST(H_ObjectToolExecute)
       .build();
    RouteBuilder("v1/object-tools/output/:token")
-      .GET([](Context *) { return 0; })  // Placeholder for WebSocket upgrade
+      .GET([](Context *context) { context->setErrorResponse("WebSocket connection required"); return 426; })
       .upgradeProtocol(WS_ToolOutputConnect)
       .noauth()  // Token-based auth
       .build();
@@ -529,7 +529,7 @@ static bool InitModule(Config *config)
       .POST(H_TcpProxyCreate)  // Create session, get token
       .build();
    RouteBuilder("v1/tcp-proxy/:token")
-      .GET([](Context *) { return 0; })  // Placeholder for WebSocket upgrade
+      .GET([](Context *context) { context->setErrorResponse("WebSocket connection required"); return 426; })
       .upgradeProtocol(WS_TcpProxyConnect)
       .noauth()  // Token-based auth, not Bearer token
       .build();
