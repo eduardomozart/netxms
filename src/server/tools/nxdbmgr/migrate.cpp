@@ -600,7 +600,7 @@ static bool MigrateDataTables(DB_HANDLE hSource, DB_HANDLE hDest, bool ignoreDat
       if (!g_skipDataMigration)
       {
          wchar_t table[32];
-         nx_swprintf(table, 32, L"idata_%u", id);
+         _sntprintf(table, 32, _T("idata_%u"), id);
          if (!MigrateTable(table, hSource, hDest) && !ignoreDataMigrationErrors)
             break;
       }
@@ -614,7 +614,7 @@ static bool MigrateDataTables(DB_HANDLE hSource, DB_HANDLE hDest, bool ignoreDat
       if (!g_skipDataMigration)
       {
          wchar_t table[32];
-         nx_swprintf(table, 32, L"tdata_%u", id);
+         _sntprintf(table, 32, _T("tdata_%u"), id);
          if (!MigrateTable(table, hSource, hDest) && !ignoreDataMigrationErrors)
             break;
       }
@@ -1702,9 +1702,9 @@ static bool ImportOrMigrateDatabase(const StringList& excludedTables, const Stri
                {
                   uint32_t id = targets->get(ti);
                   wchar_t table[32];
-                  nx_swprintf(table, 32, L"idata_%u", id);
+                  _sntprintf(table, 32, _T("idata_%u"), id);
                   DispatchTableMigration(threadPool, table);
-                  nx_swprintf(table, 32, L"tdata_%u", id);
+                  _sntprintf(table, 32, _T("tdata_%u"), id);
                   DispatchTableMigration(threadPool, table);
                }
                WaitForPendingMigrations();
