@@ -1160,7 +1160,7 @@ fi
 
 check_substr "$COMPONENTS" "static-agent"
 if test $? = 0; then
-	if test "x$COMPONENTS" != "x sqlite snmp static-agent sqlite_drv"; then
+	if test "x$COMPONENTS" != "x sqlite ethernetip snmp static-agent sqlite_drv"; then
 		AC_MSG_ERROR(Static agent and other components are mutually exclusive.)
 	fi
 	STATIC_BUILD="yes"
