@@ -488,7 +488,7 @@ bool Interface::deleteFromDatabase(DB_HANDLE hdb)
 /**
  * Perform status poll on interface
  */
-void Interface::statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Event> *eventQueue, Cluster *cluster, SNMP_Transport *snmpTransport, uint32_t nodeIcmpProxy)
+void Interface::statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Event> *eventQueue, Cluster *cluster, SNMP_Transport *snmpTransport, uint32_t nodeIcmpProxy, bool agentReachable)
 {
    if (IsShutdownInProgress())
       return;
@@ -513,7 +513,7 @@ void Interface::statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Ev
 
    // Poll interface using different methods
    if (!(m_flags & IF_DISABLE_AGENT_STATUS_POLL) && node->isNativeAgent() &&
-       (!(node->getFlags() & NF_DISABLE_NXCP)) && (!(node->getState() & NSF_AGENT_UNREACHABLE)))
+       (!(node->getFlags() & NF_DISABLE_NXCP)) && (!(node->getState() & NSF_AGENT_UNREACHABLE)) && agentReachable)
    {
       sendPollerMsg(_T("      Retrieving interface status from NetXMS agent\r\n"));
       node->getInterfaceStateFromAgent(m_index, &adminState, &operState, &speed);
@@ -648,6 +648,13 @@ void Interface::statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Ev
 	{
 		m_statusPollCount++;
 	}
+	else if (newStatus > STATUS_NORMAL && m_pendingStatus > STATUS_NORMAL)
+	{
+		// Transitioning between non-NORMAL statuses (e.g. CRITICAL <-> UNKNOWN)
+		// should not reset the counter
+		m_pendingStatus = newStatus;
+		m_statusPollCount++;
+	}
 	else
 	{
 		m_pendingStatus = newStatus;
@@ -656,6 +663,13 @@ void Interface::statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Ev
 
 	if (operState == m_pendingOperState)
 	{
+	   m_operStatePollCount++;
+	}
+	else if (operState != IF_OPER_STATE_UP && m_pendingOperState != IF_OPER_STATE_UP)
+	{
+	   // Transitioning between non-UP states (e.g. DOWN <-> UNKNOWN) should not
+	   // reset the counter - both indicate the interface is not reachable
+	   m_pendingOperState = operState;
 	   m_operStatePollCount++;
 	}
 	else
