@@ -217,8 +217,9 @@ void NetworkMapObjectList::linkObjects(uint32_t object1, uint32_t iface1, const 
    if ((m_objectList.indexOf(object1) == -1) || (m_objectList.indexOf(object2) == -1))
       return;  // both objects should exist
 
-   // Check for duplicate links
+   // Check for duplicate links and interface reuse
    bool swappedSides = false;
+   bool interfaceAlreadyUsed = false;
    ObjLink *link = nullptr;
    for(int i = 0; i < m_linkList.size(); i++)
    {
@@ -242,10 +243,22 @@ void NetworkMapObjectList::linkObjects(uint32_t object1, uint32_t iface1, const 
             break;
          }
       }
+
+      // Check if either interface is already used in another normal link
+      if (!m_allowDuplicateLinks && (linkType == LINK_TYPE_NORMAL) && (curr->type == LINK_TYPE_NORMAL))
+      {
+         if ((iface1 != 0) && ((curr->iface1 == iface1) || (curr->iface2 == iface1)))
+            interfaceAlreadyUsed = true;
+         if ((iface2 != 0) && ((curr->iface1 == iface2) || (curr->iface2 == iface2)))
+            interfaceAlreadyUsed = true;
+      }
    }
 
    if (link == nullptr)
    {
+      if (interfaceAlreadyUsed)
+         return;
+
       link = new ObjLink();
       link->object1 = object1;
       link->iface1 = iface1;
