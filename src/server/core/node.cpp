@@ -2650,12 +2650,14 @@ void Node::statusPoll(PollerInfo *poller, ClientSession *pSession, uint32_t rqId
    time_t now = time(nullptr);
 
    bool agentConnected = false;
+   bool snmpReachable = false;
    bool resyncDataCollectionConfiguration = false;
    bool forceResolveHostName = false;
 
    int retryCount = 5;
 
 restart_status_poll:
+   snmpReachable = false;
    if (g_primaryIpUpdateMode == PrimaryIPUpdateMode::ALWAYS)
    {
       if (m_pollsAfterIpUpdate >= g_pollsBetweenPrimaryIpUpdate)
@@ -2697,6 +2699,7 @@ restart_status_poll:
          uint32_t snmpErr = SnmpGet(m_snmpVersion, pTransport, testOid, nullptr, 0, buffer, sizeof(buffer), 0);
          if ((snmpErr == SNMP_ERR_SUCCESS) || (snmpErr == SNMP_ERR_NO_OBJECT))
          {
+            snmpReachable = true;
             if (m_state & NSF_SNMP_UNREACHABLE)
             {
                m_pollCountSNMP++;
@@ -3172,7 +3175,7 @@ restart_status_poll:
    poller->setStatus(_T("child poll"));
    nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 7, _T("StatusPoll(%s): starting child object poll"), m_name);
    shared_ptr<Cluster> cluster = getCluster();
-   SNMP_Transport *snmp = createSnmpTransport();
+   SNMP_Transport *snmp = snmpReachable ? createSnmpTransport() : nullptr;
    for(int i = 0; i < pollList.size(); i++)
    {
       NetObj *curr = pollList.get(i);
@@ -3180,7 +3183,7 @@ restart_status_poll:
       {
          case OBJECT_INTERFACE:
             nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 7, _T("StatusPoll(%s): polling interface %d [%s]"), m_name, curr->getId(), curr->getName());
-            static_cast<Interface*>(curr)->statusPoll(pSession, rqId, eventQueue, cluster.get(), snmp, m_icmpProxy);
+            static_cast<Interface*>(curr)->statusPoll(pSession, rqId, eventQueue, cluster.get(), snmp, m_icmpProxy, agentConnected);
             break;
          case OBJECT_NETWORKSERVICE:
             nxlog_debug_tag(DEBUG_TAG_STATUS_POLL, 7, _T("StatusPoll(%s): polling network service %d [%s]"), m_name, curr->getId(), curr->getName());
