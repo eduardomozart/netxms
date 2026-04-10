@@ -2650,7 +2650,7 @@ public:
 
    uint32_t wakeUp();
 
-   void statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Event> *eventQueue, Cluster *cluster, SNMP_Transport *snmpTransport, uint32_t nodeIcmpProxy);
+   void statusPoll(ClientSession *session, uint32_t rqId, ObjectQueue<Event> *eventQueue, Cluster *cluster, SNMP_Transport *snmpTransport, uint32_t nodeIcmpProxy, bool agentReachable);
 };
 
 inline InetAddress Interface::getFirstUnicastAddress() const
