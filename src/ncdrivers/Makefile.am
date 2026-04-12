@@ -12,7 +12,7 @@ DRIVERS = dbtable dummy gsm portech shell snmptrap textfile @NCDRV_MODULES@
 
 SUBDIRS = $(DRIVERS)
 
-EXTRA_LTLIBRARIES = anysms.la googlechat.la kannel.la mattermost.la mqtt.la msteams.la mymobile.la nexmo.la nxagent.la slack.la smtp.la smseagle.la telegram.la text2reach.la twilio.la websms.la xmpp.la
+EXTRA_LTLIBRARIES = anysms.la googlechat.la kannel.la matrix.la mattermost.la mqtt.la msteams.la mymobile.la nexmo.la nxagent.la slack.la smtp.la smseagle.la telegram.la text2reach.la twilio.la websms.la xmpp.la
 pkglib_LTLIBRARIES = dbtable.la dummy.la gsm.la portech.la shell.la snmptrap.la textfile.la @NCDRV_LTLIBRARIES@
 
 anysms_la_SOURCES = anysms/anysms.cpp
@@ -44,6 +44,16 @@ kannel_la_SOURCES = kannel/kannel.cpp
 kannel_la_CPPFLAGS=-I@top_srcdir@/include  -I@top_srcdir@/build
 kannel_la_LDFLAGS = -module -avoid-version -rpath '$(pkglibdir)'
 kannel_la_LIBADD = ../libnetxms/libnetxms.la
+
+matrix_la_SOURCES = matrix/matrix.cpp
+matrix_la_CPPFLAGS=-I@top_srcdir@/include -I@top_srcdir@/build
+matrix_la_LDFLAGS = -module -avoid-version -rpath '$(pkglibdir)'
+matrix_la_LIBADD = ../libnetxms/libnetxms.la
+if USE_INTERNAL_JANSSON
+matrix_la_LIBADD += @top_srcdir@/src/jansson/libnxjansson.la
+else
+matrix_la_LIBADD += -ljansson
+endif
 
 mattermost_la_SOURCES = mattermost/mattermost.cpp
 mattermost_la_CPPFLAGS=-I@top_srcdir@/include  -I@top_srcdir@/build

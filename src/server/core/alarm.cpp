@@ -1675,7 +1675,7 @@ void NXCORE_EXPORTABLE ResolveAlarmsById(const IntegerArray<uint32_t>& alarmIds,
  */
 static void ResolveAlarmByKeyRegexp(const TCHAR *keyPattern, bool terminate, Event *event)
 {
-   const char *errptr;
+   const char *errptr = nullptr;
    int erroffset;
    PCRE *preg = _pcre_compile_t(reinterpret_cast<const PCRE_TCHAR*>(keyPattern), PCRE_COMMON_FLAGS, &errptr, &erroffset, nullptr);
    if (preg != nullptr)

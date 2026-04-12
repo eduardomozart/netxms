@@ -1062,7 +1062,7 @@ AC_ARG_WITH(dist,
 	TOOLS="nxlptest"
 	SUBAGENT_DIRS="linux ds18x20 fbdev freebsd openbsd minix mqtt mysql pgsql netbsd sunos aix informix oracle prometheus lmsensors darwin rpi java jmx opcua ubntlw db2 tuxedo mongodb ssh vmgr xen asterisk python redis"
 	AGENT_DIRS="libnxappc libnxtux nxsagent"
-	NCDRV_MODULES="anysms googlechat kannel mattermost mqtt msteams mymobile nexmo nxagent slack smtp smseagle telegram text2reach twilio websms xmpp"
+	NCDRV_MODULES="anysms googlechat kannel matrix mattermost mqtt msteams mymobile nexmo nxagent slack smtp smseagle telegram text2reach twilio websms xmpp"
 	HDLINK_DIRS="jira redmine"
 	PDSDRV_DIRS="clickhouse influxdb rrdtool"
 	TOP_LEVEL_MODULES="include sql images tests"
@@ -2481,7 +2481,7 @@ if test "x$DIST_BUILD" != "xyes"; then
 	fi
 
 	if test "x$HAVE_LIBCURL" = "xyes"; then
-		NCDRV_MODULES="$NCDRV_MODULES anysms googlechat kannel mattermost msteams mymobile nexmo slack smtp smseagle telegram text2reach twilio websms"
+		NCDRV_MODULES="$NCDRV_MODULES anysms googlechat kannel matrix mattermost msteams mymobile nexmo slack smtp smseagle telegram text2reach twilio websms"
 		HDLINK_DIRS="$HDLINK_DIRS redmine"
 	else
 		AC_MSG_ERROR(libcurl is required)
@@ -5069,6 +5069,7 @@ AC_CONFIG_FILES([
 	src/ncdrivers/gsm/Makefile
 	src/ncdrivers/googlechat/Makefile
 	src/ncdrivers/kannel/Makefile
+	src/ncdrivers/matrix/Makefile
 	src/ncdrivers/mattermost/Makefile
 	src/ncdrivers/mqtt/Makefile
 	src/ncdrivers/msteams/Makefile

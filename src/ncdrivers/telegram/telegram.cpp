@@ -193,7 +193,7 @@ private:
    bool m_shutdownFlag;
    int64_t m_nextUpdateId;
    NCDriverStorageManager *m_storageManager;   
-   TCHAR m_parseMode[32];
+   char m_parseMode[32];
    bool m_longPollingMode;
    bool m_useLocalResolver;
    uint32_t m_pollingInterval;
@@ -577,14 +577,14 @@ TelegramDriver *TelegramDriver::createInstance(Config *config, NCDriverStorageMa
    char protocol[8] = "http";
    uint32_t options = LONG_POLLING;
    uint32_t pollingInterval = 300;
-   TCHAR parseMode[32] = _T("");
+   char parseMode[32] = "";
    NX_CFG_TEMPLATE configTemplate[] =
 	{
 		{ _T("AuthToken"), CT_MB_STRING, 0, 0, sizeof(authToken), 0, authToken, nullptr },
 		{ _T("DisableIPv4"), CT_BOOLEAN_FLAG_32, 0, 0, DISABLE_IP_V4, 0, &options, nullptr },
 		{ _T("DisableIPv6"), CT_BOOLEAN_FLAG_32, 0, 0, DISABLE_IP_V6, 0, &options, nullptr },
       { _T("LongPolling"), CT_BOOLEAN_FLAG_32, 0, 0, LONG_POLLING, 0, &options, nullptr },
-      { _T("ParseMode"), CT_STRING, 0, 0, sizeof(parseMode), 0, parseMode, nullptr },
+      { _T("ParseMode"), CT_MB_STRING, 0, 0, sizeof(parseMode), 0, parseMode, nullptr },
       { _T("PollingInterval"), CT_LONG, 0, 0, 0, 0, &pollingInterval, nullptr },
 		{ _T("Proxy"), CT_MB_STRING, 0, 0, sizeof(proxy.hostname), 0, proxy.hostname, nullptr },
 		{ _T("ProxyPort"), CT_WORD, 0, 0, 0, 0, &proxy.port, nullptr },
@@ -680,7 +680,7 @@ TelegramDriver *TelegramDriver::createInstance(Config *config, NCDriverStorageMa
                delete data;
 
                driver->m_updateHandlerThread = ThreadCreateEx(TelegramDriver::updateHandler, driver);
-               _tcslcpy(driver->m_parseMode, parseMode, 32);
+               strlcpy(driver->m_parseMode, parseMode, 32);
 	         }
 	         else
 	         {
@@ -1021,7 +1021,7 @@ int TelegramDriver::send(const TCHAR *recipient, const TCHAR *subject, const TCH
       json_object_set_new(request, "text", json_string_t(body));
       if (*m_parseMode != 0)
       {
-         json_object_set_new(request, "parse_mode", json_string_t(m_parseMode));
+         json_object_set_new(request, "parse_mode", json_string(m_parseMode));
       }
       if (topicId != 0)
       {
