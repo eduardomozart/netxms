@@ -24,7 +24,6 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
 import org.netxms.client.events.Alarm;
 import org.netxms.client.events.AlarmHandle;
@@ -47,17 +46,6 @@ import org.xnap.commons.i18n.I18n;
  */
 public class AlarmListLabelProvider extends LabelProvider implements ITableLabelProvider, IColorProvider
 {
-   private static final Color FOREGROUND_COLOR_DARK = new Color(Display.getCurrent(), 0, 0, 0);
-   private static final Color FOREGROUND_COLOR_LIGHT = new Color(Display.getCurrent(), 255, 255, 255);
-   private static final Color[] FOREGROUND_COLORS = 
-         { 
-            FOREGROUND_COLOR_LIGHT, 
-            FOREGROUND_COLOR_DARK, 
-            FOREGROUND_COLOR_DARK,
-            FOREGROUND_COLOR_LIGHT, 
-            FOREGROUND_COLOR_LIGHT 
-         };
-
    private final I18n i18n = LocalizationHelper.getI18n(AlarmListLabelProvider.class);
    private static final String[] stateText = 
          { 
@@ -204,7 +192,7 @@ public class AlarmListLabelProvider extends LabelProvider implements ITableLabel
    @Override
    public Color getForeground(Object element)
    {
-      return showColor ? FOREGROUND_COLORS[((AlarmHandle)element).alarm.getCurrentSeverity().getValue()] : null;
+      return null;
    }
 
    /**
@@ -213,7 +201,7 @@ public class AlarmListLabelProvider extends LabelProvider implements ITableLabel
    @Override
    public Color getBackground(Object element)
    {
-      return showColor ? StatusDisplayInfo.getStatusColor(((AlarmHandle)element).alarm.getCurrentSeverity()) : null;
+      return showColor ? StatusDisplayInfo.getStatusBackgroundColor(((AlarmHandle)element).alarm.getCurrentSeverity()) : null;
    }
 
    /**
