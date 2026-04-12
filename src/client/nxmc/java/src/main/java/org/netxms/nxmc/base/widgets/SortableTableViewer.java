@@ -332,7 +332,7 @@ public class SortableTableViewer extends TableViewer
 
       table.addListener(SWT.MenuDetect, event -> {
          Point pt = table.getDisplay().map(null, table, new Point(event.x, event.y));
-         if (pt.y < 0) // FIXME: is it on all platforms?
+         if (table.getItem(pt) == null && pt.y < table.getHeaderHeight())
          {
             clickedColumnId = getColumnIdAtHeaderPoint(pt);
             headerMenu.setLocation(event.x, event.y);

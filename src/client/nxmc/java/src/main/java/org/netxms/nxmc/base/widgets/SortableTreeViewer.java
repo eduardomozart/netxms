@@ -319,7 +319,7 @@ public class SortableTreeViewer extends TreeViewer
 
       tree.addListener(SWT.MenuDetect, event -> {
          Point pt = tree.getDisplay().map(null, tree, new Point(event.x, event.y));
-         if (pt.y < tree.getHeaderHeight())
+         if (tree.getItem(pt) == null && pt.y < tree.getHeaderHeight())
          {
             clickedColumnId = getColumnIdAtHeaderPoint(pt);
             headerMenu.setLocation(event.x, event.y);
