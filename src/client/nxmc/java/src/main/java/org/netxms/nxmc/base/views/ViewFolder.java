@@ -213,10 +213,18 @@ public class ViewFolder extends ViewContainer
       topRightControl.setLayout(layout);
       tabFolder.setTopRight(topRightControl);
 
-      viewToolBarManager = new ToolBarManager(SWT.FLAT | SWT.WRAP | SWT.RIGHT);
+      // SWT.WRAP on GTK3 is toxic: SWT's ToolBar.computeSize toggles gtk_toolbar_set_show_arrow
+      // on every measurement pass, which invalidates the toolbar's GdkWindow and cascades back
+      // through CTabFolder's layout, creating a self-sustaining 60 Hz repaint loop in the tab area.
+      // TODO: if a future view ever needs toolbar overflow handling, do NOT re-add SWT.WRAP here.
+      // Instead either move the overflowing actions into the view menu dropdown (viewMenu already
+      // exists in the framework), or subclass topRightControl with a computeSize override that
+      // caches the result and invalidates the cache only on toolbar item changes, so that
+      // ToolBar.computeSize is not called during every CTabFolder layout pass.
+      viewToolBarManager = new ToolBarManager(SWT.FLAT | SWT.RIGHT);
       viewToolBar = viewToolBarManager.createControl(topRightControl);
       viewToolBar.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-      viewControlBar = new ToolBar(topRightControl, SWT.FLAT | SWT.WRAP | SWT.RIGHT);
+      viewControlBar = new ToolBar(topRightControl, SWT.FLAT | SWT.RIGHT);
       viewControlBar.setLayoutData(new GridData(SWT.RIGHT, SWT.FILL, false, true));
 
       if (enableNavigationHistory)

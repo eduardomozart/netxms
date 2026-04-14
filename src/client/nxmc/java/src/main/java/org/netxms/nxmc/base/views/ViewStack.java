@@ -84,21 +84,25 @@ public class ViewStack extends ViewContainer
       layout.numColumns = 3;
       setLayout(layout);
 
-      viewList = new ToolBar(this, SWT.FLAT | SWT.WRAP | SWT.LEFT);
+      // SWT.WRAP on GTK3 is toxic: see comment in ViewFolder about the 60 Hz repaint loop.
+      // TODO: if toolbar overflow handling is ever needed, do NOT re-add SWT.WRAP. Instead move
+      // overflowing actions into the view menu dropdown, or subclass the parent composite with a
+      // computeSize override that caches the result (see ViewFolder TODO for the same fix).
+      viewList = new ToolBar(this, SWT.FLAT | SWT.LEFT);
       viewList.setFont(JFaceResources.getBannerFont());
       GridData gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
       viewList.setLayoutData(gd);
 
-      viewToolBarManager = new ToolBarManager(SWT.FLAT | SWT.WRAP | SWT.RIGHT);
+      viewToolBarManager = new ToolBarManager(SWT.FLAT | SWT.RIGHT);
       viewToolBar = viewToolBarManager.createControl(this);
       gd = new GridData();
       gd.horizontalAlignment = SWT.RIGHT;
       gd.grabExcessHorizontalSpace = false;
       viewToolBar.setLayoutData(gd);
 
-      viewControlBar = new ToolBar(this, SWT.FLAT | SWT.WRAP | SWT.RIGHT);
+      viewControlBar = new ToolBar(this, SWT.FLAT | SWT.RIGHT);
       gd = new GridData();
       gd.horizontalAlignment = SWT.RIGHT;
       gd.grabExcessHorizontalSpace = false;
@@ -195,7 +199,7 @@ public class ViewStack extends ViewContainer
             }
          });
       }
-      
+
       if (enableViewExtraction)
       {
          ToolItem popOutView = new ToolItem(viewControlBar, SWT.PUSH);
@@ -379,7 +383,7 @@ public class ViewStack extends ViewContainer
    /**
     * Pop view (will dispose current view and switch to next in stack). This method may return failure if view is modified and user
     * selected "cancel" as an option.
-    * 
+    *
     * @return true if view at the top successfully removed
     */
    public boolean popView()
@@ -561,7 +565,7 @@ public class ViewStack extends ViewContainer
 
    /**
     * Check if this view stack is context aware and will update view's context.
-    * 
+    *
     * @return true if this view stack is context aware and will update view's context
     */
    public boolean isContextAware()
