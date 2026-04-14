@@ -2306,6 +2306,7 @@ protected:
 
    virtual void autobindPoll(PollerInfo *poller, ClientSession *session, uint32_t rqId) override;
 
+   void applyPolicyChanges(const SharedObjectArray<NetObj>& nodes);
    void forceDeployPolicies(const shared_ptr<Node>& target);
 
 public:

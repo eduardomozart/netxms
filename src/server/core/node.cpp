@@ -4266,6 +4266,20 @@ void Node::checkAgentPolicyBinding(const shared_ptr<AgentConnectionEx>& conn)
                    break;
                 }
             }
+            else if (getParentList().get(i)->getObjectClass() == OBJECT_CLUSTER)
+            {
+               unique_ptr<SharedObjectArray<NetObj>> clusterTemplates = getParentList().get(i)->getParents(OBJECT_TEMPLATE);
+               for (int j = 0; j < clusterTemplates->size(); j++)
+               {
+                  if (static_cast<Template*>(clusterTemplates->get(j))->hasPolicy(guid))
+                  {
+                     found = true;
+                     break;
+                  }
+               }
+               if (found)
+                  break;
+            }
          }
 
          if (!found)
@@ -4289,6 +4303,14 @@ void Node::checkAgentPolicyBinding(const shared_ptr<AgentConnectionEx>& conn)
          if (getParentList().get(i)->getObjectClass() == OBJECT_TEMPLATE)
          {
             static_cast<Template*>(getParentList().get(i))->checkPolicyDeployment(self(), ap);
+         }
+         else if (getParentList().get(i)->getObjectClass() == OBJECT_CLUSTER)
+         {
+            unique_ptr<SharedObjectArray<NetObj>> clusterTemplates = getParentList().get(i)->getParents(OBJECT_TEMPLATE);
+            for (int j = 0; j < clusterTemplates->size(); j++)
+            {
+               static_cast<Template*>(clusterTemplates->get(j))->checkPolicyDeployment(self(), ap);
+            }
          }
       }
       unlockParentList();

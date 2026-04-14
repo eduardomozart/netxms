@@ -441,7 +441,15 @@ bool Template::applyToTarget(const shared_ptr<DataCollectionTarget>& target)
          m_policyList.size(), m_name, target->getName());
 
    if (target->getObjectClass() == OBJECT_NODE)
+   {
       forceDeployPolicies(static_pointer_cast<Node>(target));
+   }
+   else if (target->getObjectClass() == OBJECT_CLUSTER)
+   {
+      unique_ptr<SharedObjectArray<NetObj>> clusterNodes = target->getChildren(OBJECT_NODE);
+      for (int i = 0; i < clusterNodes->size(); i++)
+         forceDeployPolicies(static_pointer_cast<Node>(clusterNodes->getShared(i)));
+   }
 
    return super::applyToTarget(target);
 }
@@ -878,16 +886,15 @@ bool Template::removePolicy(const uuid& guid)
    return success;
 }
 
-/**
- * Verify agent policy list with current policy versions
- */
-void Template::applyPolicyChanges()
-{
-   unique_ptr<SharedObjectArray<NetObj>> nodes = getChildren(OBJECT_NODE);
 
-   for(int i = 0; i < nodes->size(); i++)
+/**
+ * Apply policy changes to set of nodes
+ */
+void Template::applyPolicyChanges(const SharedObjectArray<NetObj>& nodes)
+{
+   for(int i = 0; i < nodes.size(); i++)
    {
-      shared_ptr<Node> node = static_pointer_cast<Node>(nodes->getShared(i));
+      shared_ptr<Node> node = static_pointer_cast<Node>(nodes.getShared(i));
       AgentPolicyInfo *ap;
       shared_ptr<AgentConnectionEx> conn = node->getAgentConnection();
       if (conn != nullptr)
@@ -903,11 +910,34 @@ void Template::applyPolicyChanges()
 }
 
 /**
+ * Apply policy changes to all targets
+ */
+void Template::applyPolicyChanges()
+{
+   applyPolicyChanges(*getChildren(OBJECT_NODE));
+
+   unique_ptr<SharedObjectArray<NetObj>> clusters = getChildren(OBJECT_CLUSTER);
+   for (int i = 0; i < clusters->size(); i++)
+   {
+      unique_ptr<SharedObjectArray<NetObj>> clusterNodes = clusters->get(i)->getChildren(OBJECT_NODE);
+      applyPolicyChanges(*clusterNodes);
+   }
+}
+
+/**
  * Verify agent policy list with current policy versions
  */
 void Template::forceApplyPolicyChanges()
 {
    unique_ptr<SharedObjectArray<NetObj>> nodes = getChildren(OBJECT_NODE);
+
+   unique_ptr<SharedObjectArray<NetObj>> clusters = getChildren(OBJECT_CLUSTER);
+   for (int i = 0; i < clusters->size(); i++)
+   {
+      unique_ptr<SharedObjectArray<NetObj>> clusterNodes = clusters->get(i)->getChildren(OBJECT_NODE);
+      for (int j = 0; j < clusterNodes->size(); j++)
+         nodes->add(clusterNodes->getShared(j));
+   }
 
    if (!nodes->isEmpty())
    {
