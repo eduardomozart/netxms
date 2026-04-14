@@ -1,6 +1,6 @@
 /*
 ** NetXMS subagent for GNU/Linux
-** Copyright (C) 2013-2024 Victor Kirhenshtein
+** Copyright (C) 2013-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -83,6 +83,46 @@ static void PacmanParser(const StringList& input, Table *output, const TCHAR *ar
 }
 
 /**
+ * Parse apk output
+ */
+static void ApkParser(const StringList& input, Table *output, const TCHAR *arch)
+{
+   for (int i = 0; i < input.size(); i++)
+   {
+      TCHAR line[1024];
+      _tcslcpy(line, input.get(i), 1024);
+
+      // Find first space - separates "name-version" from "arch {origin} (license) [installed]"
+      TCHAR *space = _tcschr(line, _T(' '));
+      if (space == nullptr)
+         continue;
+      *space = 0;
+
+      // Split name and version: scan backwards for last '-' followed by a digit
+      TCHAR *verSep = nullptr;
+      for (TCHAR *p = space - 1; p > line; p--)
+      {
+         if (*p == _T('-') && _istdigit(*(p + 1)))
+         {
+            verSep = p;
+            break;
+         }
+      }
+      if (verSep == nullptr)
+         continue;
+
+      *verSep = 0;
+      TCHAR *name = line;
+      TCHAR *version = verSep + 1;
+
+      output->addRow();
+      output->set(0, name);
+      output->set(1, version);
+      output->set(6, name);
+   }
+}
+
+/**
  * Default parser (used for rpm, dpkg, and opkg)
  */
 static void DefaultParser(const StringList& input, Table *output, const TCHAR *arch)
@@ -134,7 +174,7 @@ static void DefaultParser(const StringList& input, Table *output, const TCHAR *a
  */
 enum class PackageManager
 {
-   DPKG, RPM, PACMAN, UNKNOWN
+   DPKG, RPM, PACMAN, APK, OPKG, UNKNOWN
 };
 
 /**
@@ -142,36 +182,45 @@ enum class PackageManager
  */
 LONG H_InstalledProducts(const TCHAR *cmd, const TCHAR *arg, Table *value, AbstractCommSession *session)
 {
-#if _OPENWRT
-   const TCHAR *command = _T("opkg list-installed | awk -e '{ print \"@@@ #\" $1 \"|\" $3 \"||||\" }'");
-   bool shellExec = true;
-   void (*parser)(const StringList&, Table*, const TCHAR*) = DefaultParser;
-#else
    PackageManager pm = PackageManager::UNKNOWN;
 
-   // If alien is installed, try to determine native package manager (issue NX-2566)
-   if (access("/bin/alien", X_OK) == 0)
+#if _OPENWRT
+   if (access("/bin/opkg", X_OK) == 0)
    {
-      if (ProcessExecutor::executeAndWait(_T("['/bin/rpm','-q','alien']"), 5000) == 0)
+      pm = PackageManager::OPKG;
+   }
+#endif
+
+   if (pm == PackageManager::UNKNOWN)
+   {
+      // If alien is installed, try to determine native package manager (issue NX-2566)
+      if (access("/bin/alien", X_OK) == 0)
+      {
+         if (ProcessExecutor::executeAndWait(_T("['/bin/rpm','-q','alien']"), 5000) == 0)
+         {
+            pm = PackageManager::RPM;
+         }
+         else if (ProcessExecutor::executeAndWait(_T("['/usr/bin/dpkg-query','-W','alien']"), 5000) == 0)
+         {
+            pm = PackageManager::DPKG;
+         }
+      }
+      else if (access("/bin/rpm", X_OK) == 0)
       {
          pm = PackageManager::RPM;
       }
-      else if (ProcessExecutor::executeAndWait(_T("['/usr/bin/dpkg-query','-W','alien']"), 5000) == 0)
+      else if (access("/usr/bin/dpkg-query", X_OK) == 0)
       {
          pm = PackageManager::DPKG;
       }
-   }
-   else if (access("/bin/rpm", X_OK) == 0)
-   {
-      pm = PackageManager::RPM;
-   }
-   else if (access("/usr/bin/dpkg-query", X_OK) == 0)
-   {
-      pm = PackageManager::DPKG;
-   }
-   else if (access("/usr/bin/pacman", X_OK) == 0)
-   {
-      pm = PackageManager::PACMAN;
+      else if (access("/usr/bin/pacman", X_OK) == 0)
+      {
+         pm = PackageManager::PACMAN;
+      }
+      else if (access("/sbin/apk", X_OK) == 0)
+      {
+         pm = PackageManager::APK;
+      }
    }
 
    bool shellExec;
@@ -192,11 +241,18 @@ LONG H_InstalledProducts(const TCHAR *cmd, const TCHAR *arg, Table *value, Abstr
          command = _T("/bin/rpm -qa --queryformat '@@@ #%{NAME}:%{ARCH}|%{VERSION}%|RELEASE?{-%{RELEASE}}:{}||%{VENDOR}|%{INSTALLTIME}|%{URL}|%{SUMMARY}\\n'");
          shellExec = false;
          break;
+      case PackageManager::APK:
+         command = _T("/sbin/apk list --installed");
+         shellExec = false;
+         parser = ApkParser;
+         break;
+      case PackageManager::OPKG:
+         command = _T("opkg list-installed | awk -e '{ print \"@@@ #\" $1 \"|\" $3 \"||||\" }'");
+         shellExec = true;
+         break;
       default:
          return SYSINFO_RC_UNSUPPORTED;
    }
-
-#endif
 
    struct utsname un;
    const TCHAR *arch;
@@ -279,6 +335,12 @@ uint32_t H_UninstallProduct(const shared_ptr<ActionExecutionContext>& context)
    else if (access("/usr/bin/pacman", X_OK) == 0)
    {
       command.append(_T("['/usr/bin/pacman','-R','"));
+      command.append(uninstallKey);
+      command.append(_T("']"));
+   }
+   else if (access("/sbin/apk", X_OK) == 0)
+   {
+      command.append(_T("['/sbin/apk','del','"));
       command.append(uninstallKey);
       command.append(_T("']"));
    }
