@@ -1,6 +1,6 @@
 /*
 ** NetXMS LogWatch subagent
-** Copyright (C) 2008-2025 Raden Solutions
+** Copyright (C) 2008-2026 Raden Solutions
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -275,7 +275,7 @@ static void SaveParserPosition(const LogParser *p)
 static void SaveFilePositions()
 {
    DB_HANDLE hdb = AgentGetLocalDatabaseHandle();
-   if (hdb == nullptr)
+   if (hdb != nullptr)
    {
       s_parserLock.lock();
       for (int i = 0; i < s_parsers.size(); i++)
@@ -284,7 +284,6 @@ static void SaveFilePositions()
       }
       s_parserLock.unlock();
    }
-
    AgentSetTimer(60000, SaveFilePositions);  // every minute
 }
 
