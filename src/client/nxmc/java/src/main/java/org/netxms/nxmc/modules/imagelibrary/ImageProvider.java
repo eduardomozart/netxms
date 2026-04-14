@@ -476,7 +476,10 @@ public class ImageProvider
          }
       }
 
-      // Fallback: draw missing image
+      // Image data not in cache - initiate async load from server
+      loadImageFromServer(guid, null);
+
+      // Draw missing image placeholder until loaded
       gc.drawImage(missingImage, x, y);
    }
 
