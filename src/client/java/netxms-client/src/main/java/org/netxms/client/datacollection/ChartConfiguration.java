@@ -65,6 +65,9 @@ public class ChartConfiguration
 	@Element(required = false)
    protected boolean extendedLegend = true;
 
+   @Element(required = false)
+   protected boolean showPercentInLegend = true;
+
 	@Element(required = false)
 	protected boolean showTitle = false;
 
@@ -228,6 +231,7 @@ public class ChartConfiguration
       legendPosition = src.legendPosition;
       showLegend = src.showLegend;
       extendedLegend = src.extendedLegend;
+      showPercentInLegend = src.showPercentInLegend;
       showTitle = src.showTitle;
       showLabels = src.showLabels;
       showGrid = src.showGrid;
@@ -590,6 +594,22 @@ public class ChartConfiguration
    public void setExtendedLegend(boolean extendedLegend)
    {
       this.extendedLegend = extendedLegend;
+   }
+
+   /**
+    * @return the showPercentInLegend
+    */
+   public boolean isShowPercentInLegend()
+   {
+      return showPercentInLegend;
+   }
+
+   /**
+    * @param showPercentInLegend the showPercentInLegend to set
+    */
+   public void setShowPercentInLegend(boolean showPercentInLegend)
+   {
+      this.showPercentInLegend = showPercentInLegend;
    }
 
    /**

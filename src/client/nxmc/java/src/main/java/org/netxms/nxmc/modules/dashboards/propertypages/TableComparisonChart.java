@@ -57,6 +57,7 @@ public class TableComparisonChart extends DashboardElementPropertyPage
 	private Button checkTranslucent;
 	private Button checkTransposed;
    private Button checkInvertedAxis;
+   private Button checkShowPercentInLegend;
    private YAxisRangeEditor yAxisRange;
    private ObjectSelector drillDownObject;
 
@@ -177,6 +178,14 @@ public class TableComparisonChart extends DashboardElementPropertyPage
          gd.horizontalAlignment = SWT.FILL;
          gd.grabExcessHorizontalSpace = true;
          checkInvertedAxis.setLayoutData(gd);
+
+         checkShowPercentInLegend = new Button(optionsGroup, SWT.CHECK);
+         checkShowPercentInLegend.setText(i18n.tr("Show &percent in legend"));
+         checkShowPercentInLegend.setSelection(((TableBarChartConfig)config).isShowPercentInLegend());
+         gd = new GridData();
+         gd.horizontalAlignment = SWT.FILL;
+         gd.grabExcessHorizontalSpace = true;
+         checkShowPercentInLegend.setLayoutData(gd);
 		}
 
 		gd = new GridData();
@@ -261,6 +270,7 @@ public class TableComparisonChart extends DashboardElementPropertyPage
 		{
 			((TableBarChartConfig)config).setTransposed(checkTransposed.getSelection());
 			((TableBarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
+			((TableBarChartConfig)config).setShowPercentInLegend(checkShowPercentInLegend.getSelection());
 		}
 		return true;
 	}

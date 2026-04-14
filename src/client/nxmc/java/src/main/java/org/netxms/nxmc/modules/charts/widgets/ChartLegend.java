@@ -246,8 +246,10 @@ public class ChartLegend extends Composite
       }
       else if (configuration.isExtendedLegend() && ((chart.getType() == ChartType.BAR) || (chart.getType() == ChartType.PIE)))
       {
+         boolean showPercent = configuration.isShowPercentInLegend();
+
          GridLayout layout = new GridLayout();
-         layout.numColumns = 3;
+         layout.numColumns = showPercent ? 3 : 2;
          layout.marginWidth = 0;
          layout.marginHeight = 0;
          layout.verticalSpacing = 1;
@@ -265,19 +267,23 @@ public class ChartLegend extends Composite
          gd.horizontalIndent = EXTENDED_LEGEND_DATA_SPACING;
          headerLabels[0].setLayoutData(gd);
 
-         headerLabels[1] = new Label(this, SWT.NONE);
-         headerLabels[1].setText("Pct");
-         headerLabels[1].setFont(headerFont);
-         headerLabels[1].setBackground(getBackground());
-         headerLabels[1].setForeground(getForeground());
+         if (showPercent)
+         {
+            headerLabels[1] = new Label(this, SWT.NONE);
+            headerLabels[1].setText("Pct");
+            headerLabels[1].setFont(headerFont);
+            headerLabels[1].setBackground(getBackground());
+            headerLabels[1].setForeground(getForeground());
+         }
 
+         int labelsPerRow = showPercent ? 2 : 1;
          List<ChartDciConfig> metrics = chart.getItems();
          for(int i = 0; i < metrics.size(); i++)
          {
             int color = metrics.get(i).getColorAsInt();
             new LegendLabel(this, (color != -1) ? ColorConverter.rgbFromInt(color) : chart.getPaletteEntry(i).getRGBObject(), metrics.get(i).getLabel());
-            Label[] row = new Label[2];
-            for(int j = 0; j < 2; j++)
+            Label[] row = new Label[labelsPerRow];
+            for(int j = 0; j < labelsPerRow; j++)
             {
                row[j] = new Label(this, SWT.NONE);
                row[j].setBackground(getBackground());
@@ -351,7 +357,7 @@ public class ChartLegend extends Composite
             labels[2].setText(formatter.format(Double.toString(s.getMaxValue()), timeFormatter));
             labels[3].setText(formatter.format(Double.toString(s.getAverageValue()), timeFormatter));
          }
-         else
+         else if (labels.length > 1)
          {
             labels[1].setText(String.format("%.2f%%", (total > 0) ? (s.getCurrentValue() / total * 100) : 0.0));
          }

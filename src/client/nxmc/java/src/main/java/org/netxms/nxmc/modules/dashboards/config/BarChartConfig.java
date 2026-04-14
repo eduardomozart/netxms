@@ -33,6 +33,9 @@ public class BarChartConfig extends AbstractChartConfig
 	@Element(required=false)
 	private boolean invertedAxis = false;
 
+	@Element(required=false)
+	private boolean showPercentInLegend = true;
+
 	/**
 	 * @return the transposed
 	 */
@@ -63,5 +66,21 @@ public class BarChartConfig extends AbstractChartConfig
 	public void setInvertedAxis(boolean invertedAxis)
 	{
 		this.invertedAxis = invertedAxis;
+	}
+
+	/**
+	 * @return the showPercentInLegend
+	 */
+	public boolean isShowPercentInLegend()
+	{
+		return showPercentInLegend;
+	}
+
+	/**
+	 * @param showPercentInLegend the showPercentInLegend to set
+	 */
+	public void setShowPercentInLegend(boolean showPercentInLegend)
+	{
+		this.showPercentInLegend = showPercentInLegend;
 	}
 }

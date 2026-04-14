@@ -69,6 +69,7 @@ public class ScriptedBarChartElement extends ScriptedComparisonChartElement
       chartConfig.setExtendedLegend(elementConfig.isExtendedLegend());
       chartConfig.setTransposed(elementConfig.isTransposed());
       chartConfig.setInvertedAxis(elementConfig.isInvertedAxis());
+      chartConfig.setShowPercentInLegend(elementConfig.isShowPercentInLegend());
       chartConfig.setTranslucent(elementConfig.isTranslucent());
       chartConfig.setAutoScale(elementConfig.isAutoScale());
       chartConfig.setMinYScaleValue(elementConfig.getMinYScaleValue());

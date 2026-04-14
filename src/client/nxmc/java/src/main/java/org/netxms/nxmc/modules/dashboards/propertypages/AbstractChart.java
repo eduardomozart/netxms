@@ -65,6 +65,7 @@ public class AbstractChart extends DashboardElementPropertyPage
 	private Button checkTranslucent;
 	private Button checkTransposed;
    private Button checkInvertedAxis;
+   private Button checkShowPercentInLegend;
    private Button checkDoughnutRendering;
    private Button checkShowTotal;
    private Button checkLogScale;
@@ -228,6 +229,14 @@ public class AbstractChart extends DashboardElementPropertyPage
          gd.horizontalAlignment = SWT.FILL;
          gd.grabExcessHorizontalSpace = true;
          checkInvertedAxis.setLayoutData(gd);
+
+         checkShowPercentInLegend = new Button(optionsGroup, SWT.CHECK);
+         checkShowPercentInLegend.setText(i18n.tr("Show &percent in legend"));
+         checkShowPercentInLegend.setSelection((config instanceof BarChartConfig) ? ((BarChartConfig)config).isShowPercentInLegend() : ((ScriptedBarChartConfig)config).isShowPercentInLegend());
+         gd = new GridData();
+         gd.horizontalAlignment = SWT.FILL;
+         gd.grabExcessHorizontalSpace = true;
+         checkShowPercentInLegend.setLayoutData(gd);
 		}
 
       if ((config instanceof PieChartConfig) || (config instanceof ScriptedPieChartConfig))
@@ -416,11 +425,13 @@ public class AbstractChart extends DashboardElementPropertyPage
 		{
 			((BarChartConfig)config).setTransposed(checkTransposed.getSelection());
 			((BarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
+			((BarChartConfig)config).setShowPercentInLegend(checkShowPercentInLegend.getSelection());
 		}
       else if (config instanceof ScriptedBarChartConfig)
       {
          ((ScriptedBarChartConfig)config).setTransposed(checkTransposed.getSelection());
          ((ScriptedBarChartConfig)config).setInvertedAxis(checkInvertedAxis.getSelection());
+         ((ScriptedBarChartConfig)config).setShowPercentInLegend(checkShowPercentInLegend.getSelection());
       }
 
 		if (config instanceof LineChartConfig)
