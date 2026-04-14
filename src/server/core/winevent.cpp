@@ -22,6 +22,7 @@
 
 #include "nxcore.h"
 #include <nxlpapi.h>
+#include <pugixml.h>
 
 #define DEBUG_TAG _T("winevt")
 
@@ -49,6 +50,53 @@ WindowsEvent::~WindowsEvent()
 {
    MemFree(message);
    MemFree(rawData);
+}
+
+/**
+ * Extract EventData variables from Windows Event XML
+ */
+static StringMap *ExtractEventDataFromXml(const wchar_t *rawData)
+{
+   if (rawData == nullptr || *rawData == 0)
+      return nullptr;
+
+   pugi::xml_document doc;
+   if (!doc.load_buffer(rawData, wcslen(rawData) * sizeof(WCHAR), pugi::parse_default, pugi::encoding_utf16))
+   {
+      nxlog_debug_tag(DEBUG_TAG, 5, L"ExtractEventDataFromXml: failed to parse event XML");
+      return nullptr;
+   }
+
+   pugi::xml_node eventDataNode = doc.child("Event").child("EventData");
+   if (!eventDataNode)
+      return nullptr;
+
+   StringMap *variables = nullptr;
+   int index = 0;
+   for (pugi::xml_node dataNode : eventDataNode.children("Data"))
+   {
+      index++;
+      if (variables == nullptr)
+         variables = new StringMap();
+
+      const char *name = dataNode.attribute("Name").as_string(nullptr);
+      wchar_t value[4096];
+      utf8_to_wchar(dataNode.text().as_string(""), -1, value, 4096);
+      if (name != nullptr)
+      {
+         wchar_t wname[256];
+         utf8_to_wchar(name, -1, wname, 256);
+         variables->set(wname, value);
+      }
+      else
+      {
+         wchar_t positionalName[32] = L"wevt";
+         IntegerToString(index, &positionalName[4]);
+         variables->set(positionalName, value);
+      }
+   }
+
+   return variables;
 }
 
 /**
@@ -298,7 +346,12 @@ static void WindwsEventParserCallback(const LogParserCallbackData& data)
 
       builder.param(_T("repeatCount"), data.repeatCount);
 
-      if (data.variables != nullptr)
+      if (data.namedVariables != nullptr)
+      {
+         for (const auto *p : *data.namedVariables)
+            builder.param(p->key, p->value);
+      }
+      else if (data.variables != nullptr)
       {
          TCHAR name[32];
          for (int j = 0; j < data.variables->size(); j++)
@@ -469,12 +522,16 @@ static void WindowsEventProcessingThread()
 
       bool writeToDatabase = true;
 
+      StringMap *namedVariables = ExtractEventDataFromXml(event->rawData);
+
       s_parserLock.lock();
       if (s_parser != nullptr)
       {
-         s_parser->matchEvent(event->eventSource, event->eventCode, event->eventSeverity, event->message, nullptr, 0, event->nodeId, event->originTimestamp, event->logName, &writeToDatabase);
+         s_parser->matchEvent(event->eventSource, event->eventCode, event->eventSeverity, event->message, nullptr, 0, event->nodeId, event->originTimestamp, event->logName, &writeToDatabase, namedVariables);
       }
       s_parserLock.unlock();
+
+      delete namedVariables;
 
       if (writeToDatabase && s_enableStorage)
          g_windowsEventWriterQueue.put(event);

@@ -124,6 +124,7 @@ struct LogParserCallbackData
    uint64_t recordId;
    time_t logRecordTimestamp;
    const StringList *variables;
+   const StringMap *namedVariables;
    const TCHAR *logName;
    const CaptureGroupsStore *captureGroups;
    uint32_t repeatCount;
@@ -281,7 +282,7 @@ private:
    HashMap<uint32_t, AbsenceState> m_absenceState;
 
 	bool matchInternal(bool extMode, const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line,
-	         StringList *variables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName,
+	         StringList *variables, StringMap *namedVariables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName,
 	         LogParserCallback cb, LogParserDataPushCallback cbDataPush, LogParserActionCallback cbAction, void *userData);
 	bool matchRepeatCount(int *matchCount);
    void expandMacros(const TCHAR *regexp, StringBuffer &out);
@@ -307,13 +308,13 @@ public:
    bool match(const TCHAR *line, uint32_t objectId, LogParserCallback cb, LogParserDataPushCallback cbDataPush,
          LogParserActionCallback cbAction, const TCHAR *fileName, void *userData)
    {
-      return matchInternal(false, nullptr, 0, 0, line, nullptr, 0, objectId, 0, fileName, cb, cbDataPush, cbAction, userData);
+      return matchInternal(false, nullptr, 0, 0, line, nullptr, nullptr, 0, objectId, 0, fileName, cb, cbDataPush, cbAction, userData);
    }
    bool matchEx(const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line, StringList *variables,
-         uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *fileName, LogParserCallback cb,
+         StringMap *namedVariables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *fileName, LogParserCallback cb,
          LogParserDataPushCallback cbDataPush, LogParserActionCallback cbAction, void *userData)
    {
-      return matchInternal(true, source, eventId, level, line, variables, recordId, objectId, timestamp, fileName, cb, cbDataPush, cbAction, userData);
+      return matchInternal(true, source, eventId, level, line, variables, namedVariables, recordId, objectId, timestamp, fileName, cb, cbDataPush, cbAction, userData);
    }
 
    const StructArray<LogParserMetric>& getMetrics() const { return m_metrics; }
@@ -432,7 +433,7 @@ private:
 
 	const TCHAR *checkContext(LogParserRule *rule);
 	bool matchLogRecord(bool hasAttributes, const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line,
-	         StringList *variables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, bool *saveToDatabase);
+	         StringList *variables, StringMap *namedVariables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, bool *saveToDatabase);
 
 	bool isExclusionPeriod();
 
@@ -515,7 +516,8 @@ public:
 
 	bool matchLine(const TCHAR *line, const TCHAR *logName, uint32_t objectId = 0);
 	bool matchEvent(const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line, StringList *variables,
-	         uint64_t recordId, uint32_t objectId = 0, time_t timestamp = 0, const TCHAR *logName = nullptr, bool *saveToDatabase = nullptr);
+	         uint64_t recordId, uint32_t objectId = 0, time_t timestamp = 0, const TCHAR *logName = nullptr, bool *saveToDatabase = nullptr,
+	         StringMap *namedVariables = nullptr);
 
 	void checkAbsenceRules(time_t now);
 	void armAbsenceRules(time_t now, uint32_t objectId = 0);

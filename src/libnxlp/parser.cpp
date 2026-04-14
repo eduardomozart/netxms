@@ -310,7 +310,7 @@ const TCHAR *LogParser::checkContext(LogParserRule *rule)
  * Match log record
  */
 bool LogParser::matchLogRecord(bool hasAttributes, const TCHAR *source, uint32_t eventId,
-      uint32_t level, const TCHAR *line, StringList *variables, uint64_t recordId,
+      uint32_t level, const TCHAR *line, StringList *variables, StringMap *namedVariables, uint64_t recordId,
       uint32_t objectId, time_t timestamp, const TCHAR *logName, bool *saveToDatabase)
 {
 	const TCHAR *state;
@@ -330,7 +330,7 @@ bool LogParser::matchLogRecord(bool hasAttributes, const TCHAR *source, uint32_t
 		if ((state = checkContext(rule)) != nullptr)
 		{
 			bool ruleMatched = hasAttributes ?
-			   rule->matchEx(source, eventId, level, line, variables, recordId, objectId, timestamp, logName, m_cb, m_cbDataPush, m_cbAction, m_userData) :
+			   rule->matchEx(source, eventId, level, line, variables, namedVariables, recordId, objectId, timestamp, logName, m_cb, m_cbDataPush, m_cbAction, m_userData) :
 				rule->match(line, objectId, m_cb, m_cbDataPush, m_cbAction, logName, m_userData);
 			if (ruleMatched)
 			{
@@ -387,7 +387,7 @@ bool LogParser::matchLogRecord(bool hasAttributes, const TCHAR *source, uint32_t
 bool LogParser::matchLine(const TCHAR *line, const TCHAR *logName, uint32_t objectId)
 {
    if (!m_removeEscapeSequences)
-      return matchLogRecord(false, nullptr, 0, 0, line, nullptr, 0, objectId, 0, logName, nullptr);
+      return matchLogRecord(false, nullptr, 0, 0, line, nullptr, nullptr, 0, objectId, 0, logName, nullptr);
 
    StringBuffer sb;
    for(const TCHAR *p = line; *p != 0; p++)
@@ -415,16 +415,17 @@ bool LogParser::matchLine(const TCHAR *line, const TCHAR *logName, uint32_t obje
          sb.append(ch);
       }
    }
-   return matchLogRecord(false, nullptr, 0, 0, sb, nullptr, 0, objectId, 0, logName, nullptr);
+   return matchLogRecord(false, nullptr, 0, 0, sb, nullptr, nullptr, 0, objectId, 0, logName, nullptr);
 }
 
 /**
  * Match log event (text with additional attributes - source, severity, event id)
  */
 bool LogParser::matchEvent(const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line, StringList *variables,
-         uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, bool *saveToDatabase)
+         uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, bool *saveToDatabase,
+         StringMap *namedVariables)
 {
-	return matchLogRecord(true, source, eventId, level, line, variables, recordId, objectId, timestamp, logName, saveToDatabase);
+	return matchLogRecord(true, source, eventId, level, line, variables, namedVariables, recordId, objectId, timestamp, logName, saveToDatabase);
 }
 
 /**

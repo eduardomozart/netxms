@@ -235,7 +235,7 @@ void LogParserRule::updateGroupNames()
  * Match line
  */
 bool LogParserRule::matchInternal(bool extMode, const TCHAR *source, uint32_t eventId, uint32_t level, const TCHAR *line,
-         StringList *variables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, LogParserCallback cb,
+         StringList *variables, StringMap *namedVariables, uint64_t recordId, uint32_t objectId, time_t timestamp, const TCHAR *logName, LogParserCallback cb,
          LogParserDataPushCallback cbDataPush, LogParserActionCallback cbAction, void *userData)
 {
    incCheckCount(objectId);
@@ -317,6 +317,7 @@ bool LogParserRule::matchInternal(bool extMode, const TCHAR *source, uint32_t ev
             data.source = source;
             data.userData = userData;
             data.variables = variables;
+            data.namedVariables = namedVariables;
             cb(data);
 			}
 
@@ -381,6 +382,7 @@ bool LogParserRule::matchInternal(bool extMode, const TCHAR *source, uint32_t ev
 			   data.source = source;
 			   data.userData = userData;
 			   data.variables = variables;
+			   data.namedVariables = namedVariables;
 				cb(data);
             m_parser->trace(8, _T("  callback completed"));
 			}
@@ -618,6 +620,7 @@ bool LogParserRule::checkAbsence(uint32_t objectId, time_t now, LogParserCallbac
       data.source = nullptr;
       data.userData = userData;
       data.variables = nullptr;
+      data.namedVariables = nullptr;
       cb(data);
    }
 
