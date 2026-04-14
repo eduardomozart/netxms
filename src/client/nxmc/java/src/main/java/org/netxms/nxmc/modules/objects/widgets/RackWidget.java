@@ -370,7 +370,13 @@ public class RackWidget extends Canvas implements PaintListener, ImageUpdateList
 
          if (n instanceof Chassis)
          {
-            ChassisWidget.drawChassis(gc, unitRect, (Chassis)n, side, null);
+            ChassisWidget.drawChassis(gc, unitRect, (Chassis)n, side, new ChassisWidget.ObjectRegistration() {
+               @Override
+               public void addObject(Object object, Rectangle rect)
+               {
+                  objects.add(new ObjectImage(object, rect));
+               }
+            });
          }
          else if ((n.getRearRackImage() != null) && !n.getRearRackImage().equals(NXCommon.EMPTY_GUID) && side == RackOrientation.REAR)
          {
@@ -535,12 +541,13 @@ public class RackWidget extends Canvas implements PaintListener, ImageUpdateList
     */
    private Object getObjectAtPoint(Point p)
    {
+      Object result = null;
       for(ObjectImage i : objects)
          if (i.contains(p))
          {
-            return i.getObject();
+            result = i.getObject();
          }
-      return null;
+      return result;
    }
 
    /**
