@@ -24,9 +24,11 @@ tags:
   - name: Server
     description: Server information and status
   - name: AI Chat
+    description: AI assistant chat sessions
+  - name: AI Management
+    description: AI skills and functions management
   - name: AI Saved Prompts
     description: Per-user saved prompts for the AI assistant
-    description: AI assistant chat sessions
   - name: Object Tools
     description: Object tool management
   - name: Find
@@ -79,6 +81,8 @@ paths:
                     type: integer
                     description: API version number
       security: []
+      tags:
+        - Server
   /v1/server-info:
     get:
       summary: Get server information
@@ -146,6 +150,8 @@ paths:
           description: Unauthorized
       security:
         - BearerAuth: []
+      tags:
+        - Server
   /v1/status:
     get:
       summary: Get session status
@@ -171,6 +177,8 @@ paths:
           description: Unauthorized
       security:
         - BearerAuth: []
+      tags:
+        - Server
   /v1/tcp-proxy:
     post:
       summary: Create TCP Proxy Session
@@ -942,6 +950,8 @@ paths:
                       format: date-time
       security:
         - BearerAuth: []
+      tags:
+        - Alarms
   /v1/alarms/{alarm-id}:
     get:
       summary: Get details of specific alarm
@@ -962,6 +972,8 @@ paths:
           description: Alarm with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Alarms
   /v1/alarms/{alarm-id}/acknowledge:
     post:
       summary: Acknowledge Alarm
@@ -983,6 +995,8 @@ paths:
           description: Alarm with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Alarms
   /v1/alarms/{alarm-id}/resolve:
     post:
       summary: Resolve Alarm
@@ -1004,6 +1018,8 @@ paths:
           description: Alarm with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Alarms
   /v1/alarms/{alarm-id}/terminate:
     post:
       summary: Terminate Alarm
@@ -1025,6 +1041,8 @@ paths:
           description: Alarm with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Alarms
   /v1/connection-history:
     get:
       tags:
@@ -1185,6 +1203,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Find
   /v1/geo-areas:
     get:
       tags:
@@ -1599,6 +1619,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/infinity/object-query:
     post:
       summary: Execute object query and return result in format suitable for Grafana Infinity
@@ -1640,6 +1662,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/infinity/summary-table:
     post:
       summary: Retrieve summary table in format suitable for Grafana Infinity
@@ -1671,6 +1695,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/objects/{object-id}/dci-list:
     get:
       summary: Get DCI list for Grafana
@@ -1711,6 +1737,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/objects-status:
     post:
       summary: Get objects status for Grafana
@@ -1753,6 +1781,8 @@ paths:
           description: Root object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/object-list:
     get:
       summary: Get object list for Grafana
@@ -1786,6 +1816,8 @@ paths:
           description: Unauthorized
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/summary-table-list:
     get:
       summary: Get summary table list for Grafana
@@ -1815,6 +1847,8 @@ paths:
           description: User does not have required system access rights
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/grafana/query-list:
     get:
       summary: Get object query list for Grafana
@@ -1844,6 +1878,8 @@ paths:
           description: User does not have required system access rights
       security:
         - BearerAuth: []
+      tags:
+        - Grafana
   /v1/login:
     post:
       summary: User Login
@@ -1916,6 +1952,8 @@ paths:
                     type: integer
                     description: Error code that can provide additional information on login failure reasons.
       security: []
+      tags:
+        - Authentication
   /v1/logout:
     post:
       summary: User Logout
@@ -1925,6 +1963,8 @@ paths:
           description: Successful logout.
       security:
         - BearerAuth: []
+      tags:
+        - Authentication
   /v1/objects:
     get:
       summary: List objects
@@ -1953,6 +1993,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}:
     get:
       summary: Get object details
@@ -1978,6 +2020,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/execute-agent-command:
     post:
       summary: Execute command on agent
@@ -2016,6 +2060,8 @@ paths:
                       description: Textual description of agent error code (if applicable)
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/execute-dashboard-script:
     post:
       summary: Execute dashboard element script within context of given object
@@ -2090,6 +2136,8 @@ paths:
                     description: Failure reason
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/execute-script:
     post:
       summary: Execute script within context of given object
@@ -2144,6 +2192,8 @@ paths:
                     description: Failure reason
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/data-collection/current-values:
     get:
       summary: Get current DCI values
@@ -2183,6 +2233,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Data Collection
   /v1/objects/{object-id}/data-collection/{dci-id}/history:
     get:
       summary: Get data collection history
@@ -2257,6 +2309,8 @@ paths:
           description: Database failure
       security:
         - BearerAuth: []
+      tags:
+        - Data Collection
   /v1/objects/{object-id}/data-collection/performance-view:
     get:
       summary: Get performance view DCIs
@@ -2374,6 +2428,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Data Collection
   /v1/objects/{object-id}/expand-text:
     post:
       summary: Expand text macros
@@ -2426,6 +2482,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/remote-control:
     post:
       summary: Create Remote Control Session
@@ -2543,6 +2601,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/set-managed:
     post:
       summary: Manage or unmanage object
@@ -2575,6 +2635,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/take-screenshot:
     get:
       summary: Take screenshot from remote system via NetXMS agent
@@ -2607,6 +2669,8 @@ paths:
           description: Server side error (common reason is failed communication to agent). Response document may contain detailed failure reason.
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/topology/l2:
     get:
       summary: Get L2 (link layer) topology
@@ -2850,6 +2914,8 @@ paths:
           description: Object with given ID does not exist
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/{object-id}/object-tools:
     get:
       summary: List object tools applicable to an object
@@ -2937,6 +3003,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/objects/search:
     post:
       summary: Search objects
@@ -2978,6 +3046,8 @@ paths:
           description: Unauthorized.
       security:
         - BearerAuth: []
+      tags:
+        - Objects
   /v1/scheduled-task-handlers:
     get:
       summary: List available task handlers
@@ -4060,6 +4130,8 @@ paths:
           description: Database failure.
       security:
         - BearerAuth: []
+      tags:
+        - Object Tools
   /v1/object-tools/{tool-id}:
     get:
       summary: Get object tool details
@@ -4088,6 +4160,8 @@ paths:
           description: Database failure.
       security:
         - BearerAuth: []
+      tags:
+        - Object Tools
   /v1/object-tools/{tool-id}/execute:
     post:
       summary: Execute an object tool
