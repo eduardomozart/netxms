@@ -1,6 +1,7 @@
 openapi: 3.0.2
 info:
   title: NetXMS API
+  description: REST API for NetXMS network monitoring server
   version: 1.0.0
 tags:
   - name: Authentication
@@ -58,6 +59,7 @@ tags:
 paths:
   /:
     get:
+      operationId: getRoot
       summary: Root endpoint
       description: Root API endpoint providing basic API information.
       responses:
@@ -85,6 +87,7 @@ paths:
         - Server
   /v1/server-info:
     get:
+      operationId: getServerInfo
       summary: Get server information
       description: Retrieve detailed server information including version, build, and configuration details.
       responses:
@@ -154,6 +157,7 @@ paths:
         - Server
   /v1/status:
     get:
+      operationId: getSessionStatus
       summary: Get session status
       description: Retrieve current session status including user information.
       responses:
@@ -181,6 +185,7 @@ paths:
         - Server
   /v1/tcp-proxy:
     post:
+      operationId: createTcpProxySession
       summary: Create TCP Proxy Session
       description: |
         Create a TCP proxy session and return a short-lived token for WebSocket connection.
@@ -283,6 +288,7 @@ paths:
         - TCP Proxy
   /v1/tcp-proxy/{token}:
     get:
+      operationId: connectTcpProxy
       summary: TCP Proxy WebSocket Connection
       description: |
         Establish a WebSocket connection for TCP proxy data transfer. This endpoint
@@ -336,6 +342,7 @@ paths:
         - TCP Proxy
   /v1/ai/chat:
     post:
+      operationId: createAiChat
       summary: Create AI chat session
       description: Create a new AI assistant chat session.
       requestBody:
@@ -375,6 +382,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}/message:
     post:
+      operationId: sendAiChatMessage
       summary: Send message to AI chat
       description: |
         Send a message to the AI assistant. Returns 202 Accepted and processes
@@ -428,6 +436,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}/status:
     get:
+      operationId: getAiChatStatus
       summary: Get AI chat processing status
       description: |
         Poll for the current processing status of an AI chat session.
@@ -480,6 +489,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}/question:
     get:
+      operationId: getAiChatQuestion
       summary: Poll for pending AI question
       description: Check if the AI assistant has a pending question that needs user input.
       parameters:
@@ -514,6 +524,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}/answer:
     post:
+      operationId: answerAiChatQuestion
       summary: Answer pending AI question
       description: Provide an answer to a pending question from the AI assistant.
       parameters:
@@ -566,6 +577,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}/clear:
     post:
+      operationId: clearAiChatHistory
       summary: Clear AI chat history
       description: Clear the conversation history of an AI chat session.
       parameters:
@@ -592,6 +604,7 @@ paths:
         - AI Chat
   /v1/ai/chat/{chat-id}:
     delete:
+      operationId: deleteAiChat
       summary: Delete AI chat session
       description: Delete an AI chat session and all its history.
       parameters:
@@ -618,6 +631,7 @@ paths:
         - AI Chat
   /v1/ai/skills-and-functions:
     get:
+      operationId: getAiSkillsAndFunctions
       summary: Get AI skills, functions, and disabled items
       description: >-
         Returns all registered AI skills and functions with their disabled status,
@@ -687,6 +701,7 @@ paths:
         - AI Management
   /v1/ai/disabled-items:
     post:
+      operationId: addAiDisabledItem
       summary: Add item to AI disabled list
       description: >-
         Add a skill or function name to the stop list. The item does not need to
@@ -726,6 +741,7 @@ paths:
         - AI Management
   /v1/ai/disabled-items/{item-type}/{item-name}:
     delete:
+      operationId: removeAiDisabledItem
       summary: Remove item from AI disabled list
       description: >-
         Remove a skill or function name from the stop list. Requires MANAGE_AI_SKILLS access right.
@@ -760,6 +776,7 @@ paths:
         - AI Management
   /v1/ai/saved-prompts:
     get:
+      operationId: listAiSavedPrompts
       summary: List saved prompts
       description: Retrieve all saved AI assistant prompts for the current user.
       responses:
@@ -778,6 +795,7 @@ paths:
       tags:
         - AI Saved Prompts
     post:
+      operationId: createAiSavedPrompt
       summary: Create saved prompt
       description: Create a new saved AI assistant prompt for the current user.
       requestBody:
@@ -818,6 +836,7 @@ paths:
         - AI Saved Prompts
   /v1/ai/saved-prompts/{prompt-id}:
     get:
+      operationId: getAiSavedPrompt
       summary: Get saved prompt details
       description: Retrieve a single saved AI assistant prompt by ID.
       parameters:
@@ -844,6 +863,7 @@ paths:
       tags:
         - AI Saved Prompts
     put:
+      operationId: updateAiSavedPrompt
       summary: Update saved prompt
       description: Update an existing saved AI assistant prompt.
       parameters:
@@ -889,6 +909,7 @@ paths:
       tags:
         - AI Saved Prompts
     delete:
+      operationId: deleteAiSavedPrompt
       summary: Delete saved prompt
       description: Delete a saved AI assistant prompt.
       parameters:
@@ -912,6 +933,7 @@ paths:
         - AI Saved Prompts
   /v1/alarms:
     get:
+      operationId: listAlarms
       summary: List Alarms
       description: Retrieve a list of alarms.
       parameters:
@@ -954,6 +976,7 @@ paths:
         - Alarms
   /v1/alarms/{alarm-id}:
     get:
+      operationId: getAlarm
       summary: Get details of specific alarm
       parameters:
         - name: alarm-id
@@ -976,6 +999,7 @@ paths:
         - Alarms
   /v1/alarms/{alarm-id}/acknowledge:
     post:
+      operationId: acknowledgeAlarm
       summary: Acknowledge Alarm
       description: Acknowledge an alarm.
       parameters:
@@ -999,6 +1023,7 @@ paths:
         - Alarms
   /v1/alarms/{alarm-id}/resolve:
     post:
+      operationId: resolveAlarm
       summary: Resolve Alarm
       description: Resolve an alarm.
       parameters:
@@ -1022,6 +1047,7 @@ paths:
         - Alarms
   /v1/alarms/{alarm-id}/terminate:
     post:
+      operationId: terminateAlarm
       summary: Terminate Alarm
       description: Terminate an alarm.
       parameters:
@@ -1045,6 +1071,7 @@ paths:
         - Alarms
   /v1/connection-history:
     get:
+      operationId: getConnectionHistory
       tags:
         - Find
       summary: Get connection history
@@ -1146,6 +1173,7 @@ paths:
         - BearerAuth: []
   /v1/find/mac-address:
     get:
+      operationId: findMacAddress
       summary: Find MAC address
       parameters:
         - name: macAddress
@@ -1207,6 +1235,7 @@ paths:
         - Find
   /v1/geo-areas:
     get:
+      operationId: listGeoAreas
       tags:
         - Geo Areas
       summary: Get all geo areas
@@ -1225,6 +1254,7 @@ paths:
       security:
         - BearerAuth: []
     post:
+      operationId: createGeoArea
       tags:
         - Geo Areas
       summary: Create a new geo area
@@ -1254,6 +1284,7 @@ paths:
         - BearerAuth: []
   /v1/geo-areas/{area-id}:
     get:
+      operationId: getGeoArea
       tags:
         - Geo Areas
       summary: Get geo area details
@@ -1281,6 +1312,7 @@ paths:
       security:
         - BearerAuth: []
     put:
+      operationId: updateGeoArea
       tags:
         - Geo Areas
       summary: Update a geo area
@@ -1318,6 +1350,7 @@ paths:
       security:
         - BearerAuth: []
     delete:
+      operationId: deleteGeoArea
       tags:
         - Geo Areas
       summary: Delete a geo area
@@ -1354,6 +1387,7 @@ paths:
         - BearerAuth: []
   /v1/object-categories:
     get:
+      operationId: listObjectCategories
       tags:
         - Object Categories
       summary: Get all object categories
@@ -1372,6 +1406,7 @@ paths:
       security:
         - BearerAuth: []
     post:
+      operationId: createObjectCategory
       tags:
         - Object Categories
       summary: Create a new object category
@@ -1401,6 +1436,7 @@ paths:
         - BearerAuth: []
   /v1/object-categories/{category-id}:
     get:
+      operationId: getObjectCategory
       tags:
         - Object Categories
       summary: Get object category details
@@ -1428,6 +1464,7 @@ paths:
       security:
         - BearerAuth: []
     put:
+      operationId: updateObjectCategory
       tags:
         - Object Categories
       summary: Update an object category
@@ -1465,6 +1502,7 @@ paths:
       security:
         - BearerAuth: []
     delete:
+      operationId: deleteObjectCategory
       tags:
         - Object Categories
       summary: Delete an object category
@@ -1501,6 +1539,7 @@ paths:
         - BearerAuth: []
   /v1/image-library:
     get:
+      operationId: listImages
       tags:
         - Image Library
       summary: Get image library listing
@@ -1527,6 +1566,7 @@ paths:
         - BearerAuth: []
   /v1/image-library/{guid}:
     get:
+      operationId: getImageMetadata
       tags:
         - Image Library
       summary: Get image metadata
@@ -1556,6 +1596,7 @@ paths:
         - BearerAuth: []
   /v1/image-library/{guid}/data:
     get:
+      operationId: getImageData
       tags:
         - Image Library
       summary: Get image data
@@ -1594,6 +1635,7 @@ paths:
         - BearerAuth: []
   /v1/grafana/infinity/alarms:
     post:
+      operationId: grafanaQueryAlarms
       summary: Retrieve alarms in format suitable for Grafana Infinity
       description: Retrieve alarms in format suitable for Grafana Infinity.
       requestBody:
@@ -1623,6 +1665,7 @@ paths:
         - Grafana
   /v1/grafana/infinity/object-query:
     post:
+      operationId: grafanaQueryObjects
       summary: Execute object query and return result in format suitable for Grafana Infinity
       description: Execute object query and return result in format suitable for Grafana Infinity.
       requestBody:
@@ -1666,6 +1709,7 @@ paths:
         - Grafana
   /v1/grafana/infinity/summary-table:
     post:
+      operationId: grafanaQuerySummaryTable
       summary: Retrieve summary table in format suitable for Grafana Infinity
       description: Retrieve summary table in format suitable for Grafana Infinity.
       requestBody:
@@ -1699,6 +1743,7 @@ paths:
         - Grafana
   /v1/grafana/objects/{object-id}/dci-list:
     get:
+      operationId: grafanaGetDciList
       summary: Get DCI list for Grafana
       description: Retrieve data collection items (DCIs) for a specific object formatted for Grafana.
       parameters:
@@ -1741,6 +1786,7 @@ paths:
         - Grafana
   /v1/grafana/objects-status:
     post:
+      operationId: grafanaGetObjectsStatus
       summary: Get objects status for Grafana
       description: Retrieve status information for child objects of a root object formatted for Grafana.
       requestBody:
@@ -1785,6 +1831,7 @@ paths:
         - Grafana
   /v1/grafana/object-list:
     get:
+      operationId: grafanaGetObjectList
       summary: Get object list for Grafana
       description: Retrieve a list of objects formatted for Grafana with optional filtering.
       parameters:
@@ -1820,6 +1867,7 @@ paths:
         - Grafana
   /v1/grafana/summary-table-list:
     get:
+      operationId: grafanaGetSummaryTableList
       summary: Get summary table list for Grafana
       description: Retrieve a list of available DCI summary tables formatted for Grafana.
       responses:
@@ -1851,6 +1899,7 @@ paths:
         - Grafana
   /v1/grafana/query-list:
     get:
+      operationId: grafanaGetQueryList
       summary: Get object query list for Grafana
       description: Retrieve a list of available object queries formatted for Grafana.
       responses:
@@ -1882,6 +1931,7 @@ paths:
         - Grafana
   /v1/login:
     post:
+      operationId: login
       summary: User Login
       description: Authenticate a user and respond with a token.
       requestBody:
@@ -1956,6 +2006,7 @@ paths:
         - Authentication
   /v1/logout:
     post:
+      operationId: logout
       summary: User Logout
       description: Logout a user and invalidate their token.
       responses:
@@ -1967,6 +2018,7 @@ paths:
         - Authentication
   /v1/objects:
     get:
+      operationId: listObjects
       summary: List objects
       description: Retrieve a list of objects (with optional filter).
       parameters:
@@ -1997,6 +2049,7 @@ paths:
         - Objects
   /v1/objects/{object-id}:
     get:
+      operationId: getObject
       summary: Get object details
       description: Retrieve specific object details. Contains data for object overview, alarms, and last values.
       parameters:
@@ -2024,6 +2077,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/execute-agent-command:
     post:
+      operationId: executeAgentCommand
       summary: Execute command on agent
       parameters:
         - name: object-id
@@ -2064,6 +2118,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/execute-dashboard-script:
     post:
+      operationId: executeDashboardScript
       summary: Execute dashboard element script within context of given object
       description: Execute an NXSL script embedded in a dashboard element against a context object and return the result as a string map.
       parameters:
@@ -2140,6 +2195,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/execute-script:
     post:
+      operationId: executeScript
       summary: Execute script within context of given object
       parameters:
         - name: object-id
@@ -2196,6 +2252,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/data-collection/current-values:
     get:
+      operationId: getDciCurrentValues
       summary: Get current DCI values
       description: Retrieve current values for all data collection items (DCIs) of a given object.
       parameters:
@@ -2237,6 +2294,7 @@ paths:
         - Data Collection
   /v1/objects/{object-id}/data-collection/{dci-id}/history:
     get:
+      operationId: getDciHistory
       summary: Get data collection history
       description: Retrieve historical data for a specific DCI (Data Collection Item).
       parameters:
@@ -2313,6 +2371,7 @@ paths:
         - Data Collection
   /v1/objects/{object-id}/data-collection/performance-view:
     get:
+      operationId: getDciPerformanceView
       summary: Get performance view DCIs
       description: Retrieve data collection items configured for the performance view tab, including parsed chart configuration settings.
       parameters:
@@ -2432,6 +2491,7 @@ paths:
         - Data Collection
   /v1/objects/{object-id}/expand-text:
     post:
+      operationId: expandText
       summary: Expand text macros
       description: Expand text containing NetXMS macros in the context of a given object.
       parameters:
@@ -2486,6 +2546,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/remote-control:
     post:
+      operationId: createRemoteControlSession
       summary: Create Remote Control Session
       description: |
         Create a remote control (VNC) session for a node and return a short-lived token
@@ -2568,6 +2629,7 @@ paths:
 
   /v1/objects/{object-id}/set-maintenance:
     post:
+      operationId: setObjectMaintenance
       summary: Make object enter or leave maintenance mode
       parameters:
         - name: object-id
@@ -2605,6 +2667,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/set-managed:
     post:
+      operationId: setObjectManaged
       summary: Manage or unmanage object
       parameters:
         - name: object-id
@@ -2639,6 +2702,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/take-screenshot:
     get:
+      operationId: takeScreenshot
       summary: Take screenshot from remote system via NetXMS agent
       parameters:
         - name: object-id
@@ -2673,6 +2737,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/topology/l2:
     get:
+      operationId: getL2Topology
       summary: Get L2 (link layer) topology
       description: Build an ad-hoc Layer 2 topology map centered on the given node. Returns the set of discovered objects and the links between them.
       tags:
@@ -2719,6 +2784,7 @@ paths:
         - BearerAuth: []
   /v1/objects/{object-id}/topology/ip:
     get:
+      operationId: getIpTopology
       summary: Get IP topology
       description: Build an ad-hoc IP topology map centered on the given node. Returns routers and subnets connected to the node.
       tags:
@@ -2756,6 +2822,7 @@ paths:
         - BearerAuth: []
   /v1/objects/{object-id}/topology/ospf:
     get:
+      operationId: getOspfTopology
       summary: Get OSPF topology
       description: Build an ad-hoc OSPF topology map centered on the given node. Returns the OSPF routing domain topology.
       tags:
@@ -2788,6 +2855,7 @@ paths:
         - BearerAuth: []
   /v1/objects/{object-id}/topology/internal:
     get:
+      operationId: getInternalTopology
       summary: Get internal communication topology
       description: Build an ad-hoc internal communication topology map for the given object. Shows proxy relationships and agent tunnels.
       tags:
@@ -2820,6 +2888,7 @@ paths:
         - BearerAuth: []
   /v1/objects/{object-id}/status-explanation:
     get:
+      operationId: getObjectStatusExplanation
       summary: Get object status explanation
       description: Retrieve a detailed explanation of how the object's status was calculated, including the algorithm used, child object statuses, and status propagation details.
       parameters:
@@ -2883,6 +2952,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/sub-tree:
     get:
+      operationId: getObjectSubTree
       summary: Get object sub-tree
       description: Retrieve a sub-tree of objects starting from the specified parent object.
       parameters:
@@ -2918,6 +2988,7 @@ paths:
         - Objects
   /v1/objects/{object-id}/object-tools:
     get:
+      operationId: listObjectToolsForObject
       summary: List object tools applicable to an object
       description: Retrieve a list of object tools that are applicable to the specified object, filtered by tool ACL, container context, disabled status, and the tool's menu filter (SNMP/agent requirements, OID match, OS match, template match, custom attribute match).
       parameters:
@@ -2956,6 +3027,7 @@ paths:
         - Object Tools
   /v1/objects/query:
     post:
+      operationId: queryObjects
       summary: Execute object query
       description: Execute object query (specialized NXSL script) and return all matching objects along with additional data fields.
       requestBody:
@@ -3007,6 +3079,7 @@ paths:
         - Objects
   /v1/objects/search:
     post:
+      operationId: searchObjects
       summary: Search objects
       description: Search for objects matching certain criteria. Multiple criterias will be combined with logical AND.
       requestBody:
@@ -3050,6 +3123,7 @@ paths:
         - Objects
   /v1/scheduled-task-handlers:
     get:
+      operationId: listScheduledTaskHandlers
       summary: List available task handlers
       description: Retrieve a list of registered scheduled task handler names accessible to the current user.
       responses:
@@ -3071,6 +3145,7 @@ paths:
         - Scheduled Tasks
   /v1/scheduled-tasks:
     get:
+      operationId: listScheduledTasks
       summary: List all accessible scheduled tasks
       description: Retrieve all scheduled tasks accessible to the current user based on system access rights.
       responses:
@@ -3091,6 +3166,7 @@ paths:
       tags:
         - Scheduled Tasks
     post:
+      operationId: createScheduledTask
       summary: Create a new scheduled task
       description: Create a recurrent (cron-based) or one-time scheduled task. Provide `schedule` for recurrent tasks or `executionTime` for one-time tasks.
       requestBody:
@@ -3116,6 +3192,7 @@ paths:
         - Scheduled Tasks
   /v1/scheduled-tasks/{task-id}:
     get:
+      operationId: getScheduledTask
       summary: Get scheduled task details
       description: Retrieve details of a specific scheduled task by ID.
       parameters:
@@ -3145,6 +3222,7 @@ paths:
       tags:
         - Scheduled Tasks
     put:
+      operationId: updateScheduledTask
       summary: Update a scheduled task
       description: Update an existing scheduled task. Provide `schedule` for recurrent tasks or `executionTime` for one-time tasks.
       parameters:
@@ -3182,6 +3260,7 @@ paths:
       tags:
         - Scheduled Tasks
     delete:
+      operationId: deleteScheduledTask
       summary: Delete a scheduled task
       description: Delete a scheduled task by ID.
       parameters:
@@ -3210,6 +3289,7 @@ paths:
         - Scheduled Tasks
   /v1/script-library:
     get:
+      operationId: listScripts
       summary: List all scripts
       description: Retrieve a list of all scripts in the script library (ID and name only).
       responses:
@@ -3230,6 +3310,7 @@ paths:
       tags:
         - Script Library
     post:
+      operationId: createScript
       summary: Create new script
       description: Create a new script in the script library.
       requestBody:
@@ -3273,6 +3354,7 @@ paths:
         - Script Library
   /v1/script-library/{script-id}:
     get:
+      operationId: getScript
       summary: Get script details
       description: Retrieve a script with its full source code.
       parameters:
@@ -3302,6 +3384,7 @@ paths:
       tags:
         - Script Library
     put:
+      operationId: updateScript
       summary: Update script
       description: Update an existing script's name and/or code.
       parameters:
@@ -3353,6 +3436,7 @@ paths:
       tags:
         - Script Library
     delete:
+      operationId: deleteScript
       summary: Delete script
       description: Delete a script from the script library.
       parameters:
@@ -3381,6 +3465,7 @@ paths:
         - Script Library
   /v1/notification-channels:
     get:
+      operationId: listNotificationChannels
       summary: List notification channels
       description: Retrieve a list of all notification channels configured on the server.
       responses:
@@ -3399,6 +3484,7 @@ paths:
       tags:
         - Notification Channels
     post:
+      operationId: createNotificationChannel
       summary: Create a notification channel
       description: Create a new notification channel with the specified driver and configuration.
       requestBody:
@@ -3442,6 +3528,7 @@ paths:
         - Notification Channels
   /v1/notification-channels/{channel-name}:
     get:
+      operationId: getNotificationChannel
       summary: Get notification channel details
       description: Retrieve details of a specific notification channel.
       parameters:
@@ -3467,6 +3554,7 @@ paths:
       tags:
         - Notification Channels
     put:
+      operationId: updateNotificationChannel
       summary: Update a notification channel
       description: Update an existing notification channel. Only provided fields are updated.
       parameters:
@@ -3510,6 +3598,7 @@ paths:
       tags:
         - Notification Channels
     delete:
+      operationId: deleteNotificationChannel
       summary: Delete a notification channel
       description: Delete a notification channel. Fails if the channel is used in server actions.
       parameters:
@@ -3534,6 +3623,7 @@ paths:
         - Notification Channels
   /v1/notification-channels/{channel-name}/rename:
     post:
+      operationId: renameNotificationChannel
       summary: Rename a notification channel
       description: Rename an existing notification channel. Also updates references in server actions.
       parameters:
@@ -3572,6 +3662,7 @@ paths:
         - Notification Channels
   /v1/notification-channels/{channel-name}/clear-queue:
     post:
+      operationId: clearNotificationChannelQueue
       summary: Clear notification channel queue
       description: Clear all pending messages in the notification channel's queue.
       parameters:
@@ -3594,6 +3685,7 @@ paths:
         - Notification Channels
   /v1/notification-channels/{channel-name}/send:
     post:
+      operationId: sendNotification
       summary: Send a notification
       description: Send a test notification message through the specified channel.
       parameters:
@@ -3637,6 +3729,7 @@ paths:
         - Notification Channels
   /v1/notification-drivers:
     get:
+      operationId: listNotificationDrivers
       summary: List notification drivers
       description: Retrieve a list of all loaded notification channel driver names.
       responses:
@@ -3656,6 +3749,7 @@ paths:
         - Notification Channels
   /v1/ssh-keys:
     get:
+      operationId: listSshKeys
       summary: List SSH keys
       description: Retrieve a list of all SSH keys. Optionally include public key data.
       parameters:
@@ -3681,6 +3775,7 @@ paths:
       tags:
         - SSH Keys
     post:
+      operationId: createSshKey
       summary: Create SSH key
       description: |
         Create a new SSH key. If only a name is provided, a new RSA key pair is generated.
@@ -3710,6 +3805,7 @@ paths:
         - SSH Keys
   /v1/ssh-keys/{key-id}:
     get:
+      operationId: getSshKey
       summary: Get SSH key details
       description: Retrieve details of a specific SSH key including its public key.
       parameters:
@@ -3737,6 +3833,7 @@ paths:
       tags:
         - SSH Keys
     put:
+      operationId: updateSshKey
       summary: Update SSH key
       description: Update an existing SSH key's name and optionally its key data.
       parameters:
@@ -3772,6 +3869,7 @@ paths:
       tags:
         - SSH Keys
     delete:
+      operationId: deleteSshKey
       summary: Delete SSH key
       description: |
         Delete an SSH key. If the key is in use by nodes, returns 409 with the list of node IDs.
@@ -3812,6 +3910,7 @@ paths:
         - SSH Keys
   /v1/web-service-definitions:
     get:
+      operationId: listWebServiceDefinitions
       summary: List web service definitions
       description: Retrieve a list of all web service definitions.
       responses:
@@ -3832,6 +3931,7 @@ paths:
       tags:
         - Web Service Definitions
     post:
+      operationId: createWebServiceDefinition
       summary: Create web service definition
       description: Create a new web service definition. Name and URL are required.
       requestBody:
@@ -3861,6 +3961,7 @@ paths:
         - Web Service Definitions
   /v1/web-service-definitions/{definition-id}:
     get:
+      operationId: getWebServiceDefinition
       summary: Get web service definition details
       description: Retrieve details of a specific web service definition.
       parameters:
@@ -3890,6 +3991,7 @@ paths:
       tags:
         - Web Service Definitions
     put:
+      operationId: updateWebServiceDefinition
       summary: Update web service definition
       description: Update an existing web service definition.
       parameters:
@@ -3927,6 +4029,7 @@ paths:
       tags:
         - Web Service Definitions
     delete:
+      operationId: deleteWebServiceDefinition
       summary: Delete web service definition
       description: Delete a web service definition.
       parameters:
@@ -3953,6 +4056,7 @@ paths:
         - Web Service Definitions
   /v1/server-actions:
     get:
+      operationId: listServerActions
       summary: List server actions
       description: Retrieve a list of all server actions defined in the system.
       responses:
@@ -3973,6 +4077,7 @@ paths:
       tags:
         - Server Actions
     post:
+      operationId: createServerAction
       summary: Create server action
       description: |
         Create a new server action. Only the name field is required.
@@ -4008,6 +4113,7 @@ paths:
         - Server Actions
   /v1/server-actions/{action-id}:
     get:
+      operationId: getServerAction
       summary: Get server action details
       description: Retrieve details of a specific server action by its ID.
       parameters:
@@ -4037,6 +4143,7 @@ paths:
       tags:
         - Server Actions
     put:
+      operationId: updateServerAction
       summary: Update server action
       description: Update an existing server action. Only the fields provided in the request body will be modified.
       parameters:
@@ -4076,6 +4183,7 @@ paths:
       tags:
         - Server Actions
     delete:
+      operationId: deleteServerAction
       summary: Delete server action
       description: |
         Delete a server action. The action cannot be deleted if it is currently
@@ -4108,6 +4216,7 @@ paths:
         - Server Actions
   /v1/object-tools:
     get:
+      operationId: listObjectTools
       summary: List available object tools
       description: Retrieve a list of object tools with basic information.
       parameters:
@@ -4134,6 +4243,7 @@ paths:
         - Object Tools
   /v1/object-tools/{tool-id}:
     get:
+      operationId: getObjectTool
       summary: Get object tool details
       description: Retrieve full details of a specific object tool.
       parameters:
@@ -4164,6 +4274,7 @@ paths:
         - Object Tools
   /v1/object-tools/{tool-id}/execute:
     post:
+      operationId: executeObjectTool
       summary: Execute an object tool
       description: |
         Execute a server-capable object tool on the specified object.
@@ -4269,6 +4380,7 @@ paths:
         - BearerAuth: []
   /v1/object-tools/output/{token}:
     get:
+      operationId: connectObjectToolOutput
       summary: Connect to tool output stream (WebSocket)
       description: |
         WebSocket endpoint for receiving streaming output from an object tool execution.
@@ -4295,6 +4407,7 @@ paths:
           description: Switching protocols to WebSocket
   /v1/event-templates:
     get:
+      operationId: listEventTemplates
       summary: List event templates
       description: Retrieve a list of all event templates defined in the system.
       responses:
@@ -4315,6 +4428,7 @@ paths:
       tags:
         - Event Templates
     post:
+      operationId: createEventTemplate
       summary: Create event template
       description: Create a new event template. The server assigns a unique event code automatically.
       requestBody:
@@ -4353,6 +4467,7 @@ paths:
         - Event Templates
   /v1/event-templates/{event-code}:
     get:
+      operationId: getEventTemplate
       summary: Get event template details
       description: Retrieve details of a specific event template by its event code.
       parameters:
@@ -4382,6 +4497,7 @@ paths:
       tags:
         - Event Templates
     put:
+      operationId: updateEventTemplate
       summary: Update event template
       description: Update an existing event template. Only the fields provided in the request body will be modified.
       parameters:
@@ -4421,6 +4537,7 @@ paths:
       tags:
         - Event Templates
     delete:
+      operationId: deleteEventTemplate
       summary: Delete event template
       description: |
         Delete an event template. Only user-defined event templates (event code >= 100000) can be deleted.
@@ -4451,6 +4568,7 @@ paths:
         - Event Templates
   /v1/dci-summary-tables:
     get:
+      operationId: listDciSummaryTables
       summary: List DCI summary tables
       description: Retrieve a list of available DCI summary tables.
       responses:
@@ -4471,6 +4589,7 @@ paths:
       tags:
         - DCI Summary Tables
     post:
+      operationId: createDciSummaryTable
       summary: Create DCI summary table
       description: Create a new DCI summary table. Requires MANAGE_SUMMARY_TBLS access right.
       requestBody:
@@ -4504,6 +4623,7 @@ paths:
         - DCI Summary Tables
   /v1/dci-summary-tables/{table-id}:
     get:
+      operationId: getDciSummaryTable
       summary: Get DCI summary table details
       description: Retrieve full details of a specific DCI summary table including columns and filter. Requires MANAGE_SUMMARY_TBLS access right.
       parameters:
@@ -4535,6 +4655,7 @@ paths:
       tags:
         - DCI Summary Tables
     put:
+      operationId: updateDciSummaryTable
       summary: Update DCI summary table
       description: Update an existing DCI summary table. Requires MANAGE_SUMMARY_TBLS access right.
       parameters:
@@ -4568,6 +4689,7 @@ paths:
       tags:
         - DCI Summary Tables
     delete:
+      operationId: deleteDciSummaryTable
       summary: Delete DCI summary table
       description: Delete a DCI summary table. Requires MANAGE_SUMMARY_TBLS access right.
       parameters:
@@ -4594,6 +4716,7 @@ paths:
         - DCI Summary Tables
   /v1/dci-summary-tables/{table-id}/query:
     post:
+      operationId: queryDciSummaryTable
       summary: Query specific DCI summary table
       description: Execute a query on a specific DCI summary table.
       parameters:
@@ -4637,6 +4760,7 @@ paths:
         - DCI Summary Tables
   /v1/dci-summary-tables/adhoc-query:
     post:
+      operationId: adhocQueryDciSummaryTable
       summary: Execute ad-hoc DCI summary table query
       description: Execute an ad-hoc query on DCI summary tables.
       requestBody:
@@ -4678,6 +4802,7 @@ paths:
         - DCI Summary Tables
   /v1/users:
     get:
+      operationId: listUsers
       summary: List users
       description: Retrieve a list of all users defined in the system. Requires MANAGE_USERS access right.
       responses:
@@ -4698,6 +4823,7 @@ paths:
       tags:
         - Users
     post:
+      operationId: createUser
       summary: Create user
       description: Create a new user. Requires MANAGE_USERS access right.
       requestBody:
@@ -4731,6 +4857,7 @@ paths:
         - Users
   /v1/users/{user-id}:
     get:
+      operationId: getUser
       summary: Get user details
       description: Retrieve details of a specific user by ID. Requires MANAGE_USERS access right.
       parameters:
@@ -4758,6 +4885,7 @@ paths:
       tags:
         - Users
     put:
+      operationId: updateUser
       summary: Update user
       description: Update an existing user. Only the fields provided in the request body will be modified. Requires MANAGE_USERS access right.
       parameters:
@@ -4797,6 +4925,7 @@ paths:
       tags:
         - Users
     delete:
+      operationId: deleteUser
       summary: Delete user
       description: |
         Delete a user. The system user (ID 0) cannot be deleted.
@@ -4829,6 +4958,7 @@ paths:
         - Users
   /v1/users/{user-id}/password:
     post:
+      operationId: setUserPassword
       summary: Set user password
       description: |
         Set or change a user's password. If `oldPassword` is provided, it is treated as a
@@ -4869,6 +4999,7 @@ paths:
         - Users
   /v1/user-groups:
     get:
+      operationId: listUserGroups
       summary: List user groups
       description: Retrieve a list of all user groups defined in the system. Requires MANAGE_USERS access right.
       responses:
@@ -4889,6 +5020,7 @@ paths:
       tags:
         - User Groups
     post:
+      operationId: createUserGroup
       summary: Create user group
       description: Create a new user group. Requires MANAGE_USERS access right.
       requestBody:
@@ -4922,6 +5054,7 @@ paths:
         - User Groups
   /v1/user-groups/{group-id}:
     get:
+      operationId: getUserGroup
       summary: Get user group details
       description: Retrieve details of a specific user group by ID. Group IDs include the GROUP_FLAG bit (0x40000000). Requires MANAGE_USERS access right.
       parameters:
@@ -4951,6 +5084,7 @@ paths:
       tags:
         - User Groups
     put:
+      operationId: updateUserGroup
       summary: Update user group
       description: Update an existing user group. Only the fields provided in the request body will be modified. Requires MANAGE_USERS access right.
       parameters:
@@ -4990,6 +5124,7 @@ paths:
       tags:
         - User Groups
     delete:
+      operationId: deleteUserGroup
       summary: Delete user group
       description: |
         Delete a user group. The "Everyone" group (ID 1073741824) cannot be deleted.
@@ -5019,6 +5154,7 @@ paths:
         - User Groups
   /v1/users/{user-id}/2fa-bindings:
     get:
+      operationId: listUser2faBindings
       summary: List user's 2FA bindings
       description: |
         Retrieve the list of two-factor authentication method bindings for a specific user.
@@ -5051,6 +5187,7 @@ paths:
         - Two-Factor Authentication
   /v1/users/{user-id}/2fa-bindings/{method-name}:
     put:
+      operationId: setUser2faBinding
       summary: Create or update user 2FA binding
       description: |
         Create or update a two-factor authentication method binding for a specific user.
@@ -5093,6 +5230,7 @@ paths:
       tags:
         - Two-Factor Authentication
     delete:
+      operationId: deleteUser2faBinding
       summary: Delete user 2FA binding
       description: |
         Delete a two-factor authentication method binding for a specific user.
@@ -5127,6 +5265,7 @@ paths:
         - Two-Factor Authentication
   /v1/2fa/drivers:
     get:
+      operationId: list2faDrivers
       summary: List available 2FA drivers
       description: Retrieve the list of available two-factor authentication drivers. Requires MANAGE_2FA_METHODS access right.
       responses:
@@ -5147,6 +5286,7 @@ paths:
         - Two-Factor Authentication
   /v1/2fa/methods:
     get:
+      operationId: list2faMethods
       summary: List 2FA methods
       description: Retrieve the list of configured two-factor authentication methods. Requires MANAGE_2FA_METHODS access right.
       responses:
@@ -5165,6 +5305,7 @@ paths:
       tags:
         - Two-Factor Authentication
     post:
+      operationId: create2faMethod
       summary: Create 2FA method
       description: Create a new two-factor authentication method. Requires MANAGE_2FA_METHODS access right.
       requestBody:
@@ -5194,6 +5335,7 @@ paths:
         - Two-Factor Authentication
   /v1/2fa/methods/{method-name}:
     get:
+      operationId: get2faMethod
       summary: Get 2FA method details
       description: Retrieve details of a specific two-factor authentication method. Requires MANAGE_2FA_METHODS access right.
       parameters:
@@ -5221,6 +5363,7 @@ paths:
       tags:
         - Two-Factor Authentication
     put:
+      operationId: update2faMethod
       summary: Update 2FA method
       description: |
         Update an existing two-factor authentication method. Only the fields provided
@@ -5258,6 +5401,7 @@ paths:
       tags:
         - Two-Factor Authentication
     delete:
+      operationId: delete2faMethod
       summary: Delete 2FA method
       description: Delete a two-factor authentication method. Requires MANAGE_2FA_METHODS access right.
       parameters:
