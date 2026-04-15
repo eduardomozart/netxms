@@ -30,6 +30,7 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
@@ -183,6 +184,7 @@ public class ObjectContextMenuManager extends MenuManager
    private ObjectAction<?> actionUploadFileToAgent;
    private ObjectAction<?> actionSetInterfacePeer;
    private ObjectAction<?> actionClearInterfacePeer;
+   private Action actionExpandAllChildren;
    private List<ObjectAction<?>> actionContributions = new ArrayList<>();
 
    /**
@@ -221,7 +223,7 @@ public class ObjectContextMenuManager extends MenuManager
             changeObjectManagementState(false);
          }
       };
-      
+
       actionDeployPackage = new Action(i18n.tr("D&eploy package...")) {
          @Override
          public void run()
@@ -259,6 +261,20 @@ public class ObjectContextMenuManager extends MenuManager
             }
          };
          view.addKeyBinding("F2", actionRename);
+      }
+
+      if (objectViewer instanceof TreeViewer)
+      {
+         actionExpandAllChildren = new Action(i18n.tr("E&xpand all children")) {
+            @Override
+            public void run()
+            {
+               TreeViewer treeViewer = (TreeViewer)objectViewer;
+               IStructuredSelection selection = (IStructuredSelection)selectionProvider.getSelection();
+               for(Object element : selection.toList())
+                  expandNonNodeSubtree(treeViewer, element);
+            }
+         };
       }
 
       actionDelete = new Action(i18n.tr("&Delete"), SharedIcons.DELETE_OBJECT) {
@@ -617,14 +633,14 @@ public class ObjectContextMenuManager extends MenuManager
             add(actionLinkObjectToAsset);
             if (object.getAssetId() != 0)
                add(actionUnlinkObjectFromAsset);
-            add(new Separator());            
+            add(new Separator());
          }
          if (object instanceof DashboardBase)
          {
             add(actionCloneAsDashboard);
             add(actionCloneAsDashboardTemplate);
             add(actionExportDashboard);
-            add(new Separator());           
+            add(new Separator());
          }
          if (object instanceof WirelessDomain)
          {
@@ -650,7 +666,7 @@ public class ObjectContextMenuManager extends MenuManager
          {
             add(actionForcePolicyInstall);
             add(new Separator());
-         }         
+         }
       }
 
       if (isBindToMenuAllowed(selection))
@@ -678,7 +694,13 @@ public class ObjectContextMenuManager extends MenuManager
       else if (!containsRootObject(selection))
       {
          addObjectMoveActions(selection);
-         add(new Separator()); 
+         add(new Separator());
+      }
+
+      if ((actionExpandAllChildren != null) && selectionHasChildren(selection))
+      {
+         add(actionExpandAllChildren);
+         add(new Separator());
       }
 
       if (isTemplateManagementAllowed(selection))
@@ -717,7 +739,7 @@ public class ObjectContextMenuManager extends MenuManager
          add(actionChangeZone);
       }
       add(new Separator());
-      
+
       if (isSendUANotificationMenuAllowed(selection))
       {
          add(actionSendUserAgentNotification);
@@ -812,7 +834,7 @@ public class ObjectContextMenuManager extends MenuManager
             }
             add(new Separator());
          }
-         add(actionExecuteScript);  
+         add(actionExecuteScript);
       }
 
       long contextId = (view instanceof ObjectView) ? ((ObjectView)view).getObjectId() : 0;
@@ -939,7 +961,7 @@ public class ObjectContextMenuManager extends MenuManager
             return false;
          int objectClass = ((AbstractObject)o).getObjectClass();
          if ((objectClass == AbstractObject.OBJECT_BUSINESSSERVICE) || (objectClass == AbstractObject.OBJECT_BUSINESSSERVICEPROTOTYPE) || (objectClass == AbstractObject.OBJECT_BUSINESSSERVICEROOT) ||
-             (objectClass == AbstractObject.OBJECT_DASHBOARD) || (objectClass == AbstractObject.OBJECT_DASHBOARDGROUP) || (objectClass == AbstractObject.OBJECT_DASHBOARDROOT) || 
+             (objectClass == AbstractObject.OBJECT_DASHBOARD) || (objectClass == AbstractObject.OBJECT_DASHBOARDGROUP) || (objectClass == AbstractObject.OBJECT_DASHBOARDROOT) ||
              (objectClass == AbstractObject.OBJECT_DASHBOARDTEMPLATE) ||
              (objectClass == AbstractObject.OBJECT_NETWORKMAP) || (objectClass == AbstractObject.OBJECT_NETWORKMAPGROUP) || (objectClass == AbstractObject.OBJECT_NETWORKMAPROOT) ||
              (objectClass == AbstractObject.OBJECT_TEMPLATE) || (objectClass == AbstractObject.OBJECT_TEMPLATEGROUP) || (objectClass == AbstractObject.OBJECT_TEMPLATEROOT) ||
@@ -982,7 +1004,7 @@ public class ObjectContextMenuManager extends MenuManager
          if (!(o instanceof AbstractObject))
             return false;
          int objectClass = ((AbstractObject)o).getObjectClass();
-         if ((objectClass == AbstractObject.OBJECT_BUSINESSSERVICEROOT) || (objectClass == AbstractObject.OBJECT_DASHBOARDROOT) || (objectClass == AbstractObject.OBJECT_NETWORKMAPROOT) || 
+         if ((objectClass == AbstractObject.OBJECT_BUSINESSSERVICEROOT) || (objectClass == AbstractObject.OBJECT_DASHBOARDROOT) || (objectClass == AbstractObject.OBJECT_NETWORKMAPROOT) ||
                (objectClass == AbstractObject.OBJECT_TEMPLATEROOT) || (objectClass == AbstractObject.OBJECT_ASSETROOT))
             return true;
       }
@@ -1043,6 +1065,43 @@ public class ObjectContextMenuManager extends MenuManager
    }
 
    /**
+    * Check if selection contains at least one non-node object with children, so the "expand all children"
+    * action would produce any visible effect. Nodes are excluded because their interface children may be
+    * unsynchronized, which would make expanded nodes look empty.
+    *
+    * @param selection current object selection
+    * @return true if the expand action is applicable to the selection
+    */
+   private static boolean selectionHasChildren(IStructuredSelection selection)
+   {
+      for(Object o : selection.toList())
+      {
+         if ((o instanceof AbstractObject) && !(o instanceof AbstractNode) && (((AbstractObject)o).getChildCount() > 0))
+            return true;
+      }
+      return false;
+   }
+
+   /**
+    * Recursively expand tree nodes under the given element, stopping at nodes. Node descendants are skipped
+    * because their interface children may be unsynchronized and would show up as empty after expansion.
+    *
+    * @param treeViewer tree viewer to operate on
+    * @param element starting element
+    */
+   private static void expandNonNodeSubtree(TreeViewer treeViewer, Object element)
+   {
+      if (element instanceof AbstractNode)
+         return;
+      treeViewer.setExpandedState(element, true);
+      if (element instanceof AbstractObject)
+      {
+         for(AbstractObject child : ((AbstractObject)element).getChildrenAsArray())
+            expandNonNodeSubtree(treeViewer, child);
+      }
+   }
+
+   /**
     * Check if template remove/apply available
     *
     * @param selection current object selection
@@ -1089,7 +1148,7 @@ public class ObjectContextMenuManager extends MenuManager
       {
          for (Object obj : ((IStructuredSelection)selection).toList())
          {
-            if (!(((obj instanceof AbstractNode) && ((AbstractNode)obj).hasAgent()) || 
+            if (!(((obj instanceof AbstractNode) && ((AbstractNode)obj).hasAgent()) ||
                 (obj instanceof Collector) || (obj instanceof Container) || (obj instanceof ServiceRoot) || (obj instanceof Rack) ||
                 (obj instanceof Cluster)))
             {
@@ -1169,7 +1228,7 @@ public class ObjectContextMenuManager extends MenuManager
          }
       }.start();
    }
-   
+
    /**
     * Deploy package on node
     */
@@ -1441,7 +1500,7 @@ public class ObjectContextMenuManager extends MenuManager
          if (o instanceof DataCollectionTarget)
             targetsId.add(((AbstractObject)o).getObjectId());
       }
-      
+
       final ObjectSelectionDialog dlg = new ObjectSelectionDialog(view.getWindow().getShell(), ObjectSelectionDialog.createTemplateSelectionFilter());
       dlg.enableMultiSelection(false);
       if (dlg.open() != Window.OK)
@@ -1499,7 +1558,7 @@ public class ObjectContextMenuManager extends MenuManager
          if (o instanceof DataCollectionTarget)
             targetsId.add(((AbstractObject)o).getObjectId());
       }
-      
+
       final RelatedTemplateObjectSelectionDialog dlg = new RelatedTemplateObjectSelectionDialog(view.getWindow().getShell(), targetsId, RelationType.DIRECT_SUPERORDINATES, ObjectSelectionDialog.createTemplateSelectionFilter());
       dlg.setShowObjectPath(true);
       if (dlg.open() != Window.OK)
@@ -1805,16 +1864,16 @@ public class ObjectContextMenuManager extends MenuManager
       if (dlg.open() != Window.OK)
          return;
 
-      final NXCSession session = Registry.getSession();      
+      final NXCSession session = Registry.getSession();
       new Job(i18n.tr("Adding node to cluster"), view) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
             List<AbstractObject> objects = dlg.getSelectedObjects();
             for(AbstractObject o : objects)
-               session.addClusterNode(clusterId, o.getObjectId());          
+               session.addClusterNode(clusterId, o.getObjectId());
          }
-         
+
          @Override
          protected String getErrorMessage()
          {
@@ -1920,7 +1979,7 @@ public class ObjectContextMenuManager extends MenuManager
 
    /**
     * Show route between current node and another node selected by user
-    * 
+    *
     * @param swap true to swap source and destination (current node is source by default)
     */
    private void showRoute(boolean swap)
@@ -2016,7 +2075,7 @@ public class ObjectContextMenuManager extends MenuManager
 
    /**
     * Add menu items for moving objects. Default implementation does nothing.
-    * 
+    *
     * @param selection current selection
     */
    protected void addObjectMoveActions(IStructuredSelection selection)
