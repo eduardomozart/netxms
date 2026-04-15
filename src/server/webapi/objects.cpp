@@ -37,6 +37,8 @@ json_t *CreateObjectSummary(const NetObj& object)
    json_object_set_new(jsonObject, "category", json_integer(object.getCategoryId()));
    json_object_set_new(jsonObject, "timestamp", json_time_string(object.getTimeStamp()));
    json_object_set_new(jsonObject, "status", json_integer(object.getStatus()));
+   InetAddress a = object.getPrimaryIpAddress();
+   json_object_set_new(jsonObject, "ipAddress", a.isValid() ? a.toJson() : json_null());
    return jsonObject;
 }
 

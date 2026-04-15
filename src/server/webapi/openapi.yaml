@@ -1168,17 +1168,7 @@ paths:
                       type: integer
                       description: Local interface ID
                     localIpAddress:
-                      type: object
-                      properties:
-                        family:
-                          type: integer
-                          description: IP address family
-                        address:
-                          type: integer
-                          description: IP address
-                        prefixLength:
-                          type: integer
-                          description: IP address prefix length
+                      $ref: '#/components/schemas/InetAddress'
                     type:
                       type: string
                       description: Connection type
@@ -5234,6 +5224,18 @@ components:
         promptText:
           type: string
           description: The prompt text
+    InetAddress:
+      type: object
+      properties:
+        family:
+          type: integer
+          description: IP address family
+        address:
+          type: integer
+          description: IP address
+        prefixLength:
+          type: integer
+          description: IP address prefix length
     LibraryImage:
       type: object
       properties:
@@ -6357,6 +6359,8 @@ components:
         id:
           type: integer
           description: Object ID
+        ipAddress:
+          $ref: '#/components/schemas/InetAddress'
         name:
           type: string
           description: Object name
