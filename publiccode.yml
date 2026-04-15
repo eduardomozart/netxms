@@ -1,13 +1,13 @@
 # This repository adheres to the publiccode.yml standard
 # https://yml.publiccode.tools/
 
-publiccodeYmlVersion: "0.4"
+publiccodeYmlVersion: "0.5"
 
 name: NetXMS
 url: "https://github.com/netxms/netxms"
 landingURL: "https://www.netxms.org"
-softwareVersion: "5.2.8"
-releaseDate: "2025-12-04"
+softwareVersion: "6.1.0"
+releaseDate: "2026-04-09"
 logo: "doc/logo.png"
 platforms:
   - web
@@ -79,11 +79,11 @@ description:
     apiDocumentation: "https://www.netxms.org/documentation/javadoc/latest/"
 
 legal:
-  license: GPL-2.0-only
+  license: GPL-2.0-or-later
   mainCopyrightOwner: Raden Solutions (Latvia, European Union)
 
 maintenance:
-  type: community
+  type: internal
   contacts:
     - name: NetXMS Community Support
       email: info@netxms.com
@@ -95,6 +95,8 @@ localisation:
   localisationReady: true
   availableLanguages:
     - en
+    - de
+    - es
 
 dependsOn:
   open:
