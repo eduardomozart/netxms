@@ -20,7 +20,9 @@ package org.netxms.nxmc.modules.logviewer.views;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
@@ -530,6 +532,7 @@ public class LogViewer extends ViewWithContext
                resultSet = data;
                viewer.setInput(resultSet.getAllRows());
                noData = (resultSet.getRowCount() < PAGE_SIZE);
+               syncResultSetObjects(data);
 				});
 			}
 
@@ -568,6 +571,7 @@ public class LogViewer extends ViewWithContext
                resultSet.addAll(data);
                viewer.setInput(resultSet.getAllRows());
                noData = (data.getRowCount() < PAGE_SIZE);
+               syncResultSetObjects(data);
 				});
 			}
 
@@ -607,6 +611,7 @@ public class LogViewer extends ViewWithContext
                resultSet = data;
                viewer.setInput(resultSet.getAllRows());
                noData = (data.getRowCount() < PAGE_SIZE);
+               syncResultSetObjects(data);
 				});
 			}
 
@@ -626,6 +631,63 @@ public class LogViewer extends ViewWithContext
          }
       }.start();
 	}
+
+   /**
+    * Synchronize objects referenced by columns with LCF_SYNC_OBJECTS flag. Should be called from UI thread after setting viewer
+    * input. Starts a background job that syncs missing objects and refreshes the viewer upon completion.
+    *
+    * @param data result set data
+    */
+   protected void syncResultSetObjects(Table data)
+   {
+      if (logHandle == null || data == null || data.getRowCount() == 0)
+         return;
+
+      Collection<LogColumn> columns = logHandle.getColumns();
+      List<Integer> syncColumnIndices = new ArrayList<>();
+      int index = 0;
+      for(LogColumn lc : columns)
+      {
+         if ((lc.getFlags() & LogColumn.LCF_SYNC_OBJECTS) != 0)
+            syncColumnIndices.add(index);
+         index++;
+      }
+
+      if (syncColumnIndices.isEmpty())
+         return;
+
+      Set<Long> objectIds = new HashSet<>();
+      for(TableRow row : data.getAllRows())
+      {
+         for(int colIndex : syncColumnIndices)
+         {
+            long id = row.getValueAsLong(colIndex);
+            if (id != 0)
+               objectIds.add(id);
+         }
+      }
+
+      if (objectIds.isEmpty())
+         return;
+
+      new Job(i18n.tr("Synchronizing objects"), this) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            session.syncMissingObjects(objectIds, NXCSession.OBJECT_SYNC_WAIT);
+            runInUIThread(() -> {
+               if (!viewer.getControl().isDisposed())
+                  viewer.refresh(true);
+            });
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Failed to synchronize objects");
+         }
+      }.start();
+   }
 
    /**
     * Handles query start

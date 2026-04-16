@@ -51,6 +51,7 @@ public class LogColumn
    public static final int LCF_TSDB_TIMESTAMPTZ = 0x0001;   /* Column is of timestamptz data type in TimescaleDB */
    public static final int LCF_CHAR_COLUMN      = 0x0002;   /* Column is of char type */
    public static final int LCF_RECORD_ID        = 0x0004;   /* Column is a sequential record ID */
+   public static final int LCF_SYNC_OBJECTS     = 0x0010;   /* Client should synchronize referenced objects */
 
 	private String name;
 	private String description;

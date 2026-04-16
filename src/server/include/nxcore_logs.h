@@ -76,6 +76,7 @@
 #define LCF_CHAR_COLUMN          0x0002   /* Column is of char type */
 #define LCF_RECORD_ID            0x0004   /* Column is a sequential record ID */
 #define LCF_INCLUDE_IN_DETAILS   0x0008   /* Column should be sent as part of log record details */
+#define LCF_SYNC_OBJECTS         0x0010   /* Client should synchronize referenced objects */
 
 /**
  * Log column definition structure

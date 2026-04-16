@@ -118,11 +118,11 @@ static NXCORE_LOG s_logs[] =
          { L"ip_address", L"IP Address", LC_TEXT, 0 },
          { L"node_id", L"Node", LC_OBJECT_ID, 0 },
          { L"switch_id", L"Switch", LC_OBJECT_ID, 0 },
-         { L"interface_id", L"Port", LC_OBJECT_ID, 0 },
+         { L"interface_id", L"Port", LC_OBJECT_ID, LCF_SYNC_OBJECTS },
          { L"vlan_id", L"VLAN", LC_INTEGER, 0 },
          { L"event_type", L"Event Type", LC_CONNECTION_EVENT, 0 },
          { L"old_switch_id", L"Old Switch", LC_OBJECT_ID, 0 },
-         { L"old_interface_id", L"Old Port", LC_OBJECT_ID, 0 },
+         { L"old_interface_id", L"Old Port", LC_OBJECT_ID, LCF_SYNC_OBJECTS },
          { nullptr, nullptr, 0, 0 }
       }
    },

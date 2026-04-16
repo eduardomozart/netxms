@@ -19,7 +19,9 @@
 package org.netxms.nxmc.modules.objects.views;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
@@ -211,7 +213,10 @@ public class ConnectionHistoryView extends ObjectView
             // Get last 30 days by default
             Date from = new Date(System.currentTimeMillis() - 30L * 86400000L);
             final List<ConnectionHistoryRecord> records = session.getConnectionHistory(null, objectId, 0, from, null, 5000);
-            runInUIThread(() -> viewer.setInput(records.toArray()));
+            runInUIThread(() -> {
+               viewer.setInput(records.toArray());
+               syncMissingInterfaces(records);
+            });
          }
 
          @Override
@@ -234,6 +239,49 @@ public class ConnectionHistoryView extends ObjectView
          refreshPending = false;
          refresh();
       }
+   }
+
+   /**
+    * Synchronize missing interface objects for switches referenced in connection history records.
+    *
+    * @param records connection history records
+    */
+   private void syncMissingInterfaces(List<ConnectionHistoryRecord> records)
+   {
+      Set<Long> switchIds = new HashSet<>();
+      for(ConnectionHistoryRecord r : records)
+      {
+         if (r.getSwitchId() != 0)
+            switchIds.add(r.getSwitchId());
+         if (r.getOldSwitchId() != 0)
+            switchIds.add(r.getOldSwitchId());
+      }
+
+      if (switchIds.isEmpty())
+         return;
+
+      new Job(i18n.tr("Synchronizing objects"), this) {
+         @Override
+         protected void run(IProgressMonitor monitor) throws Exception
+         {
+            for(Long id : switchIds)
+            {
+               if (!session.areChildrenSynchronized(id))
+               {
+                  AbstractObject object = session.findObjectById(id);
+                  if (object != null)
+                     session.syncChildren(object);
+               }
+            }
+            runInUIThread(() -> viewer.refresh(true));
+         }
+
+         @Override
+         protected String getErrorMessage()
+         {
+            return i18n.tr("Failed to synchronize objects");
+         }
+      }.start();
    }
 
    /**
