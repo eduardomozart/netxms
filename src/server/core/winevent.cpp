@@ -57,6 +57,8 @@ WindowsEvent::~WindowsEvent()
  */
 static StringMap *ExtractEventDataFromXml(const char *rawData, uint64_t *recordId)
 {
+   *recordId = 0;
+
    if (rawData == nullptr || *rawData == 0)
       return nullptr;
 
@@ -76,26 +78,39 @@ static StringMap *ExtractEventDataFromXml(const char *rawData, uint64_t *recordI
 
    StringMap *variables = nullptr;
    int index = 0;
-   for (pugi::xml_node dataNode : eventDataNode.children("Data"))
+   for (pugi::xml_node child : eventDataNode.children())
    {
       index++;
-      if (variables == nullptr)
-         variables = new StringMap();
+      const char *nodeName = child.name();
+      if (!strcmp(nodeName, "Data"))
+      {
+         if (variables == nullptr)
+            variables = new StringMap();
 
-      const char *name = dataNode.attribute("Name").as_string(nullptr);
-      wchar_t value[4096];
-      utf8_to_wchar(dataNode.text().as_string(""), -1, value, 4096);
-      if (name != nullptr)
-      {
-         wchar_t wname[256];
-         utf8_to_wchar(name, -1, wname, 256);
-         variables->set(wname, value);
+         const char *name = child.attribute("Name").as_string(nullptr);
+         wchar_t value[4096];
+         utf8_to_wchar(child.text().as_string(""), -1, value, 4096);
+         if (name != nullptr)
+         {
+            wchar_t wname[256];
+            utf8_to_wchar(name, -1, wname, 256);
+            variables->set(wname, value);
+         }
+         else
+         {
+            wchar_t positionalName[32] = L"wevt";
+            IntegerToString(index, &positionalName[4]);
+            variables->set(positionalName, value);
+         }
       }
-      else
+      else if (!strcmp(nodeName, "Binary"))
       {
-         wchar_t positionalName[32] = L"wevt";
-         IntegerToString(index, &positionalName[4]);
-         variables->set(positionalName, value);
+         if (variables == nullptr)
+            variables = new StringMap();
+
+         wchar_t value[8192];
+         utf8_to_wchar(child.text().as_string(""), -1, value, 8192);
+         variables->set(L"wevtBinaryData", value);
       }
    }
 
