@@ -6303,7 +6303,7 @@ public class NXCSession
                // retrieve additional data, we should update timeTo limit
                if (to != null)
                {
-                  DciDataRow row = data.getLastValue();
+                  DciDataRow row = data.getLastAddedValue();
                   if (row != null)
                   {
                      // There should be only one value per millisecond, so we set
