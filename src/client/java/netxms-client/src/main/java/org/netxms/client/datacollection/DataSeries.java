@@ -168,17 +168,17 @@ public class DataSeries
 	{
 		return values.toArray(new DciDataRow[values.size()]);
 	}
-		
-	/**
-	 * Get last added value
-	 * 
-	 * @return last added value
-	 */
-	public DciDataRow getLastValue()
-	{
-		return (values.size() > 0) ? values.get(values.size() - 1) : null;
-	}
-	
+
+   /**
+    * Get last added value
+    *
+    * @return last added value
+    */
+   public DciDataRow getLastAddedValue()
+   {
+      return !values.isEmpty() ? values.get(values.size() - 1) : null;
+   }
+
    /**
     * Get current value as double
     *
@@ -186,7 +186,17 @@ public class DataSeries
     */
    public double getCurrentValue()
    {
-      return (values.size() > 0) ? values.get(values.size() - 1).getValueAsDouble() : 0;
+      return !values.isEmpty() ? values.get(0).getValueAsDouble() : 0;
+   }
+
+   /**
+    * Get current value as string
+    *
+    * @return current value as string
+    */
+   public String getCurrentValueAsString()
+   {
+      return !values.isEmpty() ? values.get(0).getValueAsString() : "";
    }
 
    /**
@@ -244,16 +254,6 @@ public class DataSeries
       return sum / values.size();
    }
 
-   /**
-    * Get current value as string
-    *
-    * @return current value as string
-    */
-   public String getCurrentValueAsString()
-   {
-      return (values.size() > 0) ? values.get(values.size() - 1).getValueAsString() : "";
-   }
-	
 	/**
 	 * Add new value
 	 * 
