@@ -95,7 +95,7 @@ static LONG H_AsteriskVersion(const TCHAR *param, const TCHAR *arg, TCHAR *value
 static LONG H_CurrentCalls(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
 {
    GET_ASTERISK_SYSTEM(0);
-   return sys->readSingleTag("CoreStatus", "CurrentCalls", value);
+   return sys->readSingleTag("CoreStatus", "CoreCurrentCalls", value);
 }
 
 /**

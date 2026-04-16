@@ -279,6 +279,68 @@ shared_ptr<AmiMessage> AmiMessage::createFromNetwork(RingBuffer& buffer)
 }
 
 /**
+ * Collect Output: tags into m_data StringList (for Asterisk 14+ Command response format)
+ */
+void AmiMessage::collectOutputToData()
+{
+   if (m_data != nullptr)
+      return;
+
+   // Count Output tags
+   int count = 0;
+   AmiMessageTag *curr = m_tags;
+   while(curr != nullptr)
+   {
+      if (!stricmp(curr->name, "Output"))
+         count++;
+      curr = curr->next;
+   }
+
+   if (count == 0)
+      return;
+
+   // Collect values into temporary array (tags are in reverse order due to prepending)
+   auto values = new const char*[count];
+   int idx = 0;
+   curr = m_tags;
+   while(curr != nullptr)
+   {
+      if (!stricmp(curr->name, "Output"))
+         values[idx++] = curr->value;
+      curr = curr->next;
+   }
+
+   // Build StringList in correct (wire) order
+   m_data = new StringList();
+   for(int i = count - 1; i >= 0; i--)
+   {
+      m_data->addMBString(values[i]);
+   }
+   delete[] values;
+
+   // Remove Output tags from chain
+   AmiMessageTag *prev = nullptr;
+   curr = m_tags;
+   while(curr != nullptr)
+   {
+      AmiMessageTag *next = curr->next;
+      if (!stricmp(curr->name, "Output"))
+      {
+         if (prev != nullptr)
+            prev->next = next;
+         else
+            m_tags = next;
+         delete curr;
+      }
+      else
+      {
+         prev = curr;
+      }
+      curr = next;
+   }
+}
+
+/**
  * AMI connector thread
  */
 void AsteriskSystem::connectorThread()
@@ -288,6 +350,7 @@ void AsteriskSystem::connectorThread()
    do
    {
       m_resetSession = false;
+      m_sipStackType = SIP_STACK_UNKNOWN;
       m_networkBuffer.clear();
       m_socket = ConnectToHost(m_ipAddress, m_port, 5000);
       if (m_socket != INVALID_SOCKET)
@@ -511,6 +574,7 @@ shared_ptr<AmiMessage> AsteriskSystem::sendRequest(const shared_ptr<AmiMessage>&
 
    size_t size;
    const BYTE *bytes = serializedMessage->buffer(&size);
+   nxlog_debug_tag(DEBUG_TAG, 7, _T("Sending AMI request \"%hs\" to %s (ID ") INT64_FMT _T(")"), request->getSubType(), m_name, m_activeRequestId);
    if (SendEx(m_socket, bytes, size, 0, nullptr) == size)
    {
       if (m_requestCompletion.wait(timeout))

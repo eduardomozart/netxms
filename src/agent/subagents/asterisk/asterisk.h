@@ -100,6 +100,7 @@ public:
 
    const StringList *getData() const { return m_data; }
    StringList *acquireData() { StringList *d = m_data; m_data = nullptr; return d; }
+   void collectOutputToData();
 
    ByteStream *serialize();
 
@@ -160,6 +161,16 @@ struct RTCPStatistic
    uint64_t rtt[4];
    uint64_t jitter[4];
    uint64_t packetLoss[4];
+};
+
+/**
+ * SIP stack type
+ */
+enum SIPStackType
+{
+   SIP_STACK_UNKNOWN = 0,
+   SIP_STACK_CHANSIP = 1,
+   SIP_STACK_PJSIP = 2
 };
 
 /**
@@ -232,6 +243,7 @@ private:
    StringObjectMap<RTCPStatistic> m_peerRTCPStatistic;
    Mutex m_rtcpLock;
    StringObjectMap<SIPRegistrationTest> m_registrationTests;
+   SIPStackType m_sipStackType;
 
    shared_ptr<AmiMessage> readMessage() { return AmiMessage::createFromNetwork(m_networkBuffer); }
    bool processMessage(const shared_ptr<AmiMessage>& msg);
@@ -267,7 +279,10 @@ public:
    bool sendSimpleRequest(const shared_ptr<AmiMessage>& request);
    LONG readSingleTag(const char *rqname, const char *tag, TCHAR *value);
    SharedObjectArray<AmiMessage> *readTable(const char *rqname);
+   SharedObjectArray<AmiMessage> *readTable(const shared_ptr<AmiMessage>& request);
    StringList *executeCommand(const char *command);
+
+   SIPStackType getSIPStackType();
 
    const EventCounters *getGlobalEventCounters() const { return &m_globalEventCounters; }
    const EventCounters *getPeerEventCounters(const TCHAR *peer) const;

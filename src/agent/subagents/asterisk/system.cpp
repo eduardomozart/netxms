@@ -88,6 +88,7 @@ AsteriskSystem::AsteriskSystem(const TCHAR *name) :
    m_amiSessionReady = false;
    m_resetSession = false;
    m_amiTimeout = 2000;
+   m_sipStackType = SIP_STACK_UNKNOWN;
    memset(&m_globalEventCounters, 0, sizeof(EventCounters));
 }
 
@@ -178,6 +179,59 @@ SharedObjectArray<AmiMessage> *AsteriskSystem::readTable(const char *rqname)
 }
 
 /**
+ * Read table using pre-built request message
+ */
+SharedObjectArray<AmiMessage> *AsteriskSystem::readTable(const shared_ptr<AmiMessage>& request)
+{
+   auto messages = new SharedObjectArray<AmiMessage>();
+
+   shared_ptr<AmiMessage> response = sendRequest(request, messages);
+   if (response == nullptr)
+   {
+      delete messages;
+      return nullptr;
+   }
+
+   if (!response->isSuccess())
+   {
+      const char *reason = response->getTag("Message");
+      nxlog_debug_tag(DEBUG_TAG, 5, _T("Request \"%hs\" to %s failed (%hs)"), request->getSubType(), m_name, (reason != nullptr) ? reason : "Unknown reason");
+      delete messages;
+      return nullptr;
+   }
+
+   return messages;
+}
+
+/**
+ * Detect and cache SIP stack type (chan_sip vs PJSIP)
+ */
+SIPStackType AsteriskSystem::getSIPStackType()
+{
+   if (m_sipStackType != SIP_STACK_UNKNOWN)
+      return m_sipStackType;
+
+   auto messages = new SharedObjectArray<AmiMessage>();
+   shared_ptr<AmiMessage> response = sendRequest(make_shared<AmiMessage>("PJSIPShowEndpoints"), messages);
+   delete messages;
+
+   if (response == nullptr)
+      return SIP_STACK_UNKNOWN;  // Network error, will retry on next call
+
+   if (response->isSuccess())
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("Detected PJSIP stack on %s"), m_name);
+      m_sipStackType = SIP_STACK_PJSIP;
+   }
+   else
+   {
+      nxlog_debug_tag(DEBUG_TAG, 3, _T("PJSIP not available on %s, using chan_sip"), m_name);
+      m_sipStackType = SIP_STACK_CHANSIP;
+   }
+   return m_sipStackType;
+}
+
+/**
  * Execute CLI command
  */
 StringList *AsteriskSystem::executeCommand(const char *command)
@@ -188,10 +242,19 @@ StringList *AsteriskSystem::executeCommand(const char *command)
    if (response == nullptr)
       return nullptr;
 
-   if (!response->isSuccess() || (response->getData() == nullptr))
+   if (!response->isSuccess())
    {
       const char *reason = response->getTag("Message");
-      nxlog_debug_tag(DEBUG_TAG, 5, _T("Request \"Command\" to %s failed (%hs)"), m_name, (reason != NULL) ? reason : "Unknown reason");
+      nxlog_debug_tag(DEBUG_TAG, 5, _T("Request \"Command\" to %s failed (%hs)"), m_name, (reason != nullptr) ? reason : "Unknown reason");
+      return nullptr;
+   }
+
+   // Handle Asterisk 14+ format where command output is in Output: tags instead of data section
+   response->collectOutputToData();
+
+   if (response->getData() == nullptr)
+   {
+      nxlog_debug_tag(DEBUG_TAG, 5, _T("Request \"Command\" to %s returned no output"), m_name);
       return nullptr;
    }
    StringList *output = response->acquireData();

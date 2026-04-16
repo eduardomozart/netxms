@@ -1,6 +1,6 @@
 /*
 ** NetXMS Asterisk subagent
-** Copyright (C) 2004-2021 Victor Kirhenshtein
+** Copyright (C) 2004-2026 Victor Kirhenshtein
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -29,7 +29,11 @@ LONG H_SIPPeerList(const TCHAR *param, const TCHAR *arg, StringList *value, Abst
 {
    GET_ASTERISK_SYSTEM(0);
 
-   SharedObjectArray<AmiMessage> *messages = sys->readTable("SIPpeers");
+   SIPStackType sipStack = sys->getSIPStackType();
+   if (sipStack == SIP_STACK_UNKNOWN)
+      return SYSINFO_RC_ERROR;
+
+   SharedObjectArray<AmiMessage> *messages = sys->readTable((sipStack == SIP_STACK_PJSIP) ? "PJSIPShowEndpoints" : "SIPpeers");
    if (messages == nullptr)
       return SYSINFO_RC_ERROR;
 
@@ -45,12 +49,10 @@ LONG H_SIPPeerList(const TCHAR *param, const TCHAR *arg, StringList *value, Abst
 }
 
 /**
- * Handler for SIP peer table
+ * Handler for SIP peer table (chan_sip)
  */
-LONG H_SIPPeerTable(const TCHAR *param, const TCHAR *arg, Table *value, AbstractCommSession *session)
+static LONG SIPPeerTable_ChanSIP(AsteriskSystem *sys, Table *value)
 {
-   GET_ASTERISK_SYSTEM(0);
-
    SharedObjectArray<AmiMessage> *messages = sys->readTable("SIPpeers");
    if (messages == nullptr)
       return SYSINFO_RC_ERROR;
@@ -101,12 +103,85 @@ LONG H_SIPPeerTable(const TCHAR *param, const TCHAR *arg, Table *value, Abstract
 }
 
 /**
- * Handler for SIP peer statistics
+ * Handler for SIP peer table (PJSIP)
  */
-LONG H_SIPPeerStats(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
+static LONG SIPPeerTable_PJSIP(AsteriskSystem *sys, Table *value)
+{
+   SharedObjectArray<AmiMessage> *endpoints = sys->readTable("PJSIPShowEndpoints");
+   if (endpoints == nullptr)
+      return SYSINFO_RC_ERROR;
+
+   SharedObjectArray<AmiMessage> *contacts = sys->readTable("PJSIPShowContacts");
+
+   value->addColumn(_T("NAME"), DCI_DT_STRING, _T("Name"), true);
+   value->addColumn(_T("TYPE"), DCI_DT_STRING, _T("Type"));
+   value->addColumn(_T("IP_ADDRESS"), DCI_DT_STRING, _T("IP Address"));
+   value->addColumn(_T("IP_PORT"), DCI_DT_UINT, _T("IP Port"));
+   value->addColumn(_T("STATUS"), DCI_DT_STRING, _T("Status"));
+   value->addColumn(_T("DEVICE_STATE"), DCI_DT_STRING, _T("Device State"));
+   value->addColumn(_T("ACTIVE_CHANNELS"), DCI_DT_STRING, _T("Active Channels"));
+   value->addColumn(_T("TRANSPORT"), DCI_DT_STRING, _T("Transport"));
+   value->addColumn(_T("AOR"), DCI_DT_STRING, _T("AOR"));
+   value->addColumn(_T("USER_AGENT"), DCI_DT_STRING, _T("User Agent"));
+
+   for(int i = 0; i < endpoints->size(); i++)
+   {
+      AmiMessage *ep = endpoints->get(i);
+      const char *name = ep->getTag("ObjectName");
+      if (name == nullptr)
+         continue;
+
+      value->addRow();
+      value->set(0, name);
+      value->set(1, "pjsip");
+      value->set(5, ep->getTag("DeviceState"));
+      value->set(6, ep->getTag("ActiveChannels"));
+      value->set(7, ep->getTag("Transport"));
+      value->set(8, ep->getTag("Aor"));
+
+      // Find first matching contact for this endpoint
+      if (contacts != nullptr)
+      {
+         for(int j = 0; j < contacts->size(); j++)
+         {
+            AmiMessage *ct = contacts->get(j);
+            const char *ctEndpoint = ct->getTag("Endpoint");
+            if ((ctEndpoint != nullptr) && !stricmp(ctEndpoint, name))
+            {
+               value->set(2, ct->getTag("ViaAddr"));
+               value->set(3, ct->getTag("ViaPort"));
+               value->set(4, ct->getTag("Status"));
+               value->set(9, ct->getTag("UserAgent"));
+               break;
+            }
+         }
+      }
+   }
+
+   delete endpoints;
+   delete contacts;
+   return SYSINFO_RC_SUCCESS;
+}
+
+/**
+ * Handler for SIP peer table
+ */
+LONG H_SIPPeerTable(const TCHAR *param, const TCHAR *arg, Table *value, AbstractCommSession *session)
 {
    GET_ASTERISK_SYSTEM(0);
 
+   SIPStackType sipStack = sys->getSIPStackType();
+   if (sipStack == SIP_STACK_UNKNOWN)
+      return SYSINFO_RC_ERROR;
+
+   return (sipStack == SIP_STACK_PJSIP) ? SIPPeerTable_PJSIP(sys, value) : SIPPeerTable_ChanSIP(sys, value);
+}
+
+/**
+ * Handler for SIP peer statistics (chan_sip)
+ */
+static LONG SIPPeerStats_ChanSIP(AsteriskSystem *sys, const TCHAR *arg, TCHAR *value)
+{
    SharedObjectArray<AmiMessage> *messages = sys->readTable("SIPpeers");
    if (messages == nullptr)
       return SYSINFO_RC_ERROR;
@@ -162,14 +237,88 @@ LONG H_SIPPeerStats(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abstract
 }
 
 /**
- * Handler for SIP peer details
+ * Handler for SIP peer statistics (PJSIP)
  */
-LONG H_SIPPeerDetails(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
+static LONG SIPPeerStats_PJSIP(AsteriskSystem *sys, const TCHAR *arg, TCHAR *value)
 {
-   GET_ASTERISK_SYSTEM(1);
+   if (*arg == 'T')
+   {
+      SharedObjectArray<AmiMessage> *endpoints = sys->readTable("PJSIPShowEndpoints");
+      if (endpoints == nullptr)
+         return SYSINFO_RC_ERROR;
+      ret_int(value, endpoints->size());
+      delete endpoints;
+   }
+   else
+   {
+      SharedObjectArray<AmiMessage> *contacts = sys->readTable("PJSIPShowContacts");
+      if (contacts == nullptr)
+         return SYSINFO_RC_ERROR;
 
+      int connected = 0, unknown = 0, unmonitored = 0, unreachable = 0;
+      for(int i = 0; i < contacts->size(); i++)
+      {
+         AmiMessage *msg = contacts->get(i);
+         const char *status = msg->getTag("Status");
+         if ((status == nullptr) || !stricmp(status, "Unknown"))
+         {
+            unknown++;
+         }
+         else if (!stricmp(status, "NonQualified"))
+         {
+            unmonitored++;
+         }
+         else if (!stricmp(status, "Unreachable"))
+         {
+            unreachable++;
+         }
+         else if (!stricmp(status, "Reachable"))
+         {
+            connected++;
+         }
+      }
+      switch(*arg)
+      {
+         case 'C':
+            ret_int(value, connected);
+            break;
+         case 'M':
+            ret_int(value, unmonitored);
+            break;
+         case 'R':
+            ret_int(value, unreachable);
+            break;
+         case 'U':
+            ret_int(value, unknown);
+            break;
+      }
+      delete contacts;
+   }
+   return SYSINFO_RC_SUCCESS;
+}
+
+/**
+ * Handler for SIP peer statistics
+ */
+LONG H_SIPPeerStats(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
+{
+   GET_ASTERISK_SYSTEM(0);
+
+   SIPStackType sipStack = sys->getSIPStackType();
+   if (sipStack == SIP_STACK_UNKNOWN)
+      return SYSINFO_RC_ERROR;
+
+   return (sipStack == SIP_STACK_PJSIP) ? SIPPeerStats_PJSIP(sys, arg, value) : SIPPeerStats_ChanSIP(sys, arg, value);
+}
+
+/**
+ * Handler for SIP peer details (chan_sip)
+ */
+static LONG SIPPeerDetails_ChanSIP(AsteriskSystem *sys, const TCHAR *param, const TCHAR *arg, TCHAR *value, const TCHAR *sysName)
+{
    char peerId[128];
-   GET_ARGUMENT_A(1, peerId, 128);
+   if (!AgentGetParameterArgA(param, (sysName[0] == 0) ? 1 : 2, peerId, 128))
+      return SYSINFO_RC_UNSUPPORTED;
 
    auto request = make_shared<AmiMessage>("SIPshowpeer");
    request->setTag("Peer", peerId);
@@ -188,7 +337,6 @@ LONG H_SIPPeerDetails(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abstra
 
    if (arg == nullptr)
    {
-      // Direct tag access
       char tagName[128];
       if (!AgentGetParameterArgA(param, 3, tagName, 128))
          return SYSINFO_RC_UNSUPPORTED;
@@ -204,7 +352,7 @@ LONG H_SIPPeerDetails(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abstra
       const char *tagName;
       switch(*arg)
       {
-         case 'I':   // IP address
+         case 'I':
             tagName = "Address-IP";
             break;
          case 'S':
@@ -232,4 +380,114 @@ LONG H_SIPPeerDetails(const TCHAR *param, const TCHAR *arg, TCHAR *value, Abstra
    }
 
    return SYSINFO_RC_SUCCESS;
+}
+
+/**
+ * Handler for SIP peer details (PJSIP)
+ */
+static LONG SIPPeerDetails_PJSIP(AsteriskSystem *sys, const TCHAR *param, const TCHAR *arg, TCHAR *value, const TCHAR *sysName)
+{
+   char peerId[128];
+   if (!AgentGetParameterArgA(param, (sysName[0] == 0) ? 1 : 2, peerId, 128))
+      return SYSINFO_RC_UNSUPPORTED;
+
+   auto request = make_shared<AmiMessage>("PJSIPShowEndpoint");
+   request->setTag("Endpoint", peerId);
+
+   SharedObjectArray<AmiMessage> *messages = sys->readTable(request);
+   if (messages == nullptr)
+      return SYSINFO_RC_ERROR;
+
+   // Find EndpointDetail and first ContactStatusDetail events
+   AmiMessage *endpointDetail = nullptr;
+   AmiMessage *contactDetail = nullptr;
+   for(int i = 0; i < messages->size(); i++)
+   {
+      AmiMessage *msg = messages->get(i);
+      if (!stricmp(msg->getSubType(), "EndpointDetail") && (endpointDetail == nullptr))
+         endpointDetail = msg;
+      else if (!stricmp(msg->getSubType(), "ContactStatusDetail") && (contactDetail == nullptr))
+         contactDetail = msg;
+   }
+
+   if (endpointDetail == nullptr)
+   {
+      delete messages;
+      return SYSINFO_RC_NO_SUCH_INSTANCE;
+   }
+
+   if (arg == nullptr)
+   {
+      // Direct tag access - search all detail events
+      char tagName[128];
+      if (!AgentGetParameterArgA(param, 3, tagName, 128))
+      {
+         delete messages;
+         return SYSINFO_RC_UNSUPPORTED;
+      }
+
+      const char *tagValue = endpointDetail->getTag(tagName);
+      if ((tagValue == nullptr) && (contactDetail != nullptr))
+         tagValue = contactDetail->getTag(tagName);
+
+      if (tagValue == nullptr)
+      {
+         delete messages;
+         return SYSINFO_RC_UNSUPPORTED;
+      }
+
+      ret_mbstring(value, tagValue);
+   }
+   else
+   {
+      const char *tagValue = nullptr;
+      switch(*arg)
+      {
+         case 'I':   // IP address
+            if (contactDetail != nullptr)
+               tagValue = contactDetail->getTag("ViaAddress");
+            break;
+         case 'S':   // Status
+            if (contactDetail != nullptr)
+               tagValue = contactDetail->getTag("Status");
+            if (tagValue == nullptr)
+               tagValue = endpointDetail->getTag("DeviceState");
+            break;
+         case 'T':   // Type
+            tagValue = "pjsip";
+            break;
+         case 'U':   // User agent
+            if (contactDetail != nullptr)
+               tagValue = contactDetail->getTag("UserAgent");
+            break;
+         case 'V':   // Voice mailbox
+            tagValue = endpointDetail->getTag("Mailboxes");
+            break;
+      }
+
+      if (tagValue == nullptr)
+      {
+         delete messages;
+         return SYSINFO_RC_UNSUPPORTED;
+      }
+
+      ret_mbstring(value, tagValue);
+   }
+
+   delete messages;
+   return SYSINFO_RC_SUCCESS;
+}
+
+/**
+ * Handler for SIP peer details
+ */
+LONG H_SIPPeerDetails(const TCHAR *param, const TCHAR *arg, TCHAR *value, AbstractCommSession *session)
+{
+   GET_ASTERISK_SYSTEM(1);
+
+   SIPStackType sipStack = sys->getSIPStackType();
+   if (sipStack == SIP_STACK_UNKNOWN)
+      return SYSINFO_RC_ERROR;
+
+   return (sipStack == SIP_STACK_PJSIP) ? SIPPeerDetails_PJSIP(sys, param, arg, value, sysName) : SIPPeerDetails_ChanSIP(sys, param, arg, value, sysName);
 }
