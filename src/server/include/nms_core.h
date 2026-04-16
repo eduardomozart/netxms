@@ -1248,13 +1248,13 @@ struct WindowsEvent
    time_t timestamp;
    uint32_t  nodeId;
    int32_t zoneUIN;
-   TCHAR logName[64];
+   wchar_t logName[64];
    time_t originTimestamp;
-   TCHAR eventSource[128];
+   wchar_t eventSource[128];
    int eventSeverity;
    int eventCode;
-   TCHAR *message;
-   TCHAR *rawData;
+   wchar_t *message;
+   char *rawData;
 
    WindowsEvent(uint32_t _nodeId, int32_t _zoneUIN, const NXCPMessage& msg);
    ~WindowsEvent();

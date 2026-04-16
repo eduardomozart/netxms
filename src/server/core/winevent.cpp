@@ -40,7 +40,7 @@ WindowsEvent::WindowsEvent(uint32_t _nodeId, int32_t _zoneUIN, const NXCPMessage
    eventSeverity = msg.getFieldAsInt32(VID_SEVERITY);
    eventCode = msg.getFieldAsInt32(VID_EVENT_CODE);
    message = msg.getFieldAsString(VID_MESSAGE);
-   rawData = msg.getFieldAsString(VID_RAW_DATA);
+   rawData = msg.getFieldAsUtf8String(VID_RAW_DATA);
 }
 
 /**
@@ -55,19 +55,22 @@ WindowsEvent::~WindowsEvent()
 /**
  * Extract EventData variables from Windows Event XML
  */
-static StringMap *ExtractEventDataFromXml(const wchar_t *rawData)
+static StringMap *ExtractEventDataFromXml(const char *rawData, uint64_t *recordId)
 {
    if (rawData == nullptr || *rawData == 0)
       return nullptr;
 
    pugi::xml_document doc;
-   if (!doc.load_buffer(rawData, wcslen(rawData) * sizeof(WCHAR), pugi::parse_default, pugi::encoding_utf16))
+   if (!doc.load_buffer(rawData, strlen(rawData)))
    {
       nxlog_debug_tag(DEBUG_TAG, 5, L"ExtractEventDataFromXml: failed to parse event XML");
       return nullptr;
    }
 
-   pugi::xml_node eventDataNode = doc.child("Event").child("EventData");
+   pugi::xml_node eventNode = doc.child("Event");
+   *recordId = eventNode.child("System").child("EventRecordID").text().as_ullong();
+
+   pugi::xml_node eventDataNode = eventNode.child("EventData");
    if (!eventDataNode)
       return nullptr;
 
@@ -171,7 +174,7 @@ static void WindowsEventWriterThread()
          DBBind(hStmt, 8, DB_SQLTYPE_INTEGER, event->eventSeverity);
          DBBind(hStmt, 9, DB_SQLTYPE_INTEGER, event->eventCode);
          DBBind(hStmt, 10, DB_SQLTYPE_VARCHAR, event->message, DB_BIND_STATIC, MAX_EVENT_MSG_LENGTH);
-         DBBind(hStmt, 11, DB_SQLTYPE_TEXT, event->rawData, DB_BIND_STATIC);
+         DBBind(hStmt, 11, DB_SQLTYPE_TEXT, DB_CTYPE_UTF8_STRING, event->rawData, DB_BIND_STATIC);
          if (!DBExecute(hStmt))
          {
             delete event;
@@ -266,7 +269,7 @@ static void WindowsEventWriterThread_PGSQL()
          query.append(_T(','));
          query.append(DBPrepareString(hdb, event->message, MAX_EVENT_MSG_LENGTH));
          query.append(_T(','));
-         query.append(DBPrepareString(hdb, event->rawData));
+         query.append(DBPrepareStringUTF8(hdb, event->rawData));
          query.append(_T("),"));
          delete event;
 
@@ -522,12 +525,13 @@ static void WindowsEventProcessingThread()
 
       bool writeToDatabase = true;
 
-      StringMap *namedVariables = ExtractEventDataFromXml(event->rawData);
+      uint64_t recordId = 0;
+      StringMap *namedVariables = ExtractEventDataFromXml(event->rawData, &recordId);
 
       s_parserLock.lock();
       if (s_parser != nullptr)
       {
-         s_parser->matchEvent(event->eventSource, event->eventCode, event->eventSeverity, event->message, nullptr, 0, event->nodeId, event->originTimestamp, event->logName, &writeToDatabase, namedVariables);
+         s_parser->matchEvent(event->eventSource, event->eventCode, event->eventSeverity, event->message, nullptr, recordId, event->nodeId, event->originTimestamp, event->logName, &writeToDatabase, namedVariables);
       }
       s_parserLock.unlock();
 
