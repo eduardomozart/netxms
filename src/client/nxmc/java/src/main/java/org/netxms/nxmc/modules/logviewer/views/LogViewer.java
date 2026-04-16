@@ -63,6 +63,7 @@ import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.actions.ExportToCsvAction;
 import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.views.View;
+import org.netxms.nxmc.base.windows.MainWindow;
 import org.netxms.nxmc.base.views.ViewNotRestoredException;
 import org.netxms.nxmc.base.views.ViewWithContext;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -405,6 +406,37 @@ public class LogViewer extends ViewWithContext
 	 */
 	protected void fillContextMenu(final IMenuManager mgr)
 	{
+      if (logHandle != null)
+      {
+         IStructuredSelection selection = viewer.getStructuredSelection();
+         if (selection.size() == 1)
+         {
+            TableRow row = (TableRow)selection.getFirstElement();
+            boolean hasObjectActions = false;
+            int index = 0;
+            for(LogColumn lc : logHandle.getColumns())
+            {
+               if (lc.getType() == LogColumn.LC_OBJECT_ID)
+               {
+                  long objectId = row.getValueAsLong(index);
+                  if (objectId != 0)
+                  {
+                     mgr.add(new Action(i18n.tr("&Go to object") + " (" + lc.getDescription() + ")") {
+                        @Override
+                        public void run()
+                        {
+                           MainWindow.switchToObject(objectId, 0);
+                        }
+                     });
+                     hasObjectActions = true;
+                  }
+               }
+               index++;
+            }
+            if (hasObjectActions)
+               mgr.add(new Separator());
+         }
+      }
       if (recordDetailsViewer != null)
       {
          mgr.add(actionShowDetails);
@@ -485,6 +517,7 @@ public class LogViewer extends ViewWithContext
             showRecordDetails();
          }
       };
+
 	}
 
 	/**
