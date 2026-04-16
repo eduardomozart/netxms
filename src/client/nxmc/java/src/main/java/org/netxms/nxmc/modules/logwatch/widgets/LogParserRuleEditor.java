@@ -353,8 +353,6 @@ public class LogParserRuleEditor extends DashboardComposite
       absenceRealertTimeUnits.select(rule.getMatch().getAbsenceRealertTimeUnit());
       absenceRealertTimeUnits.addModifyListener(listener);
 
-      updateAbsenceFields();
-
       if (editor.getParserType() == LogParserType.POLICY)
       {
          Composite matcherRepeatConf = new Composite(matcher, SWT.NONE);
@@ -420,6 +418,8 @@ public class LogParserRuleEditor extends DashboardComposite
          });
          checkboxReset.setSelection(rule.getMatch().getReset());
       }
+
+      updateAbsenceFields();
 
       severity = new LabeledText(area, SWT.NONE);
       severity.setLabel(editor.getParserType() == LogParserType.SYSLOG ? i18n.tr("Severity") : i18n.tr("Level"));
