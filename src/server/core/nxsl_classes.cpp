@@ -34,6 +34,11 @@
 #include <device-backup.h>
 
 /**
+ * Poller thread pool
+ */
+extern ThreadPool *g_pollerThreadPool;
+
+/**
  * Maintenance journal access
  */
 bool AddMaintenanceJournalRecord(uint32_t objectId, uint32_t userId, const TCHAR *description);
@@ -318,6 +323,94 @@ NXSL_METHOD_DEFINITION(NetObj, expandString)
    NetObj *n = static_cast<shared_ptr<NetObj>*>(object->getData())->get();
    *result = vm->createValue(n->expandText(argv[0]->getValueAsCString()));
    return 0;
+}
+
+/**
+ * Schedule forced poll on poller thread pool.
+ * Returns true on success, false on access denial or when poll type is not applicable to the object.
+ */
+template<bool (Pollable::*IsAvailable)() const, void (Pollable::*DoForcedPoll)(PollerInfo*), PollerType Type>
+static int ScheduleForcedPoll(NXSL_VM *vm, NXSL_Object *object, NXSL_Value **result)
+{
+   const shared_ptr<NetObj>& netObj = *static_cast<shared_ptr<NetObj>*>(object->getData());
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, netObj.get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+   Pollable *pollable = netObj->getAsPollable();
+   if ((pollable == nullptr) || !(pollable->*IsAvailable)())
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+   ThreadPoolExecute(g_pollerThreadPool, pollable, DoForcedPoll, RegisterPoller(Type, netObj));
+   *result = vm->createValue(true);
+   return 0;
+}
+
+/**
+ * NetObj::forceAutobindPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceAutobindPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isAutobindPollAvailable, &Pollable::doForcedAutobindPoll, PollerType::AUTOBIND>(vm, object, result);
+}
+
+/**
+ * NetObj::forceConfigurationPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceConfigurationPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isConfigurationPollAvailable, &Pollable::doForcedConfigurationPoll, PollerType::CONFIGURATION>(vm, object, result);
+}
+
+/**
+ * NetObj::forceDiscoveryPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceDiscoveryPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isDiscoveryPollAvailable, &Pollable::doForcedDiscoveryPoll, PollerType::DISCOVERY>(vm, object, result);
+}
+
+/**
+ * NetObj::forceInstanceDiscoveryPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceInstanceDiscoveryPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isInstanceDiscoveryPollAvailable, &Pollable::doForcedInstanceDiscoveryPoll, PollerType::INSTANCE_DISCOVERY>(vm, object, result);
+}
+
+/**
+ * NetObj::forceMapUpdatePoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceMapUpdatePoll)
+{
+   return ScheduleForcedPoll<&Pollable::isMapUpdatePollAvailable, &Pollable::doForcedMapUpdatePoll, PollerType::MAP_UPDATE>(vm, object, result);
+}
+
+/**
+ * NetObj::forceRoutingTablePoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceRoutingTablePoll)
+{
+   return ScheduleForcedPoll<&Pollable::isRoutingTablePollAvailable, &Pollable::doForcedRoutingTablePoll, PollerType::ROUTING_TABLE>(vm, object, result);
+}
+
+/**
+ * NetObj::forceStatusPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceStatusPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isStatusPollAvailable, &Pollable::doForcedStatusPoll, PollerType::STATUS>(vm, object, result);
+}
+
+/**
+ * NetObj::forceTopologyPoll()
+ */
+NXSL_METHOD_DEFINITION(NetObj, forceTopologyPoll)
+{
+   return ScheduleForcedPoll<&Pollable::isTopologyPollAvailable, &Pollable::doForcedTopologyPoll, PollerType::TOPOLOGY>(vm, object, result);
 }
 
 /**
@@ -901,6 +994,14 @@ NXSL_NetObjClass::NXSL_NetObjClass() : NXSL_Class()
    NXSL_REGISTER_METHOD(NetObj, isDirectParent, 1);
    NXSL_REGISTER_METHOD(NetObj, enterMaintenance, -1);
    NXSL_REGISTER_METHOD(NetObj, expandString, 1);
+   NXSL_REGISTER_METHOD(NetObj, forceAutobindPoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceConfigurationPoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceDiscoveryPoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceInstanceDiscoveryPoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceMapUpdatePoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceRoutingTablePoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceStatusPoll, 0);
+   NXSL_REGISTER_METHOD(NetObj, forceTopologyPoll, 0);
    NXSL_REGISTER_METHOD(NetObj, getCustomAttribute, 1);
    NXSL_REGISTER_METHOD(NetObj, getResponsibleUsers, 1);
    NXSL_REGISTER_METHOD(NetObj, isChild, 1);
