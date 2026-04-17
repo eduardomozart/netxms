@@ -433,6 +433,7 @@ ThresholdCheckResult Threshold::check(ItemValue &value, ItemValue **ppPrevValues
          NXSL_VM *vm = CreateServerScriptVM(m_script, target, dci->createDescriptor());
          if (vm != nullptr)
          {
+            SetRestrictedSecurityContext(vm);
             NXSL_Value *parameters[2];
             parameters[0] = vm->createValue(value.getString());
             parameters[1] = vm->createValue(tvalue.getString());

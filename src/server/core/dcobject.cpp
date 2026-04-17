@@ -522,6 +522,7 @@ StringBuffer DCObject::expandMacros(const TCHAR *src, size_t dstLen)
 			NXSL_VM *vm = CreateServerScriptVM(&macro[7], m_owner.lock(), createDescriptorInternal());
 			if (vm != nullptr)
 			{
+			   SetRestrictedSecurityContext(vm);
 				if (vm->run(0, nullptr))
 				{
 					NXSL_Value *result = vm->getResult();

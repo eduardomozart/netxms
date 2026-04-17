@@ -1087,6 +1087,7 @@ bool EPRule::matchScript(Event *event) const
       }
       return true;
    }
+   SetRestrictedSecurityContext(vm);
 
    vm->setGlobalVariable("$event", vm->createValue(vm->createObject(&g_nxslEventClass, event, true)));
    vm->setGlobalVariable("CUSTOM_MESSAGE", vm->createValue());
@@ -1413,6 +1414,7 @@ uint32_t EPRule::generateAlarm(Event *event) const
 	      NXSL_VM *vm = CreateServerScriptVM(m_rcaScriptName, object);
 	      if (vm != nullptr)
 	      {
+	         SetRestrictedSecurityContext(vm);
 	         vm->setGlobalVariable("$event", vm->createValue(vm->createObject(&g_nxslEventClass, event, true)));
 	         if (vm->run())
 	         {

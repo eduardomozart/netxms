@@ -1005,6 +1005,7 @@ unique_ptr<ObjectArray<AssetPropertyAutofillContext>> PrepareAssetPropertyAutofi
       NXSL_VM *vm = CreateServerScriptVM(a->value->getScript(), linkedObject);
       if (vm != nullptr)
       {
+         SetRestrictedSecurityContext(vm);
          contexts->add(new AssetPropertyAutofillContext(a->key, a->value->getDataType(), a->value->getEnumValues(), vm, nullptr, a->value->getSystemType()));
       }
       else

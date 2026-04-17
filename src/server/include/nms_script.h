@@ -448,6 +448,17 @@ public:
 };
 
 /**
+ * NXSL security context for scripts where write actions are not expected
+ * (transformation scripts, filters, predicates, analysis scripts).
+ * Permits only read-family rights on NXSL_AC_OBJECT; denies NXSL_AC_SYSTEM entirely.
+ */
+class NXCORE_EXPORTABLE NXSL_ReadOnlySecurityContext : public NXSL_SecurityContext
+{
+public:
+   virtual bool validateAccess(int subsystem, uint64_t requiredAccess = 0, const void *object = nullptr) override;
+};
+
+/**
  * Server's default script environment
  */
 class NXCORE_EXPORTABLE NXSL_ServerEnv : public NXSL_Environment
@@ -730,6 +741,16 @@ ScriptVMHandle NXCORE_EXPORTABLE CreateServerScriptVM(const TCHAR *name, const s
  * Create NXSL VM from compiled script
  */
 ScriptVMHandle NXCORE_EXPORTABLE CreateServerScriptVM(const NXSL_Program *script, const shared_ptr<NetObj>& object, const shared_ptr<DCObjectInfo>& dciInfo = shared_ptr<DCObjectInfo>());
+
+/**
+ * Attach a read-only security context to given NXSL VM if script write restriction is enabled
+ * (controlled by AF_RESTRICT_SCRIPT_WRITES / Scripts.RestrictWriteAccess).
+ */
+static inline void SetRestrictedSecurityContext(NXSL_VM *vm)
+{
+   if ((vm != nullptr) && (g_flags & AF_RESTRICT_SCRIPT_WRITES))
+      vm->setSecurityContext(new NXSL_ReadOnlySecurityContext());
+}
 
 /**
  * Compile server script and report error on failure

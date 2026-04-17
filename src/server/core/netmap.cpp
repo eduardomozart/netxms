@@ -1623,6 +1623,7 @@ void NetworkMap::updateLinks()
       ScriptVMHandle vm = CreateServerScriptVM(link->getColorProvider(), self());
       if (vm.isValid())
       {
+         SetRestrictedSecurityContext(vm);
          const shared_ptr<NetObj> endpoint1 = FindObjectById(link->getElement1());
          const shared_ptr<NetObj> endpoint2 = FindObjectById(link->getElement2());
          if (endpoint1 != nullptr)
@@ -1666,6 +1667,7 @@ void NetworkMap::updateLinks()
       ScriptVMHandle h = CreateServerScriptVM(m_linkStylingScript, self());
       if (h.isValid())
       {
+         SetRestrictedSecurityContext(h);
          vm = h.vm();
       }
       else
@@ -1810,6 +1812,7 @@ bool NetworkMap::isAllowedOnMap(const shared_ptr<NetObj>& object)
 
       if (vm.isValid())
       {
+         SetRestrictedSecurityContext(vm);
          vm->setGlobalVariable("$map", createNXSLObject(vm));
          if (vm->run())
          {

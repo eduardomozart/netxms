@@ -841,6 +841,10 @@ static void OnConfigVariableChange(bool isCLOB, const TCHAR *name, const TCHAR *
    {
       UpdateServerFlag(AF_ENABLE_NXSL_CONTAINER_FUNCTIONS, value);
    }
+   else if (!wcscmp(name, L"Scripts.RestrictWriteAccess"))
+   {
+      UpdateServerFlag(AF_RESTRICT_SCRIPT_WRITES, value);
+   }
    else if (!wcscmp(name, L"Objects.AutobindOnConfigurationPoll"))
    {
       UpdateServerFlag(AF_AUTOBIND_ON_CONF_POLL, value);

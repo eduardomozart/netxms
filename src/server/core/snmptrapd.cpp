@@ -152,6 +152,7 @@ static void GenerateTrapEvent(SnmpTrap *trap, const shared_ptr<Node>& node, cons
       vm = CreateServerScriptVM(mapping.getScript(), node);
       if (vm != nullptr)
       {
+         SetRestrictedSecurityContext(vm);
          vm->setGlobalVariable("$trap", vm->createValue(pdu->getTrapId().toString()));
          NXSL_Array *varbinds = new NXSL_Array(vm);
          for(int i = (pdu->getVersion() == SNMP_VERSION_1) ? 0 : 2; i < pdu->getNumVariables(); i++)

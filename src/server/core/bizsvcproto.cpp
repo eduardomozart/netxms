@@ -317,6 +317,7 @@ unique_ptr<StringMap> BusinessServicePrototype::getInstancesFromScript()
       nxlog_debug_tag(DEBUG_TAG_BIZSVC, 5, _T("Cannot create NXSL VM for instance discovery script for business service prototype %s [%u]"), m_name, m_id);
       return unique_ptr<StringMap>();
    }
+   SetRestrictedSecurityContext(vm);
 
    StringMap *instances = nullptr;
    if (vm->run())
@@ -391,6 +392,7 @@ unique_ptr<StringMap> BusinessServicePrototype::getInstances()
       NXSL_VM *filter = CreateServerScriptVM(m_compiledInstanceDiscoveryFilter, FindObjectById(m_instanceSource));
       if (filter != nullptr)
       {
+         SetRestrictedSecurityContext(filter);
          filter->setGlobalVariable("$1", filter->createValue(instance->key));
          filter->setGlobalVariable("$2", filter->createValue(instance->value));
          filter->setGlobalVariable("$prototype", createNXSLObject(filter));

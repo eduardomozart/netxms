@@ -645,6 +645,11 @@ static void LoadGlobalConfig()
       g_flags |= AF_ENABLE_NXSL_FILE_IO_FUNCTIONS;
       nxlog_debug_tag(_T("nxsl"), 3, _T("NXSL file I/O functions enabled"));
    }
+   if (ConfigReadBoolean(_T("Scripts.RestrictWriteAccess"), true))
+   {
+      g_flags |= AF_RESTRICT_SCRIPT_WRITES;
+      nxlog_debug_tag(_T("nxsl"), 3, _T("Write access restricted for transformation, filter, and analysis scripts"));
+   }
    if (ConfigReadBoolean(_T("NetworkDiscovery.UseFQDNForNodeNames"), true))
       g_flags |= AF_USE_FQDN_FOR_NODE_NAMES;
    if (ConfigReadBoolean(_T("DataCollection.ApplyDCIFromTemplateToDisabledDCI"), true))

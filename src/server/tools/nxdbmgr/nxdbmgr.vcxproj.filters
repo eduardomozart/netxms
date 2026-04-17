@@ -150,6 +150,9 @@
     <ClCompile Include="upgrade_v61.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="upgrade_v62.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="usermgmt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

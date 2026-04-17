@@ -2954,6 +2954,7 @@ static void RootCauseUpdateThread()
          NXSL_VM *vm = CreateServerScriptVM(alarm->getRcaScriptName(), object);
          if (vm != nullptr)
          {
+            SetRestrictedSecurityContext(vm);
             Event *event = LoadEventFromDatabase(alarm->getSourceEventId());
             if (event != nullptr)
                vm->setGlobalVariable("$event", vm->createValue(vm->createObject(&g_nxslEventClass, event, false)));

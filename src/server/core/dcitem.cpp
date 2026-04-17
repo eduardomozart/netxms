@@ -1623,6 +1623,7 @@ bool DCItem::transform(ItemValue &value, int64_t elapsedTime)
       ScriptVMHandle vm = CreateServerScriptVM(m_transformationScript.get(), m_owner.lock(), createDescriptorInternal());
       if (vm.isValid())
       {
+         SetRestrictedSecurityContext(vm);
          NXSL_Value *nxslValue = vm->createValue(value.getString());
          if (nxslValue->isNumeric() && (m_dataType != DCI_DT_STRING))
             nxslValue->convert(getNXSLDataType()); // make sure that input NXSL variable type is the same as DCI type

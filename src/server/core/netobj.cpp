@@ -3478,6 +3478,7 @@ static void ExpandScriptMacro(const wchar_t *scriptName, const Alarm *alarm, con
    NXSL_VM *vm = CreateServerScriptVM(name, object, effectiveDCI);
    if (vm != nullptr)
    {
+      SetRestrictedSecurityContext(vm);
       if (event != nullptr)
          vm->setGlobalVariable("$event", vm->createValue(vm->createObject(&g_nxslEventClass, event, true)));
       if (alarm != nullptr)

@@ -408,6 +408,7 @@ bool DCTable::transform(const shared_ptr<Table>& value)
    ScriptVMHandle vm = CreateServerScriptVM(m_transformationScript.get(), m_owner.lock(), createDescriptorInternal());
    if (vm.isValid())
    {
+      SetRestrictedSecurityContext(vm);
       NXSL_Value *nxslValue = vm->createValue(vm->createObject(&g_nxslTableClass, new shared_ptr<Table>(value)));
 
       // remove lock from DCI for script execution to avoid deadlocks

@@ -285,6 +285,7 @@ int BusinessServiceCheck::execute(const shared_ptr<BusinessServiceTicketData>& t
 				NXSL_VM *vm = CreateServerScriptVM(m_compiledScript, FindObjectById(m_relatedObject));
 				if (vm != nullptr)
 				{
+				   SetRestrictedSecurityContext(vm);
 					vm->addConstant("OK", vm->createValue(true));
 					vm->addConstant("FAIL", vm->createValue(false));
 					vm->setGlobalVariable("$reason", vm->createValue());

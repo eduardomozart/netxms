@@ -1591,7 +1591,13 @@ public:
    const StringMap& getMetadata() const { return m_metadata; }
 
    void setSecurityContext(NXSL_SecurityContext *context);
-   bool validateAccess(int subsystem, uint64_t requiredAccess = 0, const void *object = nullptr) { return (m_securityContext != nullptr) ? m_securityContext->validateAccess(subsystem, requiredAccess, object) : true; }
+   bool validateAccess(int subsystem, uint64_t requiredAccess = 0, const void *object = nullptr)
+   {
+      if ((m_securityContext == nullptr) || m_securityContext->validateAccess(subsystem, requiredAccess, object))
+         return true;
+      nxlog_debug_tag(_T("nxsl.security"), 7, _T("NXSL access validation failed (subsystem=%d requiredAccess=") UINT64X_FMT(_T("016")) _T(")"), subsystem, requiredAccess);
+      return false;
+   }
 
    void setAssertMessage(const TCHAR *msg) { MemFree(m_assertMessage); m_assertMessage = MemCopyString(msg); }
 

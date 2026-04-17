@@ -55,6 +55,22 @@ bool NXSL_UserSecurityContext::validateAccess(int subsystem, uint64_t requiredAc
 }
 
 /**
+ * Validate access for read-only NXSL scripts (transformation, filter, predicate, analysis).
+ */
+bool NXSL_ReadOnlySecurityContext::validateAccess(int subsystem, uint64_t requiredAccess, const void *object)
+{
+   if (subsystem != NXSL_AC_OBJECT)
+      return false;
+   constexpr uint64_t allowed = OBJECT_ACCESS_READ | OBJECT_ACCESS_READ_ALARMS | OBJECT_ACCESS_READ_AGENT | OBJECT_ACCESS_READ_SNMP;
+   if ((requiredAccess & ~allowed) == 0)
+      return true;
+   const NetObj *netObj = static_cast<const NetObj*>(object);
+   nxlog_debug_tag(L"nxsl.security", 7, L"Read-only script access denied: object %s [%u], required access 0x" UINT64X_FMT(L"016"),
+      (netObj != nullptr) ? netObj->getName() : L"(null)", (netObj != nullptr) ? netObj->getId() : 0, static_cast<uint32_t>(requiredAccess));
+   return false;
+}
+
+/**
  * Script error counter
  */
 static VolatileCounter s_scriptErrorCount = 0;

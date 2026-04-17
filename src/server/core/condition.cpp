@@ -364,6 +364,7 @@ void ConditionObject::check()
       }
       return;
    }
+   SetRestrictedSecurityContext(vm);
 
    ObjectRefArray<NXSL_Value> valueList(dciList.size(), 16);
    for(int i = 0; i < dciList.size(); i++)

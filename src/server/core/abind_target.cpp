@@ -215,6 +215,7 @@ AutoBindDecision AutoBindTarget::isApplicable(NXSL_VM **cachedFilterVM, const sh
          filter = CreateServerScriptVM(filterProgram, target);
          if (filter != nullptr)
          {
+            SetRestrictedSecurityContext(filter);
             *cachedFilterVM = filter;
          }
          else
