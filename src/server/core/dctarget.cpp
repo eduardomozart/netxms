@@ -586,8 +586,8 @@ void DataCollectionTarget::cleanDCIData(DB_HANDLE hdb)
    // Clean up v5 data tables (legacy per-object tables with second-precision timestamps)
    if (m_runtimeFlags & ODF_HAS_IDATA_V5_TABLE)
    {
-      TCHAR query[256];
-      _sntprintf(query, 256, _T("SELECT max(idata_timestamp) FROM idata_v5_%u"), m_id);
+      wchar_t query[256];
+      nx_swprintf(query, 256, L"SELECT max(idata_timestamp) FROM idata_v5_%u", m_id);
       DB_RESULT hResult = DBSelect(hdb, query);
       if (hResult != nullptr)
       {
@@ -604,13 +604,17 @@ void DataCollectionTarget::cleanDCIData(DB_HANDLE hdb)
          }
          unlockDciAccess();
 
-         if (maxTimestamp == 0 || (maxRetention > 0 && maxTimestamp < time(nullptr) - static_cast<time_t>(maxRetention) * 86400))
+         if (maxTimestamp == 0)
          {
-            deleteV5DataTable(hdb, false);
+            deleteV5DataTable(hdb, false, L"table already empty");
+         }
+         else if (maxRetention > 0 && maxTimestamp < time(nullptr) - static_cast<time_t>(maxRetention) * 86400)
+         {
+            deleteV5DataTable(hdb, false, L"all data past retention");
          }
          else if (maxRetention > 0)
          {
-            _sntprintf(query, 256, _T("DELETE FROM idata_v5_%u WHERE idata_timestamp<") INT64_FMT,
+            nx_swprintf(query, 256, L"DELETE FROM idata_v5_%u WHERE idata_timestamp<" INT64_FMT,
                m_id, static_cast<int64_t>(time(nullptr) - static_cast<time_t>(maxRetention) * 86400));
             DBQuery(hdb, query);
          }
@@ -637,9 +641,13 @@ void DataCollectionTarget::cleanDCIData(DB_HANDLE hdb)
          }
          unlockDciAccess();
 
-         if (maxTimestamp == 0 || (maxRetention > 0 && maxTimestamp < time(nullptr) - static_cast<time_t>(maxRetention) * 86400))
+         if (maxTimestamp == 0)
          {
-            deleteV5DataTable(hdb, true);
+            deleteV5DataTable(hdb, true, L"table already empty");
+         }
+         else if (maxRetention > 0 && maxTimestamp < time(nullptr) - static_cast<time_t>(maxRetention) * 86400)
+         {
+            deleteV5DataTable(hdb, true, L"all data past retention");
          }
          else if (maxRetention > 0)
          {
@@ -654,7 +662,7 @@ void DataCollectionTarget::cleanDCIData(DB_HANDLE hdb)
 /**
  * Delete V5 data table
  */
-void DataCollectionTarget::deleteV5DataTable(DB_HANDLE hdb, bool tdata)
+void DataCollectionTarget::deleteV5DataTable(DB_HANDLE hdb, bool tdata, const wchar_t *reason)
 {
    wchar_t query[256];
    nx_swprintf(query, 256, L"DROP TABLE %s_v5_%u", tdata ? L"tdata" : L"idata", m_id);
@@ -663,7 +671,7 @@ void DataCollectionTarget::deleteV5DataTable(DB_HANDLE hdb, bool tdata)
       lockProperties();
       m_runtimeFlags &= tdata ? ~ODF_HAS_TDATA_V5_TABLE : ~ODF_HAS_IDATA_V5_TABLE;
       unlockProperties();
-      nxlog_debug_tag(L"dc.v5migrate", 4, L"DataCollectionTarget::deleteV5DataTable(%s [%u]): dropped expired table %s_v5_%u", m_name, m_id, tdata ? L"tdata" : L"idata", m_id);
+      nxlog_debug_tag(L"dc.v5migrate", 4, L"DataCollectionTarget::deleteV5DataTable(%s [%u]): dropped v5 data table %s_v5_%u (%s)", m_name, m_id, tdata ? L"tdata" : L"idata", m_id, reason);
    }
 }
 

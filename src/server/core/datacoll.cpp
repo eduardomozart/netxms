@@ -777,7 +777,7 @@ static THREAD s_v5DataMigrationThread = INVALID_THREAD_HANDLE;
 
 /**
  * Background thread for migrating remaining v5 data (older than 24 hours).
- * Processes data in 1-day batches, newest first, to minimize impact on server operations.
+ * Each cycle processes one 1-day batch (newest first) for every eligible object, then sleeps.
  * When a v5 table is fully emptied, it is dropped and the corresponding flag is cleared.
  */
 static void V5DataMigrationThread()
@@ -807,10 +807,12 @@ static void V5DataMigrationThread()
 
       DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
       wchar_t query[1024];
-      bool processed = false;
 
-      for(int i = 0; i < objects.size() && !processed; i++)
+      for(int i = 0; i < objects.size(); i++)
       {
+         if (IsShutdownInProgress())
+            break;
+
          DataCollectionTarget *dct = static_cast<DataCollectionTarget*>(objects.get(i));
          uint32_t id = dct->getId();
 
@@ -828,7 +830,7 @@ static void V5DataMigrationThread()
 
                   if (maxTs == 0)
                   {
-                     dct->deleteV5DataTable(hdb, false);
+                     dct->deleteV5DataTable(hdb, false, L"migration complete");
                      success = true;
                   }
                   else
@@ -846,7 +848,6 @@ static void V5DataMigrationThread()
                         success = DBQuery(hdb, query);
                      }
                      anyRemaining = true;
-                     processed = true;
                   }
                }
 
@@ -871,7 +872,7 @@ static void V5DataMigrationThread()
 
                   if (maxTs == 0)
                   {
-                     dct->deleteV5DataTable(hdb, true);
+                     dct->deleteV5DataTable(hdb, true, L"migration complete");
                      success = true;
                   }
                   else
@@ -913,7 +914,6 @@ static void V5DataMigrationThread()
                         success = DBQuery(hdb, query);
                      }
                      anyRemaining = true;
-                     processed = true;
                   }
                }
 
@@ -927,7 +927,7 @@ static void V5DataMigrationThread()
 
       DBConnectionPoolReleaseConnection(hdb);
 
-      if (!anyRemaining && !processed)
+      if (!anyRemaining)
       {
          nxlog_write_tag(NXLOG_INFO, DEBUG_TAG_DC_V5MIGRATE, L"All v5 data migration completed");
          break;
