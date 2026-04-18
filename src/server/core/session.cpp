@@ -17981,9 +17981,13 @@ void ClientSession::getBusinessServiceTickets(const NXCPMessage& request)
 /**
  * Execute SSH command on agent
  * Expected input parameters:
- * VID_OBJECT_ID                 Id of node
+ * VID_OBJECT_ID                 Id of target object (node, interface, sensor, or access point)
  * VID_COMMAND                   Command to execute
  * VID_RECEIVE_OUTPUT            Boolean flag for sending output of command.
+ *
+ * When the target object is an interface, sensor, or access point, macro expansion uses that
+ * source object while the SSH session is opened against the owning node (parent node for
+ * interface, gateway node for sensor, controller for access point).
  *
  * Return values:
  * VID_RCC                           Request Completion Code
@@ -17991,102 +17995,120 @@ void ClientSession::getBusinessServiceTickets(const NXCPMessage& request)
 void ClientSession::executeSshCommand(const NXCPMessage& request)
 {
    NXCPMessage msg(CMD_REQUEST_COMPLETED, request.getId());
-   shared_ptr<Node> node = static_pointer_cast<Node>(FindObjectById(request.getFieldAsUInt32(VID_OBJECT_ID), OBJECT_NODE));
-   if (node != nullptr)
+   shared_ptr<NetObj> sourceObject = FindObjectById(request.getFieldAsUInt32(VID_OBJECT_ID));
+   if (sourceObject == nullptr)
    {
-      Alarm *alarm = FindAlarmById(request.getFieldAsUInt32(VID_ALARM_ID));
-      if ((alarm != nullptr) && !node->checkAccessRights(m_userId, OBJECT_ACCESS_READ_ALARMS) && !alarm->checkCategoryAccess(this))
-      {
-         msg.setField(VID_RCC, RCC_ACCESS_DENIED);
-         sendMessage(msg);
-         delete alarm;
-         return;
-      }
-      StringMap inputFields;
-      int count = request.getFieldAsInt16(VID_NUM_FIELDS);
-      if (count > 0)
-      {
-         uint32_t fieldId = VID_FIELD_LIST_BASE;
-         for(int i = 0; i < count; i++)
-         {
-            TCHAR *name = request.getFieldAsString(fieldId++);
-            TCHAR *value = request.getFieldAsString(fieldId++);
-            inputFields.setPreallocated(name, value);
-         }
-      }
+      msg.setField(VID_RCC, RCC_INVALID_OBJECT_ID);
+      sendMessage(&msg);
+      return;
+   }
 
-      TCHAR *originalActionString = request.getFieldAsString(VID_COMMAND);
-      StringBuffer command = node->expandText(originalActionString, alarm, nullptr, shared_ptr<DCObjectInfo>(), m_loginName, nullptr, nullptr, &inputFields, nullptr);
+   shared_ptr<Node> node = GetParentNodeForObjectTool(sourceObject);
+   if (node == nullptr)
+   {
+      // Unsupported object class, or standalone access point / sensor without gateway node
+      msg.setField(VID_RCC, RCC_INVALID_OBJECT_ID);
+      sendMessage(&msg);
+      return;
+   }
 
-      if (node->checkAccessRights(m_userId, OBJECT_ACCESS_CONTROL))
+   Alarm *alarm = FindAlarmById(request.getFieldAsUInt32(VID_ALARM_ID));
+   if ((alarm != nullptr) && !node->checkAccessRights(m_userId, OBJECT_ACCESS_READ_ALARMS) && !alarm->checkCategoryAccess(this))
+   {
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+      sendMessage(msg);
+      delete alarm;
+      return;
+   }
+   StringMap inputFields;
+   int count = request.getFieldAsInt16(VID_NUM_FIELDS);
+   if (count > 0)
+   {
+      uint32_t fieldId = VID_FIELD_LIST_BASE;
+      for(int i = 0; i < count; i++)
       {
-         uint32_t proxyId = node->getEffectiveSshProxy();
-         shared_ptr<Node> proxy = static_pointer_cast<Node>(FindObjectById(proxyId, OBJECT_NODE));
-         if (proxy != nullptr)
+         TCHAR *name = request.getFieldAsString(fieldId++);
+         TCHAR *value = request.getFieldAsString(fieldId++);
+         inputFields.setPreallocated(name, value);
+      }
+   }
+
+   TCHAR *originalActionString = request.getFieldAsString(VID_COMMAND);
+   StringBuffer command = sourceObject->expandText(originalActionString, alarm, nullptr, shared_ptr<DCObjectInfo>(), m_loginName, nullptr, nullptr, &inputFields, nullptr);
+
+   if (sourceObject->checkAccessRights(m_userId, OBJECT_ACCESS_READ) && node->checkAccessRights(m_userId, OBJECT_ACCESS_CONTROL))
+   {
+      uint32_t proxyId = node->getEffectiveSshProxy();
+      shared_ptr<Node> proxy = static_pointer_cast<Node>(FindObjectById(proxyId, OBJECT_NODE));
+      if (proxy != nullptr)
+      {
+         shared_ptr<AgentConnectionEx> conn = proxy->createAgentConnection();
+         if (conn != nullptr)
          {
-            shared_ptr<AgentConnectionEx> conn = proxy->createAgentConnection();
-            if (conn != nullptr)
+            StringList args;
+            wchar_t ipAddr[64];
+            args.add(node->getIpAddress().toString(ipAddr));
+            args.add(node->getSshPort());
+            args.add(node->getSshLogin());
+            args.add(node->getSshPassword());
+            args.add(command);
+            args.add(node->getSshKeyId());
+
+            uint32_t rcc;
+            bool withOutput = request.getFieldAsBoolean(VID_RECEIVE_OUTPUT);
+            if (withOutput)
             {
-               StringList args;
-               wchar_t ipAddr[64];
-               args.add(node->getIpAddress().toString(ipAddr));
-               args.add(node->getSshPort());
-               args.add(node->getSshLogin());
-               args.add(node->getSshPassword());
-               args.add(command);
-               args.add(node->getSshKeyId());
-
-               uint32_t rcc;
-               bool withOutput = request.getFieldAsBoolean(VID_RECEIVE_OUTPUT);
-               if (withOutput)
-               {
-                  ActionExecutionData data(this, request.getId());
-                  rcc = conn->executeCommand(_T("SSH.Command"), args, true, ActionExecuteCallback, &data, true);
-               }
-               else
-               {
-                  rcc = conn->executeCommand(_T("SSH.Command"), args);
-               }
-               debugPrintf(4, _T("executeSshCommand: rcc=%d"), rcc);
-
-               msg.setField(VID_RCC, AgentErrorToRCC(rcc));
-               if (rcc == ERR_SUCCESS)
-               {
-                  if (request.getFieldAsInt32(VID_NUM_MASKED_FIELDS) > 0)
-                  {
-                     StringList maskedFields(request, VID_MASKED_FIELD_LIST_BASE, VID_NUM_MASKED_FIELDS);
-                     for (int i = 0; i < maskedFields.size(); i++)
-                     {
-                        inputFields.set(maskedFields.get(i), _T("******"));
-                     }
-                     command = node->expandText(originalActionString, alarm, nullptr, shared_ptr<DCObjectInfo>(), m_loginName, nullptr, nullptr, &inputFields, nullptr);
-                  }
-                  writeAuditLog(AUDIT_OBJECTS, true, node->getId(),  _T("Executed SSH command \"%s\" on %s:%u as %s"),
-                        command.cstr(), node->getIpAddress().toString(ipAddr), node->getSshPort(), node->getSshLogin().cstr());
-               }
+               ActionExecutionData data(this, request.getId());
+               rcc = conn->executeCommand(_T("SSH.Command"), args, true, ActionExecuteCallback, &data, true);
             }
             else
             {
-               msg.setField(VID_RCC, RCC_COMM_FAILURE);
+               rcc = conn->executeCommand(_T("SSH.Command"), args);
+            }
+            debugPrintf(4, _T("executeSshCommand: rcc=%d"), rcc);
+
+            msg.setField(VID_RCC, AgentErrorToRCC(rcc));
+            if (rcc == ERR_SUCCESS)
+            {
+               if (request.getFieldAsInt32(VID_NUM_MASKED_FIELDS) > 0)
+               {
+                  StringList maskedFields(request, VID_MASKED_FIELD_LIST_BASE, VID_NUM_MASKED_FIELDS);
+                  for (int i = 0; i < maskedFields.size(); i++)
+                  {
+                     inputFields.set(maskedFields.get(i), _T("******"));
+                  }
+                  command = sourceObject->expandText(originalActionString, alarm, nullptr, shared_ptr<DCObjectInfo>(), m_loginName, nullptr, nullptr, &inputFields, nullptr);
+               }
+               if (sourceObject->getId() != node->getId())
+               {
+                  writeAuditLog(AUDIT_OBJECTS, true, node->getId(), _T("Executed SSH command \"%s\" on %s:%u as %s (context: %s [%u])"),
+                        command.cstr(), node->getIpAddress().toString(ipAddr), node->getSshPort(), node->getSshLogin().cstr(),
+                        sourceObject->getName(), sourceObject->getId());
+               }
+               else
+               {
+                  writeAuditLog(AUDIT_OBJECTS, true, node->getId(), _T("Executed SSH command \"%s\" on %s:%u as %s"),
+                        command.cstr(), node->getIpAddress().toString(ipAddr), node->getSshPort(), node->getSshLogin().cstr());
+               }
             }
          }
          else
          {
-            msg.setField(VID_RCC, RCC_INVALID_SSH_PROXY_ID);
+            msg.setField(VID_RCC, RCC_COMM_FAILURE);
          }
-         delete alarm;
       }
       else
       {
-         msg.setField(VID_RCC, RCC_ACCESS_DENIED);
-         writeAuditLog(AUDIT_OBJECTS, false, node->getId(), _T("Access denied on executing SSH command %s"), command.cstr());
+         msg.setField(VID_RCC, RCC_INVALID_SSH_PROXY_ID);
       }
-      MemFree(originalActionString);
+      delete alarm;
    }
    else
    {
-      msg.setField(VID_RCC, RCC_INVALID_OBJECT_ID);
+      msg.setField(VID_RCC, RCC_ACCESS_DENIED);
+      writeAuditLog(AUDIT_OBJECTS, false, node->getId(), _T("Access denied on executing SSH command %s"), command.cstr());
    }
+   MemFree(originalActionString);
 
    // Send response
    sendMessage(&msg);

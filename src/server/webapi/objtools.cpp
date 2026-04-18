@@ -655,16 +655,19 @@ static int ExecuteTableTool(Context *context, const shared_ptr<NetObj>& object, 
 }
 
 /**
- * Execute SSH command tool
+ * Execute SSH command tool. The SSH session is opened against the owning node of the target
+ * object (which may be a node, interface, sensor, or access point); the source object is used
+ * for macro expansion context. Access rights must already have been validated by the caller.
  */
 static int ExecuteSSHCommand(Context *context, const shared_ptr<NetObj>& object, const TCHAR *toolData, uint32_t toolFlags, Alarm *alarm, const StringMap *inputFields, json_t *response)
 {
-   if (object->getObjectClass() != OBJECT_NODE)
+   shared_ptr<Node> targetNode = GetParentNodeForObjectTool(object);
+   if (targetNode == nullptr)
    {
-      context->setErrorResponse("Object is not a node");
+      context->setErrorResponse("SSH command not supported for this object");
       return 400;
    }
-   Node& node = static_cast<Node&>(*object);
+   Node& node = *targetNode;
 
    StringBuffer command = object->expandText(toolData, alarm, nullptr, shared_ptr<DCObjectInfo>(), context->getLoginName(), nullptr, nullptr, inputFields, nullptr);
 
@@ -718,7 +721,11 @@ static int ExecuteSSHCommand(Context *context, const shared_ptr<NetObj>& object,
       return 500;
    }
 
-   context->writeAuditLog(AUDIT_OBJECTS, true, object->getId(), _T("Executed SSH command on object %s [%u]"), object->getName(), object->getId());
+   if (object->getId() != node.getId())
+      context->writeAuditLog(AUDIT_OBJECTS, true, node.getId(), _T("Executed SSH command on node %s [%u] (context: %s [%u])"),
+            node.getName(), node.getId(), object->getName(), object->getId());
+   else
+      context->writeAuditLog(AUDIT_OBJECTS, true, node.getId(), _T("Executed SSH command on object %s [%u]"), node.getName(), node.getId());
    return 200;
 }
 
@@ -937,7 +944,9 @@ struct StreamingSSHCommandData
 };
 
 /**
- * Execute SSH command in streaming mode (thread pool callback)
+ * Execute SSH command in streaming mode (thread pool callback). The SSH session is opened
+ * against the owning node of the target object; `data->object` is used for macro expansion
+ * context.
  */
 static void StreamingSSHCommandThread(StreamingSSHCommandData *data)
 {
@@ -951,15 +960,16 @@ static void StreamingSSHCommandThread(StreamingSSHCommandData *data)
       return;
    }
 
-   if (data->object->getObjectClass() != OBJECT_NODE)
+   shared_ptr<Node> targetNode = GetParentNodeForObjectTool(data->object);
+   if (targetNode == nullptr)
    {
-      data->session->sendError("Object is not a node");
+      data->session->sendError("SSH command not supported for this object");
       delete data->alarm;
       MemFree(data->toolData);
       delete data;
       return;
    }
-   Node& node = static_cast<Node&>(*data->object);
+   Node& node = *targetNode;
 
    StringBuffer command = data->object->expandText(data->toolData, data->alarm, nullptr, shared_ptr<DCObjectInfo>(), data->loginName, nullptr, nullptr, &data->inputFields, nullptr);
 
@@ -1106,7 +1116,26 @@ int H_ObjectToolExecute(Context *context)
       return 404;
    }
 
-   if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_CONTROL))
+   if (toolType == TOOL_TYPE_SSH_COMMAND)
+   {
+      // SSH tool requires CONTROL on the node the session will connect to, plus READ on the
+      // source object used for macro expansion context. Resolution of the owning node covers
+      // the node-on-node case as an identity and the interface/sensor/AP-on-node cases.
+      shared_ptr<Node> sshTarget = GetParentNodeForObjectTool(object);
+      if (sshTarget == nullptr)
+      {
+         MemFree(toolData);
+         context->setErrorResponse("SSH command not supported for this object");
+         return 400;
+      }
+      if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_READ) ||
+          !sshTarget->checkAccessRights(context->getUserId(), OBJECT_ACCESS_CONTROL))
+      {
+         MemFree(toolData);
+         return 403;
+      }
+   }
+   else if (!object->checkAccessRights(context->getUserId(), OBJECT_ACCESS_CONTROL))
    {
       MemFree(toolData);
       return 403;

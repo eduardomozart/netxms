@@ -48,6 +48,32 @@ static uint32_t ObjectClassToToolMask(int objectClass)
 }
 
 /**
+ * Resolve parent node for an object-tool target object.
+ * The target may be a Node (returned as-is) or an Interface/Sensor/AccessPoint,
+ * in which case the owning Node is looked up via the class-specific relation.
+ * Returns null pointer if class does not support object tools or if the owning
+ * node is not set (standalone access point, sensor without gateway).
+ */
+shared_ptr<Node> GetParentNodeForObjectTool(const shared_ptr<NetObj>& object)
+{
+   if (object == nullptr)
+      return shared_ptr<Node>();
+   switch (object->getObjectClass())
+   {
+      case OBJECT_NODE:
+         return static_pointer_cast<Node>(object);
+      case OBJECT_INTERFACE:
+         return static_cast<Interface&>(*object).getParentNode();
+      case OBJECT_SENSOR:
+         return static_pointer_cast<Node>(FindObjectById(static_cast<Sensor&>(*object).getGatewayNodeId(), OBJECT_NODE));
+      case OBJECT_ACCESSPOINT:
+         return static_cast<AccessPoint&>(*object).getController();
+      default:
+         return shared_ptr<Node>();
+   }
+}
+
+/**
  * Object tool acl entry
  */
 struct OBJECT_TOOL_ACL
@@ -1350,7 +1376,7 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
    applicableClasses &= TOOL_APPLICABLE_ALL_VALID;
    if (applicableClasses == 0)
       applicableClasses = defaultClasses;
-   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL))
+   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL) && (toolType != TOOL_TYPE_SSH_COMMAND))
       applicableClasses = TOOL_APPLICABLE_NODE;
 
    if (toolId != 0)
@@ -1552,7 +1578,7 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
    applicableClasses &= TOOL_APPLICABLE_ALL_VALID;
    if (applicableClasses == 0)
       applicableClasses = defaultClasses;
-   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL))
+   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL) && (toolType != TOOL_TYPE_SSH_COMMAND))
       applicableClasses = TOOL_APPLICABLE_NODE;
 
    if (toolId != 0)

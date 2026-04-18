@@ -90,9 +90,9 @@ public class ObjectMenuFilter
    
    /**
     * Check if tool is applicable for given object.
-    * For an interface, node-capability checks (SNMP/agent/SSH/EtherNet-IP/Modbus/OID/OS)
-    * are evaluated against the parent node. Objects without an associated node
-    * (sensor, access point, container) do not satisfy node-capability filters.
+    * For an interface or access point, node-capability checks (SNMP/agent/SSH/EtherNet-IP/
+    * Modbus/OID/OS) are evaluated against the parent node. Objects without an associated node
+    * (sensor, container) do not satisfy node-capability filters.
     *
     * @param object The object to test
     * @return true if tool is applicable for given object
@@ -104,6 +104,8 @@ public class ObjectMenuFilter
          node = (AbstractNode)object;
       else if (object instanceof Interface)
          node = ((Interface)object).getParentNode();
+      else if (object instanceof AccessPoint)
+         node = ((AccessPoint)object).getParentNode();
 
       if (node != null)
       {

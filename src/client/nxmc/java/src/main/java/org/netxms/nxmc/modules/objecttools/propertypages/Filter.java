@@ -112,7 +112,7 @@ public class Filter extends PropertyPage
 	   if (objectTool != null)
 	   {
 	      final int toolType = objectTool.getToolType();
-	      final boolean multiClass = (toolType == ObjectTool.TYPE_SERVER_SCRIPT) || (toolType == ObjectTool.TYPE_URL);
+	      final boolean multiClass = (toolType == ObjectTool.TYPE_SERVER_SCRIPT) || (toolType == ObjectTool.TYPE_URL) || (toolType == ObjectTool.TYPE_SSH_COMMAND);
 	      final int applicable = objectTool.getApplicableClasses();
 
 	      Group classGroup = new Group(dialogArea, SWT.NONE);
@@ -147,7 +147,7 @@ public class Filter extends PropertyPage
 
 	      if (!multiClass)
 	      {
-	         String tip = i18n.tr("Only script and URL tools can target interfaces, sensors, or access points.");
+	         String tip = i18n.tr("Only script, URL, and SSH command tools can target interfaces, sensors, or access points.");
 	         checkApplyInterface.setToolTipText(tip);
 	         checkApplySensor.setToolTipText(tip);
 	         checkApplyAccessPoint.setToolTipText(tip);
