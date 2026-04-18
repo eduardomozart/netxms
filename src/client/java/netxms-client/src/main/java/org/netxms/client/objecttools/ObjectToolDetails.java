@@ -68,6 +68,7 @@ public class ObjectToolDetails extends ObjectTool
 		imageData = null;
       remotePort = 0;
       remoteHost = null;
+      applicableClasses = (type == TYPE_URL) ? APPLICABLE_ALL_VALID : APPLICABLE_NODE;
 		inputFields = new HashMap<String, InputField>();
 
 		createDisplayName();
@@ -94,6 +95,7 @@ public class ObjectToolDetails extends ObjectTool
       commandShortName = msg.getFieldAsString(NXCPCodes.VID_COMMAND_SHORT_NAME);
       remotePort = msg.getFieldAsInt32(NXCPCodes.VID_PORT);
       remoteHost = msg.getFieldAsString(NXCPCodes.VID_HOSTNAME);
+      applicableClasses = msg.getFieldAsInt32(NXCPCodes.VID_TOOL_APPLICABLE_CLASSES);
 		imageData = msg.getFieldAsBinary(NXCPCodes.VID_IMAGE_DATA);
       try
       {
@@ -159,6 +161,7 @@ public class ObjectToolDetails extends ObjectTool
       msg.setField(NXCPCodes.VID_COMMAND_SHORT_NAME, commandShortName);
       msg.setFieldInt32(NXCPCodes.VID_PORT, remotePort);
       msg.setField(NXCPCodes.VID_HOSTNAME, remoteHost);
+      msg.setFieldInt32(NXCPCodes.VID_TOOL_APPLICABLE_CLASSES, applicableClasses);
 		if (imageData != null)
 		   msg.setField(NXCPCodes.VID_IMAGE_DATA, imageData);
 
@@ -387,14 +390,25 @@ public class ObjectToolDetails extends ObjectTool
 	}
    
    /**
-    * Update menu filter flags 
-    * 
+    * Update menu filter flags
+    *
     * @param flags new value for menu filter flag
     * @see ObjectMenuFilter
     */
    public void setFilterFlags(int flags)
    {
       filter.flags = flags;
+      modified = true;
+   }
+
+   /**
+    * Set applicable object classes bitmask.
+    *
+    * @param applicableClasses combination of APPLICABLE_* bits
+    */
+   public void setApplicableClasses(int applicableClasses)
+   {
+      this.applicableClasses = applicableClasses;
       modified = true;
    }
 }

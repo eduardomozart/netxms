@@ -65,6 +65,12 @@ public class ObjectTool implements ObjectAction
    public static final int SETUP_TCP_TUNNEL          = 0x00000080;
    public static final int TCP_TUNNEL_TO_REMOTE_HOST = 0x00000100;
 
+   public static final int APPLICABLE_NODE           = 0x00000001;
+   public static final int APPLICABLE_INTERFACE      = 0x00000002;
+   public static final int APPLICABLE_SENSOR         = 0x00000004;
+   public static final int APPLICABLE_ACCESS_POINT   = 0x00000008;
+   public static final int APPLICABLE_ALL_VALID      = 0x0000000F;
+
    private static final Logger logger = LoggerFactory.getLogger(ObjectTool.class);
 
 	protected long id;
@@ -81,6 +87,7 @@ public class ObjectTool implements ObjectAction
 	protected byte[] imageData;
    protected int remotePort;
    protected String remoteHost;
+   protected int applicableClasses;
 	protected Map<String, InputField> inputFields;
 
 	/**
@@ -90,6 +97,7 @@ public class ObjectTool implements ObjectAction
 	{
 	   filter = new ObjectMenuFilter();
 	   inputFields = new HashMap<String, InputField>(0);
+	   applicableClasses = APPLICABLE_NODE;
 	}
 
 	/**
@@ -113,6 +121,7 @@ public class ObjectTool implements ObjectAction
 		imageData = msg.getFieldAsBinary(baseId + 10);
       remotePort = msg.getFieldAsInt32(baseId + 11);
       remoteHost = msg.getFieldAsString(baseId + 12);
+      applicableClasses = msg.getFieldAsInt32(baseId + 13);
 		try
       {
          filter = XMLTools.createFromXml(ObjectMenuFilter.class, filterData);
@@ -220,14 +229,65 @@ public class ObjectTool implements ObjectAction
 
 	/**
     * Check if tool is applicable for given object.
-    * 
+    *
     * @param object AbstractObject object
     * @return true if tool is applicable for given object
     */
    public boolean isApplicableForObject(AbstractObject object)
    {
+      if (!isApplicableToObjectClass(object.getObjectClass()))
+         return false;
       return (isRunInContainerContext() == isContainerObject(object)) && filter.isApplicableForObject(object);
 	}
+
+   /**
+    * Translate an object class constant to the corresponding applicable-classes bit.
+    * Returns 0 if the class is not tracked by the applicable-classes model; such
+    * classes are handled by other checks (container context, filter).
+    *
+    * @param objectClass one of AbstractObject.OBJECT_*
+    * @return the corresponding APPLICABLE_* bit, or 0 if none
+    */
+   public static int objectClassToToolMask(int objectClass)
+   {
+      switch (objectClass)
+      {
+         case AbstractObject.OBJECT_NODE:
+            return APPLICABLE_NODE;
+         case AbstractObject.OBJECT_INTERFACE:
+            return APPLICABLE_INTERFACE;
+         case AbstractObject.OBJECT_SENSOR:
+            return APPLICABLE_SENSOR;
+         case AbstractObject.OBJECT_ACCESSPOINT:
+            return APPLICABLE_ACCESS_POINT;
+         default:
+            return 0;
+      }
+   }
+
+   /**
+    * Check whether this tool is applicable to given object class.
+    *
+    * @param objectClass one of AbstractObject.OBJECT_*
+    * @return true if tool is applicable or the class is not tracked by applicable_classes
+    */
+   public boolean isApplicableToObjectClass(int objectClass)
+   {
+      int bit = objectClassToToolMask(objectClass);
+      if (bit == 0)
+         return true;
+      return (applicableClasses & bit) != 0;
+   }
+
+   /**
+    * Get applicable object classes bitmask.
+    *
+    * @return applicable object classes bitmask (combination of APPLICABLE_* bits)
+    */
+   public int getApplicableClasses()
+   {
+      return applicableClasses;
+   }
 
 	/**
 	 * Get input field definition by name

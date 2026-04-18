@@ -27,6 +27,27 @@
 #include <pugixml.h>
 
 /**
+ * Translate object class to applicable tool mask bit.
+ * Returns 0 if class does not support object tools.
+ */
+static uint32_t ObjectClassToToolMask(int objectClass)
+{
+   switch (objectClass)
+   {
+      case OBJECT_NODE:
+         return TOOL_APPLICABLE_NODE;
+      case OBJECT_INTERFACE:
+         return TOOL_APPLICABLE_INTERFACE;
+      case OBJECT_SENSOR:
+         return TOOL_APPLICABLE_SENSOR;
+      case OBJECT_ACCESSPOINT:
+         return TOOL_APPLICABLE_ACCESS_POINT;
+      default:
+         return 0;
+   }
+}
+
+/**
  * Object tool acl entry
  */
 struct OBJECT_TOOL_ACL
@@ -1077,8 +1098,11 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
 {
    TCHAR buffer[MAX_DB_STRING];
 
-   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
+   int toolType = msg.getFieldAsUInt16(VID_TOOL_TYPE);
+   uint32_t toolId = msg.getFieldAsUInt32(VID_TOOL_ID);
+   uint32_t applicableClasses = msg.getFieldAsUInt32(VID_TOOL_APPLICABLE_CLASSES);
 
+   DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 	if (!DBBegin(hdb))
 	{
 		DBConnectionPoolReleaseConnection(hdb);
@@ -1086,8 +1110,6 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
 	}
 
    // Insert or update common properties
-   int toolType = msg.getFieldAsUInt16(VID_TOOL_TYPE);
-   uint32_t toolId = msg.getFieldAsUInt32(VID_TOOL_ID);
    bool newTool = false;
    DB_STATEMENT hStmt;
    if (IsDatabaseRecordExist(hdb, _T("object_tools"), _T("tool_id"), toolId))
@@ -1095,7 +1117,8 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
       hStmt = DBPrepare(hdb, _T("UPDATE object_tools SET tool_name=?,tool_type=?,")
                              _T("tool_data=?,description=?,flags=?,")
                              _T("tool_filter=?,confirmation_text=?,command_name=?,")
-                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=? ")
+                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=?,")
+                             _T("applicable_classes=? ")
                              _T("WHERE tool_id=?"));
    }
    else
@@ -1103,8 +1126,9 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
       hStmt = DBPrepare(hdb, _T("INSERT INTO object_tools (tool_name,tool_type,")
                              _T("tool_data,description,flags,tool_filter,")
                              _T("confirmation_text,command_name,command_short_name,")
-                             _T("icon,remote_port,remote_host,tool_id,guid) VALUES ")
-                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
+                             _T("icon,remote_port,remote_host,applicable_classes,")
+                             _T("tool_id,guid) VALUES ")
+                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
       newTool = true;
    }
    if (hStmt == nullptr)
@@ -1135,10 +1159,11 @@ uint32_t UpdateObjectToolFromMessage(const NXCPMessage& msg)
 
    DBBind(hStmt, 11, DB_SQLTYPE_INTEGER, msg.getFieldAsUInt32(VID_PORT));
    DBBind(hStmt, 12, DB_SQLTYPE_VARCHAR, msg.getFieldAsString(VID_HOSTNAME), DB_BIND_DYNAMIC);
-   DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, toolId);
+   DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, applicableClasses);
+   DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, toolId);
    if (newTool)
    {
-      DBBind(hStmt, 14, DB_SQLTYPE_VARCHAR, uuid::generate());
+      DBBind(hStmt, 15, DB_SQLTYPE_VARCHAR, uuid::generate());
    }
 
    if (!DBExecute(hStmt))
@@ -1316,12 +1341,25 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
 	if (!DBBegin(hdb))
       return ImportFailure(hdb, nullptr, context);
 
+   int toolType = config->getSubEntryValueAsInt(_T("type"));
+
+   // Applicable object classes: pre-6.2 exports have no applicableClasses entry.
+   // URL tools default to any class; everything else to Node.
+   uint32_t defaultClasses = (toolType == TOOL_TYPE_URL) ? TOOL_APPLICABLE_ALL_VALID : TOOL_APPLICABLE_NODE;
+   uint32_t applicableClasses = config->getSubEntryValueAsUInt(_T("applicableClasses"), 0, defaultClasses);
+   applicableClasses &= TOOL_APPLICABLE_ALL_VALID;
+   if (applicableClasses == 0)
+      applicableClasses = defaultClasses;
+   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL))
+      applicableClasses = TOOL_APPLICABLE_NODE;
+
    if (toolId != 0)
    {
       hStmt = DBPrepare(hdb, _T("UPDATE object_tools SET tool_name=?,tool_type=?,")
                              _T("tool_data=?,description=?,flags=?,")
                              _T("tool_filter=?,confirmation_text=?,command_name=?,")
-                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=? ")
+                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=?,")
+                             _T("applicable_classes=? ")
                              _T("WHERE tool_id=?"));
    }
    else
@@ -1329,14 +1367,15 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
       hStmt = DBPrepare(hdb, _T("INSERT INTO object_tools (tool_name,tool_type,")
                              _T("tool_data,description,flags,tool_filter,")
                              _T("confirmation_text,command_name,command_short_name,")
-                             _T("icon,remote_port,remote_host,tool_id,guid) VALUES ")
-                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
+                             _T("icon,remote_port,remote_host,applicable_classes,")
+                             _T("tool_id,guid) VALUES ")
+                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
    }
    if (hStmt == nullptr)
       return ImportFailure(hdb, nullptr, context);
 
    DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, config->getSubEntryValue(_T("name")), DB_BIND_STATIC);
-   DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, config->getSubEntryValueAsInt(_T("type")));
+   DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, toolType);
    DBBind(hStmt, 3, DB_SQLTYPE_TEXT, config->getSubEntryValue(_T("data")), DB_BIND_STATIC);
    DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, config->getSubEntryValue(_T("description")), DB_BIND_STATIC);
    DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, config->getSubEntryValueAsUInt(_T("flags")));
@@ -1347,15 +1386,16 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
    DBBind(hStmt, 10, DB_SQLTYPE_TEXT, config->getSubEntryValue(_T("image")), DB_BIND_STATIC);
    DBBind(hStmt, 11, DB_SQLTYPE_INTEGER, config->getSubEntryValueAsInt(_T("remotePort")));
    DBBind(hStmt, 12, DB_SQLTYPE_VARCHAR, config->getSubEntryValue(_T("remoteHost")), DB_BIND_STATIC);
+   DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, applicableClasses);
    if (toolId == 0)
    {
       toolId = CreateUniqueId(IDG_OBJECT_TOOL);
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, toolId);
-      DBBind(hStmt, 14, DB_SQLTYPE_VARCHAR, guid, DB_BIND_STATIC);
+      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, toolId);
+      DBBind(hStmt, 15, DB_SQLTYPE_VARCHAR, guid, DB_BIND_STATIC);
    }
    else
    {
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, toolId);
+      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, toolId);
    }
 
    if (!DBExecute(hStmt))
@@ -1380,7 +1420,6 @@ bool ImportObjectTool(ConfigEntry *config, bool overwrite, ImportContext *contex
    if (!ExecuteQueryOnObject(hdb, toolId, _T("DELETE FROM object_tools_table_columns WHERE tool_id=?")))
       return ImportFailure(hdb, nullptr, context);
 
-   int toolType = config->getSubEntryValueAsInt(_T("type"));
    if ((toolType == TOOL_TYPE_SNMP_TABLE) || (toolType == TOOL_TYPE_AGENT_LIST))
    {
    	ConfigEntry *root = config->findEntry(_T("columns"));
@@ -1504,12 +1543,25 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
 	if (!DBBegin(hdb))
       return ImportFailure(hdb, nullptr, context);
 
+   int toolType = json_object_get_int32(config, "type", 0);
+
+   // Applicable object classes: pre-6.2 exports have no applicableClasses entry.
+   // URL tools default to any class; everything else to Node.
+   uint32_t defaultClasses = (toolType == TOOL_TYPE_URL) ? TOOL_APPLICABLE_ALL_VALID : TOOL_APPLICABLE_NODE;
+   uint32_t applicableClasses = json_object_get_uint32(config, "applicableClasses", defaultClasses);
+   applicableClasses &= TOOL_APPLICABLE_ALL_VALID;
+   if (applicableClasses == 0)
+      applicableClasses = defaultClasses;
+   if ((applicableClasses & ~TOOL_APPLICABLE_NODE) && (toolType != TOOL_TYPE_SERVER_SCRIPT) && (toolType != TOOL_TYPE_URL))
+      applicableClasses = TOOL_APPLICABLE_NODE;
+
    if (toolId != 0)
    {
       hStmt = DBPrepare(hdb, _T("UPDATE object_tools SET tool_name=?,tool_type=?,")
                              _T("tool_data=?,description=?,flags=?,")
                              _T("tool_filter=?,confirmation_text=?,command_name=?,")
-                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=? ")
+                             _T("command_short_name=?,icon=?,remote_port=?,remote_host=?,")
+                             _T("applicable_classes=? ")
                              _T("WHERE tool_id=?"));
    }
    else
@@ -1517,8 +1569,9 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
       hStmt = DBPrepare(hdb, _T("INSERT INTO object_tools (tool_name,tool_type,")
                              _T("tool_data,description,flags,tool_filter,")
                              _T("confirmation_text,command_name,command_short_name,")
-                             _T("icon,remote_port,remote_host,tool_id,guid) VALUES ")
-                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
+                             _T("icon,remote_port,remote_host,applicable_classes,")
+                             _T("tool_id,guid) VALUES ")
+                             _T("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"));
    }
    if (hStmt == nullptr)
       return ImportFailure(hdb, nullptr, context);
@@ -1534,7 +1587,7 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
    String remoteHost = json_object_get_string(config, "remoteHost", _T(""));
 
    DBBind(hStmt, 1, DB_SQLTYPE_VARCHAR, name, DB_BIND_STATIC);
-   DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, json_object_get_int32(config, "type", 0));
+   DBBind(hStmt, 2, DB_SQLTYPE_INTEGER, toolType);
    DBBind(hStmt, 3, DB_SQLTYPE_TEXT, data, DB_BIND_STATIC);
    DBBind(hStmt, 4, DB_SQLTYPE_VARCHAR, description, DB_BIND_STATIC);
    DBBind(hStmt, 5, DB_SQLTYPE_INTEGER, json_object_get_uint32(config, "flags", 0));
@@ -1545,15 +1598,16 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
    DBBind(hStmt, 10, DB_SQLTYPE_TEXT, image, DB_BIND_STATIC);
    DBBind(hStmt, 11, DB_SQLTYPE_INTEGER, json_object_get_int32(config, "remotePort", 0));
    DBBind(hStmt, 12, DB_SQLTYPE_VARCHAR, remoteHost, DB_BIND_STATIC);
+   DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, applicableClasses);
    if (toolId == 0)
    {
       toolId = CreateUniqueId(IDG_OBJECT_TOOL);
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, toolId);
-      DBBind(hStmt, 14, DB_SQLTYPE_VARCHAR, guid, DB_BIND_STATIC);
+      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, toolId);
+      DBBind(hStmt, 15, DB_SQLTYPE_VARCHAR, guid, DB_BIND_STATIC);
    }
    else
    {
-      DBBind(hStmt, 13, DB_SQLTYPE_INTEGER, toolId);
+      DBBind(hStmt, 14, DB_SQLTYPE_INTEGER, toolId);
    }
 
    if (!DBExecute(hStmt))
@@ -1578,7 +1632,6 @@ bool ImportObjectTool(json_t *config, bool overwrite, ImportContext *context)
    if (!ExecuteQueryOnObject(hdb, toolId, _T("DELETE FROM object_tools_table_columns WHERE tool_id=?")))
       return ImportFailure(hdb, nullptr, context);
 
-   int toolType = json_object_get_int32(config, "type", 0);
    if ((toolType == TOOL_TYPE_SNMP_TABLE) || (toolType == TOOL_TYPE_AGENT_LIST))
    {
    	json_t *columns = json_object_get(config, "columns");
@@ -1756,7 +1809,7 @@ json_t *CreateObjectToolExportRecord(uint32_t id)
 
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,guid,tool_type,tool_data,description,flags,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host FROM object_tools WHERE tool_id=?"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,guid,tool_type,tool_data,description,flags,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host,applicable_classes FROM object_tools WHERE tool_id=?"));
    if (hStmt == nullptr)
    {
       DBConnectionPoolReleaseConnection(hdb);
@@ -1796,6 +1849,7 @@ json_t *CreateObjectToolExportRecord(uint32_t id)
 
          json_object_set_new(tool, "remotePort", json_integer(DBGetFieldLong(hResult, 0, 11)));
          json_object_set_new(tool, "remoteHost", json_string_t(DBGetField(hResult, 0, 12, buffer, MAX_DB_STRING)));
+         json_object_set_new(tool, "applicableClasses", json_integer(DBGetFieldLong(hResult, 0, 13)));
 
          json_object_set_new(tool, "columns", CreateObjectToolColumnExportRecords(hdb, id));
          json_object_set_new(tool, "inputFields", CreateObjectToolInputFieldExportRecords(hdb, id));
@@ -1881,7 +1935,7 @@ uint32_t GetObjectToolsIntoMessage(NXCPMessage *msg, uint32_t userId, bool fullA
    }
    DBFreeResult(hResult);
 
-   hResult = DBSelect(hdb, _T("SELECT tool_id,tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host FROM object_tools"));
+   hResult = DBSelect(hdb, _T("SELECT tool_id,tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host,applicable_classes FROM object_tools"));
    if (hResult == nullptr)
    {
       DBConnectionPoolReleaseConnection(hdb);
@@ -1970,6 +2024,8 @@ uint32_t GetObjectToolsIntoMessage(NXCPMessage *msg, uint32_t userId, bool fullA
 
          DBGetField(hResult, i, 12, buffer, MAX_DB_STRING);
          msg->setField(fieldId + 12, buffer);
+
+         msg->setField(fieldId + 13, DBGetFieldULong(hResult, i, 13));
 
          LoadInputFieldDefinitions(toolId, hdb, msg, fieldId + 19, fieldId + 20);
 
@@ -2139,6 +2195,11 @@ static bool LoadInputFieldDefinitions(uint32_t toolId, DB_HANDLE hdb, json_t *to
  *     <toolTemplate>pattern1,pattern2</toolTemplate>
  *     <toolCustomAttributes>pattern1,pattern2</toolCustomAttributes>
  *   </objectMenuFilter>
+ *
+ * For Interface objects, node-capability checks (SNMP, agent, SSH, OID,
+ * node OS, template) are evaluated against the parent node. Sensor and
+ * access point objects have no node-capability semantics, so any such
+ * filter flag causes the tool to be reported as not applicable.
  */
 static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetObj>& object)
 {
@@ -2157,23 +2218,30 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
    if (filterFlags == 0)
       return true;
 
-   if (object->getObjectClass() == OBJECT_NODE)
+   // Resolve the node used for node-capability filter checks: either the object
+   // itself, or (for an interface) its parent node.
+   int objectClass = object->getObjectClass();
+   shared_ptr<Node> node;
+   if (objectClass == OBJECT_NODE)
+      node = static_pointer_cast<Node>(object);
+   else if (objectClass == OBJECT_INTERFACE)
+      node = static_cast<Interface&>(*object).getParentNode();
+
+   if (node != nullptr)
    {
-      Node& node = static_cast<Node&>(*object);
-
-      if ((filterFlags & MENU_FILTER_REQUIRES_SNMP) && !node.isSNMPSupported())
+      if ((filterFlags & MENU_FILTER_REQUIRES_SNMP) && !node->isSNMPSupported())
          return false;
 
-      if ((filterFlags & MENU_FILTER_REQUIRES_AGENT) && !node.isNativeAgent())
+      if ((filterFlags & MENU_FILTER_REQUIRES_AGENT) && !node->isNativeAgent())
          return false;
 
-      if ((filterFlags & MENU_FILTER_REQUIRES_SSH) && !node.isSSHSupported())
+      if ((filterFlags & MENU_FILTER_REQUIRES_SSH) && !node->isSSHSupported())
          return false;
 
-      if ((filterFlags & MENU_FILTER_REQUIRES_ETHERNET_IP) && !node.isEthernetIPSupported())
+      if ((filterFlags & MENU_FILTER_REQUIRES_ETHERNET_IP) && !node->isEthernetIPSupported())
          return false;
 
-      if ((filterFlags & MENU_FILTER_REQUIRES_MODBUS_TCP) && !node.isModbusTCPSupported())
+      if ((filterFlags & MENU_FILTER_REQUIRES_MODBUS_TCP) && !node->isModbusTCPSupported())
          return false;
 
       if (filterFlags & MENU_FILTER_REQUIRES_OID_MATCH)
@@ -2184,7 +2252,7 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
             WCHAR patternW[256];
             utf8_to_wchar(oidPattern, -1, patternW, 256);
             WCHAR oidStr[256];
-            node.getSNMPObjectId().toStringW(oidStr, 256);
+            node->getSNMPObjectId().toStringW(oidStr, 256);
             if (!MatchStringW(patternW, oidStr, false))
                return false;
          }
@@ -2202,7 +2270,7 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
             while (token != nullptr)
             {
                WCHAR *patternW = WideStringFromUTF8String(token);
-               if (RegexpMatchW(node.getPlatformName(), patternW, true))
+               if (RegexpMatchW(node->getPlatformName(), patternW, true))
                {
                   match = true;
                   MemFree(patternW);
@@ -2225,14 +2293,30 @@ static bool IsToolFilterApplicable(const char *filterXml, const shared_ptr<NetOb
 
    if (filterFlags & MENU_FILTER_REQUIRES_TEMPLATE_MATCH)
    {
-      if (object->getObjectClass() != OBJECT_NODE && object->getObjectClass() != OBJECT_CLUSTER)
+      // Template match: use parent node for interface, or the object itself for
+      // other object types that can be bound to templates.
+      NetObj *templateHolder;
+      if (objectClass == OBJECT_INTERFACE)
+      {
+         if (node == nullptr)
+            return false;
+         templateHolder = node.get();
+      }
+      else if ((objectClass == OBJECT_NODE) || (objectClass == OBJECT_CLUSTER) ||
+               (objectClass == OBJECT_SENSOR) || (objectClass == OBJECT_ACCESSPOINT))
+      {
+         templateHolder = object.get();
+      }
+      else
+      {
          return false;
+      }
 
       const char *templatePatterns = root.child_value("toolTemplate");
       if (templatePatterns != nullptr && *templatePatterns != 0)
       {
          bool match = false;
-         unique_ptr<SharedObjectArray<NetObj>> parents = object->getParents(OBJECT_TEMPLATE);
+         unique_ptr<SharedObjectArray<NetObj>> parents = templateHolder->getParents(OBJECT_TEMPLATE);
          for(int p = 0; p < parents->size() && !match; p++)
          {
             char *buf = MemCopyStringA(templatePatterns);
@@ -2330,7 +2414,7 @@ json_t NXCORE_EXPORTABLE *GetObjectToolsIntoJSON(uint32_t userId, bool fullAcces
    }
    DBFreeResult(hResult);
 
-   hResult = DBSelect(hdb, _T("SELECT tool_id,tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host FROM object_tools"));
+   hResult = DBSelect(hdb, _T("SELECT tool_id,tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host,applicable_classes FROM object_tools"));
    if (hResult == nullptr)
    {
       DBConnectionPoolReleaseConnection(hdb);
@@ -2365,6 +2449,7 @@ json_t NXCORE_EXPORTABLE *GetObjectToolsIntoJSON(uint32_t userId, bool fullAcces
          continue;
 
       uint32_t flags = DBGetFieldULong(hResult, i, 4);
+      uint32_t applicableClasses = DBGetFieldULong(hResult, i, 13);
 
       if (object != nullptr)
       {
@@ -2375,6 +2460,14 @@ json_t NXCORE_EXPORTABLE *GetObjectToolsIntoJSON(uint32_t userId, bool fullAcces
          // Container context check: tool with RUN_IN_CONTAINER_CONTEXT must match container objects and vice versa
          if ((flags & TF_RUN_IN_CONTAINER_CONTEXT) ? !object->isContainerObject() : object->isContainerObject())
             continue;
+
+         // Applicable classes check: tool must allow selected object's class
+         uint32_t classBit = ObjectClassToToolMask(object->getObjectClass());
+         if (classBit != 0)
+         {
+            if (!(applicableClasses & classBit))
+               continue;
+         }
       }
 
       // Check ACL
@@ -2439,6 +2532,8 @@ json_t NXCORE_EXPORTABLE *GetObjectToolsIntoJSON(uint32_t userId, bool fullAcces
       DBGetFieldUTF8(hResult, i, 12, buffer, sizeof(buffer));
       json_object_set_new(tool, "remoteHost", json_string(buffer));
 
+      json_object_set_new(tool, "applicableClasses", json_integer(applicableClasses));
+
       LoadInputFieldDefinitions(toolId, hdb, tool);
 
       json_array_append_new(tools, tool);
@@ -2499,7 +2594,7 @@ json_t NXCORE_EXPORTABLE *GetObjectToolIntoJSON(uint32_t toolId, uint32_t userId
    }
 
    // Get tool details
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host FROM object_tools WHERE tool_id=?"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,tool_type,tool_data,flags,description,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host,applicable_classes FROM object_tools WHERE tool_id=?"));
    if (hStmt == nullptr)
    {
       DBConnectionPoolReleaseConnection(hdb);
@@ -2564,6 +2659,8 @@ json_t NXCORE_EXPORTABLE *GetObjectToolIntoJSON(uint32_t toolId, uint32_t userId
       DBGetField(hResult, 0, 11, buffer, MAX_DB_STRING);
       json_object_set_new(tool, "remoteHost", json_string_t(buffer));
 
+      json_object_set_new(tool, "applicableClasses", json_integer(DBGetFieldULong(hResult, 0, 12)));
+
       LoadInputFieldDefinitions(toolId, hdb, tool);
    }
 
@@ -2586,7 +2683,7 @@ uint32_t GetObjectToolDetailsIntoMessage(uint32_t toolId, NXCPMessage *msg)
 
    DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 
-   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,tool_type,tool_data,description,flags,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host FROM object_tools WHERE tool_id=?"));
+   DB_STATEMENT hStmt = DBPrepare(hdb, _T("SELECT tool_name,tool_type,tool_data,description,flags,tool_filter,confirmation_text,command_name,command_short_name,icon,remote_port,remote_host,applicable_classes FROM object_tools WHERE tool_id=?"));
    if (hStmt == nullptr)
       goto cleanup;
 
@@ -2640,6 +2737,7 @@ uint32_t GetObjectToolDetailsIntoMessage(uint32_t toolId, NXCPMessage *msg)
 
    msg->setField(VID_PORT, DBGetFieldULong(hResult, 0, 10));
    msg->setField(VID_HOSTNAME, DBGetField(hResult, 0, 11, buffer, MAX_DB_STRING));
+   msg->setField(VID_TOOL_APPLICABLE_CLASSES, DBGetFieldULong(hResult, 0, 12));
 
    DBFreeResult(hResult);
    hResult = nullptr;

@@ -22,6 +22,22 @@
 
 #include "nxdbmgr.h"
 #include <nxevent.h>
+#include <nxtools.h>
+
+/**
+ * Upgrade from 62.1 to 62.2
+ */
+static bool H_UpgradeFromV1()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE object_tools ADD applicable_classes integer\n"
+      L"UPDATE object_tools SET applicable_classes=1\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"object_tools", L"applicable_classes"));
+   CHK_EXEC(SetMinorSchemaVersion(2));
+   return true;
+}
 
 /**
  * Upgrade from 62.0 to 62.1
@@ -46,6 +62,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 1,  62, 2,  H_UpgradeFromV1  },
    { 0,  62, 1,  H_UpgradeFromV0  },
    { 0,  0,  0,  nullptr }
 };

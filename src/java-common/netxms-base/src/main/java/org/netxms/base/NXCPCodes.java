@@ -1519,6 +1519,7 @@ public class NXCPCodes
    public static final long VID_NUM_SKILLS = 976;
    public static final long VID_NUM_DISABLED_EXTRAS = 977;
    public static final long VID_ITEM_TYPE = 978;
+   public static final long VID_TOOL_APPLICABLE_CLASSES = 979;
 
    public static final long VID_SKILL_LIST_BASE = 0x50000000L;
    public static final long VID_DISABLED_EXTRAS_BASE = 0x58000000L;

@@ -7,7 +7,10 @@ import java.util.regex.Pattern;
 import org.netxms.base.Glob;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
+import org.netxms.client.objects.AccessPoint;
 import org.netxms.client.objects.Cluster;
+import org.netxms.client.objects.Interface;
+import org.netxms.client.objects.Sensor;
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Serializer;
@@ -87,32 +90,41 @@ public class ObjectMenuFilter
    
    /**
     * Check if tool is applicable for given object.
-    * 
+    * For an interface, node-capability checks (SNMP/agent/SSH/EtherNet-IP/Modbus/OID/OS)
+    * are evaluated against the parent node. Objects without an associated node
+    * (sensor, access point, container) do not satisfy node-capability filters.
+    *
     * @param object The object to test
     * @return true if tool is applicable for given object
     */
    public boolean isApplicableForObject(AbstractObject object)
    {
+      AbstractNode node = null;
       if (object instanceof AbstractNode)
+         node = (AbstractNode)object;
+      else if (object instanceof Interface)
+         node = ((Interface)object).getParentNode();
+
+      if (node != null)
       {
-         if (((flags & REQUIRES_SNMP) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_SNMP) == 0)
+         if (((flags & REQUIRES_SNMP) != 0) && (node.getCapabilities() & AbstractNode.NC_IS_SNMP) == 0)
             return false; // Node does not support SNMP
 
-         if (((flags & REQUIRES_AGENT) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_NATIVE_AGENT) == 0)
+         if (((flags & REQUIRES_AGENT) != 0) && (node.getCapabilities() & AbstractNode.NC_IS_NATIVE_AGENT) == 0)
             return false; // Node does not have NetXMS agent
 
-         if (((flags & REQUIRES_SSH) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_SSH) == 0)
+         if (((flags & REQUIRES_SSH) != 0) && (node.getCapabilities() & AbstractNode.NC_IS_SSH) == 0)
             return false; // Node does not support SSH
 
-         if (((flags & REQUIRES_ETHERNET_IP) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_ETHERNET_IP) == 0)
+         if (((flags & REQUIRES_ETHERNET_IP) != 0) && (node.getCapabilities() & AbstractNode.NC_IS_ETHERNET_IP) == 0)
             return false; // Node does not support EtherNet/IP
 
-         if (((flags & REQUIRES_MODBUS_TCP) != 0) && (((AbstractNode)object).getCapabilities() & AbstractNode.NC_IS_MODBUS_TCP) == 0)
+         if (((flags & REQUIRES_MODBUS_TCP) != 0) && (node.getCapabilities() & AbstractNode.NC_IS_MODBUS_TCP) == 0)
             return false; // Node does not support Modbus TCP
 
          if ((flags & REQUIRES_OID_MATCH) != 0)
          {
-            if (!Glob.matchIgnoreCase(snmpOid, ((AbstractNode)object).getSnmpOID()))
+            if (!Glob.matchIgnoreCase(snmpOid, node.getSnmpOID()))
                return false; // OID does not match
          }
 
@@ -122,7 +134,7 @@ public class ObjectMenuFilter
             String[] substrings = toolNodeOS.split(",");
             for(int i = 0; i < substrings.length; i++)
             {
-               if (Pattern.matches(substrings[i], ((AbstractNode)object).getPlatformName()))
+               if (Pattern.matches(substrings[i], node.getPlatformName()))
                {
                   match = true;
                   break;
@@ -156,12 +168,28 @@ public class ObjectMenuFilter
 
 	   if ((flags & REQUIRES_TEMPLATE_MATCH) != 0)
       {
-         if (!(object instanceof AbstractNode) && !(object instanceof Cluster))
+         // For interface, templates are inspected on the parent node. Nodes,
+         // clusters, sensors and access points carry templates themselves.
+         AbstractObject templateHolder;
+         if (object instanceof Interface)
+         {
+            if (node == null)
+               return false;
+            templateHolder = node;
+         }
+         else if ((object instanceof AbstractNode) || (object instanceof Cluster) ||
+                  (object instanceof Sensor) || (object instanceof AccessPoint))
+         {
+            templateHolder = object;
+         }
+         else
+         {
             return false;
+         }
 
          boolean match = false;
          String[] substrings = toolTemplate.split(",");
-         Set<AbstractObject> parents = object.getAllParents(AbstractObject.OBJECT_TEMPLATE);
+         Set<AbstractObject> parents = templateHolder.getAllParents(AbstractObject.OBJECT_TEMPLATE);
          for(AbstractObject parent : parents)
          {
             for(int i = 0; i < substrings.length; i++)

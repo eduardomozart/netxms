@@ -26,6 +26,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Text;
 import org.netxms.client.ObjectMenuFilter;
 import org.netxms.client.objecttools.ObjectAction;
@@ -44,6 +45,10 @@ public class Filter extends PropertyPage
    private final I18n i18n = LocalizationHelper.getI18n(Filter.class);
    
 	private ObjectMenuFilter filter;
+	private Button checkApplyNode;
+	private Button checkApplyInterface;
+	private Button checkApplySensor;
+	private Button checkApplyAccessPoint;
 	private Button checkAgent;
 	private Button checkSNMP;
 	private Button checkSSH;
@@ -93,17 +98,62 @@ public class Filter extends PropertyPage
     */
 	@Override
 	protected Control createContents(Composite parent)
-	{	   
+	{
 	   filter = action.getMenuFilter();
 
 		Composite dialogArea = new Composite(parent, SWT.NONE);
-		
+
 		GridLayout layout = new GridLayout();
 		layout.verticalSpacing = WidgetHelper.OUTER_SPACING;
 		layout.marginWidth = 0;
 		layout.marginHeight = 0;
 		dialogArea.setLayout(layout);
-		
+
+	   if (objectTool != null)
+	   {
+	      final int toolType = objectTool.getToolType();
+	      final boolean multiClass = (toolType == ObjectTool.TYPE_SERVER_SCRIPT) || (toolType == ObjectTool.TYPE_URL);
+	      final int applicable = objectTool.getApplicableClasses();
+
+	      Group classGroup = new Group(dialogArea, SWT.NONE);
+	      classGroup.setText(i18n.tr("Applicable object types"));
+	      GridLayout classLayout = new GridLayout();
+	      classLayout.numColumns = 4;
+	      classLayout.makeColumnsEqualWidth = false;
+	      classGroup.setLayout(classLayout);
+	      GridData classGd = new GridData();
+	      classGd.horizontalAlignment = SWT.FILL;
+	      classGd.grabExcessHorizontalSpace = true;
+	      classGroup.setLayoutData(classGd);
+
+	      checkApplyNode = new Button(classGroup, SWT.CHECK);
+	      checkApplyNode.setText(i18n.tr("Node"));
+	      checkApplyNode.setSelection((applicable & ObjectTool.APPLICABLE_NODE) != 0);
+
+	      checkApplyInterface = new Button(classGroup, SWT.CHECK);
+	      checkApplyInterface.setText(i18n.tr("Interface"));
+	      checkApplyInterface.setSelection((applicable & ObjectTool.APPLICABLE_INTERFACE) != 0);
+	      checkApplyInterface.setEnabled(multiClass);
+
+	      checkApplySensor = new Button(classGroup, SWT.CHECK);
+	      checkApplySensor.setText(i18n.tr("Sensor"));
+	      checkApplySensor.setSelection((applicable & ObjectTool.APPLICABLE_SENSOR) != 0);
+	      checkApplySensor.setEnabled(multiClass);
+
+	      checkApplyAccessPoint = new Button(classGroup, SWT.CHECK);
+	      checkApplyAccessPoint.setText(i18n.tr("Access point"));
+	      checkApplyAccessPoint.setSelection((applicable & ObjectTool.APPLICABLE_ACCESS_POINT) != 0);
+	      checkApplyAccessPoint.setEnabled(multiClass);
+
+	      if (!multiClass)
+	      {
+	         String tip = i18n.tr("Only script and URL tools can target interfaces, sensors, or access points.");
+	         checkApplyInterface.setToolTipText(tip);
+	         checkApplySensor.setToolTipText(tip);
+	         checkApplyAccessPoint.setToolTipText(tip);
+	      }
+	   }
+
 		checkAgent = new Button(dialogArea, SWT.CHECK);
 		checkAgent.setText(i18n.tr("NetXMS agent should be available"));
 		checkAgent.setSelection((filter.flags & ObjectMenuFilter.REQUIRES_AGENT) != 0);
@@ -275,7 +325,23 @@ public class Filter extends PropertyPage
     */
    @Override
    protected boolean applyChanges(boolean isApply)
-	{      
+	{
+	   if (objectTool != null && checkApplyNode != null)
+	   {
+	      int applicable = 0;
+	      if (checkApplyNode.getSelection())
+	         applicable |= ObjectTool.APPLICABLE_NODE;
+	      if (checkApplyInterface.getSelection())
+	         applicable |= ObjectTool.APPLICABLE_INTERFACE;
+	      if (checkApplySensor.getSelection())
+	         applicable |= ObjectTool.APPLICABLE_SENSOR;
+	      if (checkApplyAccessPoint.getSelection())
+	         applicable |= ObjectTool.APPLICABLE_ACCESS_POINT;
+	      if (applicable == 0)
+	         applicable = ObjectTool.APPLICABLE_NODE;
+	      objectTool.setApplicableClasses(applicable);
+	   }
+
 		if (checkAgent.getSelection())
 		   setFlag(ObjectMenuFilter.REQUIRES_AGENT);
 		else

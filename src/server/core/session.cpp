@@ -12517,7 +12517,9 @@ void ClientSession::executeLibraryScript(const NXCPMessage& request)
           (object->getObjectClass() == OBJECT_CONTAINER) ||
           (object->getObjectClass() == OBJECT_ZONE) ||
           (object->getObjectClass() == OBJECT_SUBNET) ||
-          (object->getObjectClass() == OBJECT_SENSOR))
+          (object->getObjectClass() == OBJECT_SENSOR) ||
+          (object->getObjectClass() == OBJECT_INTERFACE) ||
+          (object->getObjectClass() == OBJECT_ACCESSPOINT))
       {
          if (object->checkAccessRights(m_userId, OBJECT_ACCESS_CONTROL))
          {

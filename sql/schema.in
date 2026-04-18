@@ -1938,6 +1938,7 @@ CREATE TABLE object_tools
   icon SQL_TEXT null,
   remote_port integer not null,
   remote_host varchar(255) null,
+  applicable_classes integer not null,
   PRIMARY KEY(tool_id)
 ) TABLE_TYPE;
 

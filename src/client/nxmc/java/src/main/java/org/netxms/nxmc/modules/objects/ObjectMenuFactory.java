@@ -58,6 +58,7 @@ import org.netxms.client.objects.Dashboard;
 import org.netxms.client.objects.DashboardTemplate;
 import org.netxms.client.objects.DataCollectionTarget;
 import org.netxms.client.objects.EntireNetwork;
+import org.netxms.client.objects.Interface;
 import org.netxms.client.objects.NetworkMap;
 import org.netxms.client.objects.Rack;
 import org.netxms.client.objects.Resource;
@@ -577,6 +578,10 @@ public final class ObjectMenuFactory
          if (o instanceof AbstractNode)
          {
             nodes.add(new ObjectContext((AbstractNode)o, null, contextId));
+         }
+         else if ((o instanceof Interface) || (o instanceof Sensor) || (o instanceof AccessPoint))
+         {
+            nodes.add(new ObjectContext((AbstractObject)o, null, contextId));
          }
          else if ((o instanceof AbstractObject) && ObjectTool.isContainerObject((AbstractObject)o))
          {

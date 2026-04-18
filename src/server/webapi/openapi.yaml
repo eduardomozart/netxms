@@ -6271,6 +6271,13 @@ components:
         commandShortName:
           type: string
           description: Short command name
+        applicableClasses:
+          type: integer
+          description: |
+            Bitmask of object classes the tool is applicable to.
+            Bit 0 (1) = Node, bit 1 (2) = Interface, bit 2 (4) = Sensor,
+            bit 3 (8) = Access point. Only server-script and URL tools
+            may include bits other than Node.
         inputFields:
           type: array
           items:

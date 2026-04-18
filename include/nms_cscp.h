@@ -1710,6 +1710,7 @@ typedef struct
 #define VID_NUM_SKILLS              ((uint32_t)976)
 #define VID_NUM_DISABLED_EXTRAS     ((uint32_t)977)
 #define VID_ITEM_TYPE               ((uint32_t)978)
+#define VID_TOOL_APPLICABLE_CLASSES ((uint32_t)979)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)

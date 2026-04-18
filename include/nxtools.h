@@ -39,6 +39,16 @@
 #define TOOL_TYPE_SSH_COMMAND      10
 
 /**
+ * Applicable object classes for object tools (bitmask).
+ * Not a raw OBJECT_* bit position; translated via ObjectClassToToolMask().
+ */
+#define TOOL_APPLICABLE_NODE          0x00000001
+#define TOOL_APPLICABLE_INTERFACE     0x00000002
+#define TOOL_APPLICABLE_SENSOR        0x00000004
+#define TOOL_APPLICABLE_ACCESS_POINT  0x00000008
+#define TOOL_APPLICABLE_ALL_VALID     0x0000000F
+
+/**
  * Object tool flags
  */
 #define TF_ASK_CONFIRMATION         0x00000001
