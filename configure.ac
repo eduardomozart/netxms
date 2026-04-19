@@ -824,6 +824,28 @@ AC_ARG_WITH(libssh,
 	fi
 ])
 
+AC_ARG_ENABLE(lldpd,
+[AS_HELP_STRING(--disable-lldpd,disable lldpd integration in Linux subagent)],
+[
+	if test "x$enableval" = "xno"; then
+		DISABLE_LLDPD="yes"
+	fi
+	if test "x$enableval" = "xyes"; then
+		DISABLE_LLDPD="no"
+		REQUIRE_LLDPD="yes"
+	fi
+])
+
+AC_ARG_WITH(liblldpctl,
+[AS_HELP_STRING(--with-liblldpctl,specify liblldpctl location)],
+[
+	if test "x$withval" != "x" && test "x$withval" != "xyes" && test "x$withval" != "xno" ; then
+		LD_RUN_PATH="${withval}/lib${LD_RUN_PATH:+:}${LD_RUN_PATH}"
+		LIBLLDPCTL_LDFLAGS="-L${withval}/lib"
+		LIBLLDPCTL_CPPFLAGS="-I${withval}/include"
+	fi
+])
+
 AC_ARG_ENABLE(jq,
 [AS_HELP_STRING(--disable-jq,disable jq support)],
 [
@@ -1060,7 +1082,7 @@ AC_ARG_WITH(dist,
 	TEST_MODULES="agent test-libnxcc test-libnxsl test-libnxsnmp"
 	AGENT_UNIT_TESTS="linux-cpu-usage-collector"
 	TOOLS="nxlptest"
-	SUBAGENT_DIRS="linux ds18x20 fbdev freebsd openbsd minix mqtt mysql pgsql netbsd sunos aix informix oracle prometheus lmsensors darwin rpi java jmx opcua ubntlw db2 tuxedo mongodb ssh vmgr xen asterisk python redis"
+	SUBAGENT_DIRS="linux ds18x20 fbdev freebsd openbsd minix mqtt mysql pgsql netbsd sunos aix informix oracle prometheus lmsensors darwin rpi java jmx opcua ubntlw db2 tuxedo mongodb ssh vmgr xen asterisk python redis lldpd"
 	AGENT_DIRS="libnxappc libnxtux nxsagent"
 	NCDRV_MODULES="anysms googlechat kannel matrix mattermost mqtt msteams mymobile nexmo nxagent slack smtp smseagle telegram text2reach twilio websms xmpp"
 	HDLINK_DIRS="jira redmine"
@@ -2510,6 +2532,31 @@ if test "x$DISABLE_SSH" != "xyes" -a "x$DIST_BUILD" != "xyes"; then
 	LDFLAGS="$OLD_LDFLAGS"
 else
 	HAVE_LIBSSH=no
+fi
+
+if test "x$DISABLE_LLDPD" != "xyes" -a "x$DIST_BUILD" != "xyes"; then
+	OLD_CPPFLAGS="$CPPFLAGS"
+	OLD_LDFLAGS="$LDFLAGS"
+	CPPFLAGS="$LIBLLDPCTL_CPPFLAGS $CPPFLAGS"
+	LDFLAGS="$LIBLLDPCTL_LDFLAGS $LDFLAGS"
+	AC_CHECK_HEADER(lldpctl.h, HAVE_LIBLLDPCTL=yes, HAVE_LIBLLDPCTL=no)
+	if test "x$HAVE_LIBLLDPCTL" = "xyes"; then
+		AC_CHECK_LIB(lldpctl, lldpctl_new_name, [ HAVE_LIBLLDPCTL=yes ], [ HAVE_LIBLLDPCTL=no ])
+	fi
+
+	if test "x$HAVE_LIBLLDPCTL" = "xyes"; then
+		LIBLLDPCTL_LIBS="-llldpctl"
+		SUBAGENT_DIRS="$SUBAGENT_DIRS lldpd"
+		AC_DEFINE(HAVE_LIBLLDPCTL, 1, Define to 1 if liblldpctl is available)
+	else
+		if test "x$REQUIRE_LLDPD" = "xyes"; then
+			AC_MSG_ERROR(liblldpctl is required for lldpd integration)
+		fi
+	fi
+	CPPFLAGS="$OLD_CPPFLAGS"
+	LDFLAGS="$OLD_LDFLAGS"
+else
+	HAVE_LIBLLDPCTL=no
 fi
 
 if test "x$DISABLE_JQ" != "xyes" -a "x$DIST_BUILD" != "xyes"; then
@@ -4832,6 +4879,9 @@ AC_SUBST(INSTALL_LIBPATH)
 AC_SUBST(JANSSON_LIBS)
 AC_SUBST(LIBNXAGENT_LIBS)
 AC_SUBST(LIBNXSRV_LIBS)
+AC_SUBST(LIBLLDPCTL_CPPFLAGS)
+AC_SUBST(LIBLLDPCTL_LDFLAGS)
+AC_SUBST(LIBLLDPCTL_LIBS)
 AC_SUBST(LIBSSH_CPPFLAGS)
 AC_SUBST(LIBSSH_LDFLAGS)
 AC_SUBST(LIBMODBUS_CPPFLAGS)
@@ -4979,6 +5029,7 @@ AC_CONFIG_FILES([
 	src/agent/subagents/java/java/Makefile
 	src/agent/subagents/jmx/Makefile
 	src/agent/subagents/linux/Makefile
+	src/agent/subagents/lldpd/Makefile
 	src/agent/subagents/lmsensors/Makefile
 	src/agent/subagents/logwatch/Makefile
 	src/agent/subagents/minix/Makefile
@@ -5296,6 +5347,11 @@ if test "x${HAVE_LIBSSH}" = "xyes"; then
 	echo "SSH support             : YES"
 else
 	echo "SSH support             : NO"
+fi
+if test "x${HAVE_LIBLLDPCTL}" = "xyes"; then
+	echo "lldpd integration       : YES"
+else
+	echo "lldpd integration       : NO"
 fi
 if test "x${MQTT_SUPPORT}" = "xyes"; then
 	echo "MQTT support            : YES"

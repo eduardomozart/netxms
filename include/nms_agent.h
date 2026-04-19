@@ -733,6 +733,7 @@ static inline bool ValidateComponentToken(const AgentComponentToken *token, cons
 #define DCTDESC_HARDWARE_NETWORK_ADAPTERS            _T("Hardware: network adapters")
 #define DCTDESC_HARDWARE_PROCESSORS                  _T("Hardware: processors")
 #define DCTDESC_HARDWARE_STORAGE_DEVICES             _T("Hardware: storage devices")
+#define DCTDESC_LLDP_NEIGHBORS                       _T("LLDP neighbors")
 #define DCTDESC_LVM_VOLUME_GROUPS                    _T("LVM volume groups")
 #define DCTDESC_LVM_LOGICAL_VOLUMES                  _T("Logical volumes in volume group {instance}")
 #define DCTDESC_LVM_PHYSICAL_VOLUMES                 _T("Physical volumes in volume group {instance}")

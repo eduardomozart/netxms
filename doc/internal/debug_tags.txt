@@ -103,6 +103,7 @@ housekeeper	Housekeeper messages
 leef
 
 linux		Linux platform subagent messages
+lldpd		lldpd integration subagent messages
 
 localadmin	Local administration interface
 logs		Server log access
