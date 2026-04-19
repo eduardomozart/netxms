@@ -6100,6 +6100,27 @@ bool Node::confPollAgent()
       }
       unlockProperties();
 
+      // Check if agent exposes LLDP.Neighbors table (from lldpd subagent)
+      shared_ptr<Table> lldpTable;
+      bool agentLLDPPresent = (getTableFromAgent(L"LLDP.Neighbors", &lldpTable) == DCE_SUCCESS);
+      lockProperties();
+      if (agentLLDPPresent)
+      {
+         if (!(m_capabilities & NC_HAS_AGENT_LLDP))
+            hasChanges = true;
+         m_capabilities |= NC_HAS_AGENT_LLDP;
+         sendPollerMsg(L"   LLDP information is available from agent\r\n");
+         nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, L"ConfPoll(%s): LLDP information is available from agent", m_name);
+      }
+      else
+      {
+         if (m_capabilities & NC_HAS_AGENT_LLDP)
+            hasChanges = true;
+         m_capabilities &= ~NC_HAS_AGENT_LLDP;
+         nxlog_debug_tag(DEBUG_TAG_CONF_POLL, 5, L"ConfPoll(%s): LLDP information is not available from agent", m_name);
+      }
+      unlockProperties();
+
       // Server ID should be set on this connection before updating configuration elements on agent side
       if (pAgentConn->setServerId(g_serverId) == ERR_SUCCESS)
       {
@@ -14324,6 +14345,7 @@ static FlagNameMapping s_capabilityMapping[] =
    { NC_HAS_SERVICE_MANAGER, "hasServiceManager" },
    { NC_SSH_INTERACTIVE_CHANNEL, "sshInteractiveChannel" },
    { NC_SSH_COMMAND_CHANNEL, "sshCommandChannel" },
+   { NC_HAS_AGENT_LLDP, "hasAgentLldp" },
    { 0, nullptr }
 };
 

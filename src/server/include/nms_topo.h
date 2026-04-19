@@ -483,6 +483,7 @@ ObjectArray<LLDP_LOCAL_PORT_INFO> *GetLLDPLocalPortInfo(const Node& node, SNMP_T
 
 shared_ptr<LinkLayerNeighbors> BuildLinkLayerNeighborList(Node *node);
 void AddLLDPNeighbors(Node *node, LinkLayerNeighbors *nbs);
+void AddLLDPNeighborsFromAgent(Node *node, LinkLayerNeighbors *nbs);
 void AddNDPNeighbors(Node *node, LinkLayerNeighbors *nbs);
 void AddCDPNeighbors(Node *node, LinkLayerNeighbors *nbs);
 void AddSTPNeighbors(Node *node, LinkLayerNeighbors *nbs);

@@ -390,78 +390,113 @@ static StringObjectMap<SNMP_Variable> *ReadLLDPRemoteTable(Node *node, bool lldp
 }
 
 /**
- * Find remote access point
+ * Find remote access point by chassis ID (byte form) and fallback sysName.
  */
-static shared_ptr<AccessPoint> FindRemoteAccessPoint(Node *node, const SNMP_Variable *lldpRemChassisId, const SNMP_Variable *lldpRemChassisIdSubtype, const SNMP_Variable *lldpRemSysName)
+static shared_ptr<AccessPoint> FindRemoteLldpAccessPoint(Node *node, uint32_t idSubType, const BYTE *chassisId, size_t chassisIdLen, const TCHAR *sysName)
 {
    shared_ptr<AccessPoint> ap;
 
    // Try to find access point by MAC address if chassis ID type is "MAC address"
-   uint32_t idSubType = lldpRemChassisIdSubtype->getValueAsUInt();
-   if ((idSubType == 4) && (lldpRemChassisId->getValueLength() >= 6))
+   if ((idSubType == 4) && (chassisIdLen >= 6))
    {
-      // Some devices (definitely seen on Mikrotik) report lldpRemChassisIdSubtype as 4 (MAC address)
+      // Some devices (definitely seen on Mikrotik) report chassisIdSubtype as 4 (MAC address)
       // but actually encode it not as 6 bytes value but in textual form (like 00:04:F2:E7:05:47).
-      TCHAR buffer[64];
-      MacAddress macAddr = (lldpRemChassisId->getValueLength() > 8) ? MacAddress::parse(lldpRemChassisId->getValueAsString(buffer, 64)) : lldpRemChassisId->getValueAsMACAddr();
-      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteAccessPoint(%s [%u]): remoteIdSubType is MAC address (\"%s\")"),
-               node->getName(), node->getId(), ChassisIdSubtypeAsText(idSubType), idSubType, macAddr.toString().cstr());
+      MacAddress macAddr;
+      if (chassisIdLen > 8)
+      {
+         char buffer[64];
+         size_t n = MIN(chassisIdLen, sizeof(buffer) - 1);
+         memcpy(buffer, chassisId, n);
+         buffer[n] = 0;
+         macAddr = MacAddress::parse(buffer);
+      }
+      else
+      {
+         macAddr = MacAddress(chassisId, chassisIdLen);
+      }
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteLldpAccessPoint(%s [%u]): remoteIdSubType is MAC address (\"%s\")"),
+               node->getName(), node->getId(), macAddr.toString().cstr());
       ap = FindAccessPointByMAC(macAddr);
    }
 
    // Try to find access point by sysName as fallback
-   if (ap == nullptr)
+   if ((ap == nullptr) && (sysName != nullptr) && (sysName[0] != 0))
    {
-      TCHAR sysName[256] = _T("");
-      lldpRemSysName->getValueAsString(sysName, 256);
-      Trim(sysName);
-      if (sysName[0] != 0)
-      {
-         TCHAR buffer[256];
-         bool convertToHex = false;
-         nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteNode(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindAccessPointByMAC failed, fallback to sysName (\"%s\")"),
-                  node->getName(), node->getId(), ChassisIdSubtypeAsText(idSubType), idSubType, lldpRemChassisId->getValueAsPrintableString(buffer, 256, &convertToHex), sysName);
-         ap = static_pointer_cast<AccessPoint>(FindObjectByName(sysName, OBJECT_ACCESSPOINT));
-      }
+      TCHAR idBuffer[256];
+      BinToStr(chassisId, chassisIdLen, idBuffer);
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteLldpAccessPoint(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindAccessPointByMAC failed, fallback to sysName (\"%s\")"),
+               node->getName(), node->getId(), ChassisIdSubtypeAsText(idSubType), idSubType, idBuffer, sysName);
+      ap = static_pointer_cast<AccessPoint>(FindObjectByName(sysName, OBJECT_ACCESSPOINT));
    }
 
    return ap;
 }
 
 /**
- * Find remote node
+ * Find remote access point (SNMP variant)
  */
-static shared_ptr<Node> FindRemoteNode(Node *node, const SNMP_Variable *lldpRemChassisId, const SNMP_Variable *lldpRemChassisIdSubtype, const SNMP_Variable *lldpRemSysName)
+static shared_ptr<AccessPoint> FindRemoteAccessPoint(Node *node, const SNMP_Variable *lldpRemChassisId, const SNMP_Variable *lldpRemChassisIdSubtype, const SNMP_Variable *lldpRemSysName)
+{
+   TCHAR sysName[256] = _T("");
+   lldpRemSysName->getValueAsString(sysName, 256);
+   Trim(sysName);
+   return FindRemoteLldpAccessPoint(node, lldpRemChassisIdSubtype->getValueAsUInt(),
+            lldpRemChassisId->getValue(), lldpRemChassisId->getValueLength(), sysName);
+}
+
+/**
+ * Find remote node by chassis ID (byte form) and fallback sysName.
+ */
+static shared_ptr<Node> FindRemoteLldpNode(Node *node, uint32_t idSubType, const BYTE *chassisId, size_t chassisIdLen, const TCHAR *sysName)
 {
    // Build LLDP ID for remote system
-   uint32_t idSubType = lldpRemChassisIdSubtype->getValueAsUInt();
-   String remoteId = BuildLldpId(idSubType, lldpRemChassisId->getValue(), lldpRemChassisId->getValueLength());
+   String remoteId = BuildLldpId(idSubType, chassisId, chassisIdLen);
    shared_ptr<Node> remoteNode = FindNodeByLLDPId(remoteId);
 
    // Try to find node by interface MAC address if chassis ID type is "MAC address"
-   if ((remoteNode == nullptr) && (idSubType == 4) && (lldpRemChassisId->getValueLength() >= 6))
+   if ((remoteNode == nullptr) && (idSubType == 4) && (chassisIdLen >= 6))
    {
-      // Some devices (definitely seen on Mikrotik) report lldpRemChassisIdSubtype as 4 (MAC address)
+      // Some devices (definitely seen on Mikrotik) report chassisIdSubtype as 4 (MAC address)
       // but actually encode it not as 6 bytes value but in textual form (like 00:04:F2:E7:05:47).
-      TCHAR buffer[64];
-      MacAddress macAddr = (lldpRemChassisId->getValueLength() > 8) ? MacAddress::parse(lldpRemChassisId->getValueAsString(buffer, 64)) : lldpRemChassisId->getValueAsMACAddr();
-      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteNode(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindNodeByLLDPId failed, fallback to interface MAC address (\"%s\")"),
+      MacAddress macAddr;
+      if (chassisIdLen > 8)
+      {
+         char buffer[64];
+         size_t n = MIN(chassisIdLen, sizeof(buffer) - 1);
+         memcpy(buffer, chassisId, n);
+         buffer[n] = 0;
+         macAddr = MacAddress::parse(buffer);
+      }
+      else
+      {
+         macAddr = MacAddress(chassisId, chassisIdLen);
+      }
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteLldpNode(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindNodeByLLDPId failed, fallback to interface MAC address (\"%s\")"),
                node->getName(), node->getId(), ChassisIdSubtypeAsText(idSubType), idSubType, remoteId.cstr(), macAddr.toString().cstr());
       remoteNode = FindNodeByMAC(macAddr);
    }
 
    // Try to find node by sysName as fallback
-   if (remoteNode == nullptr)
+   if ((remoteNode == nullptr) && (sysName != nullptr))
    {
-      TCHAR sysName[256] = _T("");
-      lldpRemSysName->getValueAsString(sysName, 256);
-      Trim(sysName);
-      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteNode(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindNodeByLLDPId and FindNodeByMAC failed, fallback to sysName (\"%s\")"),
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindRemoteLldpNode(%s [%u]): remoteIdSubType=%s(%u) remoteId=%s: FindNodeByLLDPId and FindNodeByMAC failed, fallback to sysName (\"%s\")"),
                node->getName(), node->getId(), ChassisIdSubtypeAsText(idSubType), idSubType, remoteId.cstr(), sysName);
       remoteNode = FindNodeBySysName(sysName);
    }
 
    return remoteNode;
+}
+
+/**
+ * Find remote node (SNMP variant)
+ */
+static shared_ptr<Node> FindRemoteNode(Node *node, const SNMP_Variable *lldpRemChassisId, const SNMP_Variable *lldpRemChassisIdSubtype, const SNMP_Variable *lldpRemSysName)
+{
+   TCHAR sysName[256] = _T("");
+   lldpRemSysName->getValueAsString(sysName, 256);
+   Trim(sysName);
+   return FindRemoteLldpNode(node, lldpRemChassisIdSubtype->getValueAsUInt(),
+            lldpRemChassisId->getValue(), lldpRemChassisId->getValueLength(), sysName);
 }
 
 /**
@@ -667,7 +702,7 @@ static uint32_t FindLocalInterfaceIndex(Node *node, const SNMP_ObjectId& oid, bo
 
    if (doRemoteLookup)
    {
-      if ((remoteNode != nullptr) && (ifRemote != nullptr) && remoteNode->isLLDPSupported())
+      if ((remoteNode != nullptr) && (ifRemote != nullptr) && ((remoteNode->getCapabilities() & NC_IS_LLDP) != 0))
       {
          nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("FindLocalInterfaceIndex(%s [%u], %s): lldpRemLocalPortNum is invalid, attempt to find matching information on remote node %s [%u]"),
                   node->getName(), node->getId(), LLDP_MIB_NAME(lldpMibVersion2), remoteNode->getName(), remoteNode->getId());
@@ -834,7 +869,7 @@ static void AddLLDPNeighbors(Node *node, LinkLayerNeighbors *nbs, bool lldpMibVe
  */
 void AddLLDPNeighbors(Node *node, LinkLayerNeighbors *nbs)
 {
-	if (!node->isLLDPSupported())
+	if ((node->getCapabilities() & NC_IS_LLDP) == 0)
 		return;
 
 	nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, _T("Collecting LLDP topology information for node %s [%u]"), node->getName(), node->getId());
@@ -928,4 +963,138 @@ String BuildLldpId(uint32_t type, const BYTE *data, size_t length)
       sb.appendAsHexString(data, length);
    }
    return sb;
+}
+
+/**
+ * Convert textual agent column value to byte buffer suitable for FindRemoteLldpNode / FindRemoteInterface.
+ * Returns number of bytes copied (may be 0 for empty input).
+ */
+static size_t LldpTextToBytes(const TCHAR *text, BYTE *buffer, size_t bufferSize)
+{
+   if ((text == nullptr) || (text[0] == 0))
+      return 0;
+#ifdef UNICODE
+   char utf8[512];
+   size_t n = wchar_to_utf8(text, -1, utf8, sizeof(utf8) - 1);
+   if (n > 0)
+      n--;  // drop terminator written by wchar_to_utf8
+   if (n > bufferSize)
+      n = bufferSize;
+   memcpy(buffer, utf8, n);
+   return n;
+#else
+   size_t n = strlen(text);
+   if (n > bufferSize)
+      n = bufferSize;
+   memcpy(buffer, text, n);
+   return n;
+#endif
+}
+
+/**
+ * Add LLDP-discovered neighbors from agent-side LLDP.Neighbors table (provided by lldpd subagent)
+ */
+void AddLLDPNeighborsFromAgent(Node *node, LinkLayerNeighbors *nbs)
+{
+   if ((node->getCapabilities() & NC_HAS_AGENT_LLDP) == 0)
+      return;
+
+   nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"Collecting LLDP topology information from agent for node %s [%u]", node->getName(), node->getId());
+
+   shared_ptr<Table> table;
+   if (node->getTableFromAgent(L"LLDP.Neighbors", &table) != DCE_SUCCESS)
+   {
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): cannot read LLDP.Neighbors table from agent", node->getName(), node->getId());
+      return;
+   }
+
+   int cLocalIfIndex = table->getColumnIndex(L"LOCAL_IF_INDEX");
+   int cLocalIfName = table->getColumnIndex(L"LOCAL_IF_NAME");
+   int cChassisIdSubtype = table->getColumnIndex(L"CHASSIS_ID_SUBTYPE");
+   int cChassisId = table->getColumnIndex(L"CHASSIS_ID");
+   int cSysName = table->getColumnIndex(L"SYS_NAME");
+   int cPortIdSubtype = table->getColumnIndex(L"PORT_ID_SUBTYPE");
+   int cPortId = table->getColumnIndex(L"PORT_ID");
+   int cPortDescr = table->getColumnIndex(L"PORT_DESCRIPTION");
+
+   if ((cLocalIfIndex < 0) || (cLocalIfName < 0) || (cChassisIdSubtype < 0) || (cChassisId < 0) ||
+       (cSysName < 0) || (cPortIdSubtype < 0) || (cPortId < 0))
+   {
+      nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): LLDP.Neighbors is missing required columns", node->getName(), node->getId());
+      return;
+   }
+
+   for(int r = 0; r < table->getNumRows(); r++)
+   {
+      uint32_t localIfIndex = table->getAsUInt(r, cLocalIfIndex);
+      const TCHAR *localIfName = table->getAsString(r, cLocalIfName);
+
+      shared_ptr<Interface> ifLocal;
+      if (localIfIndex != 0)
+         ifLocal = node->findInterfaceByIndex(localIfIndex);
+      if ((ifLocal == nullptr) && (localIfName != nullptr) && (localIfName[0] != 0))
+         ifLocal = node->findInterfaceByName(localIfName);
+      if (ifLocal == nullptr)
+      {
+         nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): cannot find local interface (ifIndex=%u name=\"%s\")",
+                  node->getName(), node->getId(), localIfIndex, CHECK_NULL(localIfName));
+         continue;
+      }
+
+      uint32_t chassisIdSubtype = table->getAsUInt(r, cChassisIdSubtype);
+      const TCHAR *chassisIdStr = table->getAsString(r, cChassisId);
+      const TCHAR *sysName = table->getAsString(r, cSysName);
+
+      BYTE chassisIdBytes[256];
+      size_t chassisIdLen = LldpTextToBytes(chassisIdStr, chassisIdBytes, sizeof(chassisIdBytes));
+
+      LL_NEIGHBOR_INFO info;
+      info.ifLocal = ifLocal->getIfIndex();
+      info.isPtToPt = true;
+      info.protocol = LL_PROTO_LLDP;
+      info.isCached = false;
+
+      shared_ptr<Node> remoteNode = FindRemoteLldpNode(node, chassisIdSubtype, chassisIdBytes, chassisIdLen, sysName);
+      if (remoteNode != nullptr)
+      {
+         uint32_t portIdSubtype = table->getAsUInt(r, cPortIdSubtype);
+         const TCHAR *portIdStr = table->getAsString(r, cPortId);
+
+         BYTE portIdBytes[1024];
+         size_t portIdLen = LldpTextToBytes(portIdStr, portIdBytes, sizeof(portIdBytes));
+
+         shared_ptr<Interface> ifRemote = FindRemoteInterface(remoteNode.get(), portIdSubtype, portIdBytes, portIdLen);
+         if ((ifRemote == nullptr) && (cPortDescr >= 0))
+         {
+            const TCHAR *portDescr = table->getAsString(r, cPortDescr);
+            if ((portDescr != nullptr) && (portDescr[0] != 0))
+               ifRemote = remoteNode->findInterfaceByName(portDescr);
+         }
+
+         info.objectId = remoteNode->getId();
+         info.ifRemote = (ifRemote != nullptr) ? ifRemote->getIfIndex() : 0;
+         nbs->addConnection(info);
+         nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): added connection: ifLocal=%u objectId=%u (node) ifRemote=%u",
+                  node->getName(), node->getId(), info.ifLocal, info.objectId, info.ifRemote);
+      }
+      else
+      {
+         shared_ptr<AccessPoint> ap = FindRemoteLldpAccessPoint(node, chassisIdSubtype, chassisIdBytes, chassisIdLen, sysName);
+         if (ap != nullptr)
+         {
+            info.objectId = ap->getId();
+            info.ifRemote = 1;
+            nbs->addConnection(info);
+            nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): added connection: ifLocal=%u objectId=%u (access point)",
+                     node->getName(), node->getId(), info.ifLocal, info.objectId);
+         }
+         else
+         {
+            nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"AddLLDPNeighborsFromAgent(%s [%u]): remote node not found (chassisIdSubtype=%u chassisId=\"%s\" sysName=\"%s\")",
+                     node->getName(), node->getId(), chassisIdSubtype, CHECK_NULL(chassisIdStr), CHECK_NULL(sysName));
+         }
+      }
+   }
+
+   nxlog_debug_tag(DEBUG_TAG_TOPO_LLDP, 5, L"Finished collecting agent LLDP topology information for node %s [%u]", node->getName(), node->getId());
 }

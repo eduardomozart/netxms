@@ -4222,8 +4222,9 @@ public:
    bool isBridge() const { return is_bit_set(m_capabilities, NC_IS_BRIDGE); }
    bool isRouter() const { return is_bit_set(m_capabilities, NC_IS_ROUTER); }
    bool isOSPFSupported() const { return is_bit_set(m_capabilities, NC_IS_OSPF); }
-   bool isLLDPSupported() const { return is_bit_set(m_capabilities, NC_IS_LLDP); }
+   bool isLLDPSupported() const { return (m_capabilities & (NC_IS_LLDP | NC_HAS_AGENT_LLDP)) != 0; }
    bool isLLDPV2MIBSupported() const { return is_bit_set(m_capabilities, NC_LLDP_V2_MIB); }
+   bool isAgentLLDPSupported() const { return is_bit_set(m_capabilities, NC_HAS_AGENT_LLDP); }
    bool isLocalManagement() const { return is_bit_set(m_capabilities, NC_IS_LOCAL_MGMT); }
    bool isFdbUsingIfIndex() const { return m_driver->isFdbUsingIfIndex(this, m_driverData); }
    bool isWirelessController() const { return is_bit_set(m_capabilities, NC_IS_WIFI_CONTROLLER); }

@@ -2888,6 +2888,7 @@ NXSL_Value *NXSL_ServerEnv::getConstantValue(const NXSL_Identifier& name, NXSL_V
       NXSL_ENV_CONSTANT("NodeCapability::FileManager", NC_HAS_FILE_MANAGER);
       NXSL_ENV_CONSTANT("NodeCapability::IEEE802_1x", NC_IS_8021X);
       NXSL_ENV_CONSTANT("NodeCapability::IfXTable", NC_HAS_IFXTABLE);
+      NXSL_ENV_CONSTANT("NodeCapability::AgentLLDP", NC_HAS_AGENT_LLDP);
       NXSL_ENV_CONSTANT("NodeCapability::LLDP", NC_IS_LLDP);
       NXSL_ENV_CONSTANT("NodeCapability::LLDPv2", NC_LLDP_V2_MIB);
       NXSL_ENV_CONSTANT("NodeCapability::LocalManagement", NC_IS_LOCAL_MGMT);

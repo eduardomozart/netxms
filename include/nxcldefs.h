@@ -252,6 +252,7 @@
 #define NC_HAS_SERVICE_MANAGER     _ULL(0x0400000000)  /* Node has service manager accessible via NetXMS agent */
 #define NC_SSH_INTERACTIVE_CHANNEL _ULL(0x0800000000)  /* Set if interactive (shell) SSH channel can be established */
 #define NC_SSH_COMMAND_CHANNEL     _ULL(0x1000000000)  /* Set if SSH command channel can be established */
+#define NC_HAS_AGENT_LLDP          _ULL(0x2000000000)  /* Agent exposes LLDP.Neighbors table (lldpd) */
 
 /**
  * Node flags

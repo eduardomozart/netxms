@@ -154,7 +154,10 @@ shared_ptr<LinkLayerNeighbors> BuildLinkLayerNeighborList(Node *node)
 	bool processStandardMibs = AddDriverNeighbors(node, nbs);
 	if (processStandardMibs)
 	{
-      AddLLDPNeighbors(node, nbs);
+      if (node->getCapabilities() & NC_HAS_AGENT_LLDP)
+         AddLLDPNeighborsFromAgent(node, nbs);
+      else
+         AddLLDPNeighbors(node, nbs);
       AddCDPNeighbors(node, nbs);
       AddNDPNeighbors(node, nbs);
 	}
