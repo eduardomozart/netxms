@@ -60,6 +60,7 @@ public class SNMP extends AbstractDCIPropertyPage
 	private DataCollectionObject dco;
 	private Button checkInterpretRawSnmpValue;
    private Combo snmpRawType;
+   private Button checkUseMibEnumValues;
    private Button checkUseCustomSnmpPort;
    private Spinner customSnmpPort;
    private Button checkUseCustomSnmpVersion;
@@ -114,6 +115,11 @@ public class SNMP extends AbstractDCIPropertyPage
          gd.grabExcessHorizontalSpace = true;
          gd.horizontalAlignment = SWT.FILL;
          snmpRawType.setLayoutData(gd);
+
+         checkUseMibEnumValues = new Button(pageArea, SWT.CHECK);
+         checkUseMibEnumValues.setText(i18n.tr("Use enum values from MIB for display"));
+         checkUseMibEnumValues.setSelection(((DataCollectionItem)dco).isUseMibEnumValues());
+         checkUseMibEnumValues.setEnabled(dco.getOrigin() == DataOrigin.SNMP);
       }
 
       checkUseCustomSnmpPort = new Button(pageArea, SWT.CHECK);
@@ -223,6 +229,7 @@ public class SNMP extends AbstractDCIPropertyPage
       {
    	   ((DataCollectionItem)dco).setSnmpRawValueInOctetString(checkInterpretRawSnmpValue.getSelection());
          ((DataCollectionItem)dco).setSnmpRawValueType(snmpRawType.getSelectionIndex());
+         ((DataCollectionItem)dco).setUseMibEnumValues(checkUseMibEnumValues.getSelection());
       }
       if (checkUseCustomSnmpPort.getSelection())
       {
@@ -256,6 +263,7 @@ public class SNMP extends AbstractDCIPropertyPage
       if (dco instanceof DataCollectionItem)
       {
          checkInterpretRawSnmpValue.setSelection(false);
+         checkUseMibEnumValues.setSelection(false);
       }
       checkUseCustomSnmpPort.setSelection(false);
       customSnmpPort.setSelection(161);

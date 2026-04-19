@@ -40,6 +40,7 @@ public class DataCollectionItem extends DataCollectionObject
    public static final int DCF_SHOW_IN_OBJECT_OVERVIEW  = 0x00800;
    public static final int DCF_MULTIPLIERS_MASK         = 0x30000;
    public static final int DCF_STORE_CHANGES_ONLY       = 0x40000;
+   public static final int DCF_USE_SNMP_MIB_ENUM        = 0x100000;
 
 	// Aggregation functions
 	public static final int DCF_FUNCTION_SUM = 0;
@@ -533,6 +534,27 @@ public class DataCollectionItem extends DataCollectionObject
          flags |= DCF_STORE_CHANGES_ONLY;
       else
          flags &= ~DCF_STORE_CHANGES_ONLY;
+   }
+
+   /**
+    * @return state of DCF_USE_SNMP_MIB_ENUM flag
+    */
+   public boolean isUseMibEnumValues()
+   {
+      return (flags & DCF_USE_SNMP_MIB_ENUM) != 0;
+   }
+
+   /**
+    * Set state of DCF_USE_SNMP_MIB_ENUM flag.
+    *
+    * @param enable true to enable MIB enum label substitution on display
+    */
+   public void setUseMibEnumValues(boolean enable)
+   {
+      if (enable)
+         flags |= DCF_USE_SNMP_MIB_ENUM;
+      else
+         flags &= ~DCF_USE_SNMP_MIB_ENUM;
    }
 
    /**

@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.localization.DateFormatFactory;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.modules.datacollection.DciValueFormatter;
 import org.netxms.nxmc.modules.datacollection.propertypages.Thresholds;
 import org.netxms.nxmc.modules.datacollection.views.BaseDataCollectionView;
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.ThresholdLabelProvider;
@@ -132,7 +133,7 @@ public class LastValuesLabelProvider extends LabelProvider implements ITableLabe
                return i18n.tr("<< ERROR >>");
 				if (dciValue.getDcObjectType() == DataCollectionObject.DCO_TYPE_TABLE)
                return i18n.tr("<< TABLE >>");
-            return dciValue.getFormattedValue(useMultipliers, DateFormatFactory.getTimeFormatter());
+            return DciValueFormatter.format(dciValue, useMultipliers, DateFormatFactory.getTimeFormatter());
 		}
 		return null;
 	}

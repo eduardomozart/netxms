@@ -26,6 +26,7 @@ import org.eclipse.swt.graphics.Image;
 import org.netxms.client.constants.ObjectStatus;
 import org.netxms.client.datacollection.DciValue;
 import org.netxms.nxmc.localization.DateFormatFactory;
+import org.netxms.nxmc.modules.datacollection.DciValueFormatter;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
 import org.netxms.nxmc.resources.ThemeEngine;
 
@@ -59,7 +60,7 @@ public class OverviewDciLabelProvider extends LabelProvider implements ITableLab
          case 0:
             return dci.getDescription();
          case 1:
-            return dci.getFormattedValue(true, DateFormatFactory.getTimeFormatter());
+            return DciValueFormatter.format(dci, true, DateFormatFactory.getTimeFormatter());
          case 2:            
             if (dci.getTimestamp().getTime() <= 1000)
                return null;

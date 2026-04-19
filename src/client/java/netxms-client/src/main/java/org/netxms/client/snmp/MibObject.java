@@ -101,6 +101,7 @@ public class MibObject
 	private String textualConvention;
    private String displayHint;
    private String enumValues;
+   private Map<Integer, String> enumValueMap;
    private String index;
 	private int type;
 	private int status;
@@ -393,5 +394,55 @@ public class MibObject
    public String getEnumValues()
    {
       return (enumValues != null) ? enumValues : "";
+   }
+
+   /**
+    * Resolve numeric value to its MIB enum label (e.g. 1 -&gt; "up").
+    * Parses {@link #enumValues} string in format "name1(N1), name2(N2), ..." on first call
+    * and caches the result. Returns null if this object has no enum values or the given
+    * numeric value is not present in the enumeration.
+    *
+    * @param value numeric value to resolve
+    * @return enum label, or null if not found
+    */
+   public synchronized String resolveEnumValue(int value)
+   {
+      if (enumValueMap == null)
+      {
+         if ((enumValues == null) || enumValues.isEmpty())
+            return null;
+
+         Map<Integer, String> map = new HashMap<Integer, String>();
+         int pos = 0;
+         int len = enumValues.length();
+         while(pos < len)
+         {
+            int openParen = enumValues.indexOf('(', pos);
+            if (openParen < 0)
+               break;
+            int closeParen = enumValues.indexOf(')', openParen + 1);
+            if (closeParen < 0)
+               break;
+
+            String name = enumValues.substring(pos, openParen).trim();
+            if (name.startsWith(","))
+               name = name.substring(1).trim();
+
+            try
+            {
+               int num = Integer.parseInt(enumValues.substring(openParen + 1, closeParen).trim());
+               if (!name.isEmpty())
+                  map.put(num, name);
+            }
+            catch(NumberFormatException e)
+            {
+               // Skip malformed entries
+            }
+
+            pos = closeParen + 1;
+         }
+         enumValueMap = map;
+      }
+      return enumValueMap.get(value);
    }
 }

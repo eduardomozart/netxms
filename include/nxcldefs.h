@@ -1047,6 +1047,7 @@ enum HistoricalDataType
 #define DCF_MULTIPLIERS_MASK         ((uint32_t)0x030000)
 #define DCF_STORE_CHANGES_ONLY       ((uint32_t)0x040000)
 #define DCF_UNSUPPORTED_AS_ERROR     ((uint32_t)0x080000)
+#define DCF_USE_SNMP_MIB_ENUM        ((uint32_t)0x100000)
 
 /**
  * DCI state flags
