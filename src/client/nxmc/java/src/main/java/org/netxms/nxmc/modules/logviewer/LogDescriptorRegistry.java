@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.ServiceLoader;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
+import org.netxms.client.constants.UserAccessRights;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.BusinessService;
 import org.netxms.client.objects.Node;
@@ -93,8 +94,20 @@ public final class LogDescriptorRegistry
          }
       });
       descriptors.add(new LogDescriptor("MaintenanceJournal", i18n.tr("Maintenance Journal"), i18n.tr("Maintenance journal"), "object_id"));
-      descriptors.add(new LogDescriptor("NotificationLog", i18n.tr("Notifications"), null, null));
-      descriptors.add(new LogDescriptor("ServerActionExecutionLog", i18n.tr("Server Action Executions"), null, null));
+      descriptors.add(new LogDescriptor("NotificationLog", i18n.tr("Notifications"), null, null) {
+         @Override
+         public boolean isValidForSession(NXCSession session)
+         {
+            return (session.getUserSystemRights() & UserAccessRights.SYSTEM_ACCESS_VIEW_NOTIFICATION_LOG) != 0;
+         }
+      });
+      descriptors.add(new LogDescriptor("ServerActionExecutionLog", i18n.tr("Server Action Executions"), null, null) {
+         @Override
+         public boolean isValidForSession(NXCSession session)
+         {
+            return (session.getUserSystemRights() & UserAccessRights.SYSTEM_ACCESS_VIEW_ACTION_LOG) != 0;
+         }
+      });
       descriptors.add(new LogDescriptor("SnmpTrapLog", i18n.tr("SNMP Traps"), i18n.tr("SNMP traps"), "object_id"));
       descriptors.add(new LogDescriptor("syslog", i18n.tr("Syslog"), null, "source_object_id"));
       descriptors.add(new LogDescriptor("WindowsEventLog", i18n.tr("Windows Events"), i18n.tr("Windows events"), "node_id") {

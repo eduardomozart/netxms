@@ -120,11 +120,13 @@ public class SystemRights extends PropertyPage
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_UNLINK_ISSUES, i18n.tr("Unlink helpdesk tickets")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_USE_AI_ASSISTANT, i18n.tr("Use AI assistant")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_USER_SCHEDULED_TASKS, i18n.tr("Manage user scheduled tasks")));
+      attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_ACTION_LOG, i18n.tr("View action execution log")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_ALL_ALARMS, i18n.tr("View all alarm categories")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_ASSET_CHANGE_LOG, i18n.tr("View asset change log")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_AUDIT_LOG, i18n.tr("View audit log")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_EVENT_DB, i18n.tr("View event templates configuration")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_EVENT_LOG, i18n.tr("View event log")));
+      attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_NOTIFICATION_LOG, i18n.tr("View notification log")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_SYSLOG, i18n.tr("View syslog")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_TRAP_LOG, i18n.tr("View SNMP trap log")));
       attributes.add(new AccessAttribute(UserAccessRights.SYSTEM_ACCESS_VIEW_WELCOME_PAGE, i18n.tr("View welcome page")));

@@ -161,7 +161,7 @@ static NXCORE_LOG s_logs[] =
          { nullptr, nullptr, 0, 0 }
       }
    },
-   { L"NotificationLog", L"notification_log", L"id", nullptr, SYSTEM_ACCESS_VIEW_EVENT_LOG,
+   { L"NotificationLog", L"notification_log", L"id", nullptr, SYSTEM_ACCESS_VIEW_NOTIFICATION_LOG,
       "Notification delivery log. Records all notification attempts including channel (email, SMS, Teams, etc.), "
       "recipient address, subject, message body, triggering event, processing rule, and delivery status (success/failure).",
       {
@@ -202,7 +202,7 @@ static NXCORE_LOG s_logs[] =
          { nullptr, nullptr, 0, 0 }
       }
    },
-   { L"ServerActionExecutionLog", L"server_action_execution_log", L"id", nullptr, SYSTEM_ACCESS_VIEW_EVENT_LOG,
+   { L"ServerActionExecutionLog", L"server_action_execution_log", L"id", nullptr, SYSTEM_ACCESS_VIEW_ACTION_LOG,
       "Server action execution log. Records execution of server-side actions triggered by event processing rules "
       "including action name, notification channel, recipient, subject, action data/command, triggering event, "
       "and execution status (success/failure).",
