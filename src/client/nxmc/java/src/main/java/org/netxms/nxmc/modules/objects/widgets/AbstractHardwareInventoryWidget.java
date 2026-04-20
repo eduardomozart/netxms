@@ -18,6 +18,7 @@
  */
 package org.netxms.nxmc.modules.objects.widgets;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -125,4 +126,11 @@ public abstract class AbstractHardwareInventoryWidget extends Composite
     * @return index of "serial" column
     */
    public abstract int getSerialColumnIndex();
+
+   /**
+    * Get action for toggling automatic column resize on the underlying viewer.
+    *
+    * @return check-box action for toggling automatic column resize
+    */
+   public abstract Action getAutoSizeColumnsAction();
 }

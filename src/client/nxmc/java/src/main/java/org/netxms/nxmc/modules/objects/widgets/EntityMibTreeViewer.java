@@ -20,8 +20,8 @@ package org.netxms.nxmc.modules.objects.widgets;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ColumnViewer;
-import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TreeItem;
@@ -69,29 +69,20 @@ public class EntityMibTreeViewer extends AbstractHardwareInventoryWidget
       super(parent, style, view);
 
       viewer = new SortableTreeViewer(this, SWT.FULL_SELECTION | SWT.MULTI);
-      addColumn(i18n.tr("Name"), 200);
-      addColumn(i18n.tr("Class"), 100);
-      addColumn(i18n.tr("Description"), 250);
-      addColumn(i18n.tr("Model"), 150);
-      addColumn(i18n.tr("Firmware"), 100);
-      addColumn(i18n.tr("Serial Number"), 150);
-      addColumn(i18n.tr("Vendor"), 150);
-      addColumn(i18n.tr("Interface"), 150);
+      viewer.addColumn(i18n.tr("Name"), 200);
+      viewer.addColumn(i18n.tr("Class"), 100);
+      viewer.addColumn(i18n.tr("Description"), 250);
+      viewer.addColumn(i18n.tr("Model"), 150);
+      viewer.addColumn(i18n.tr("Firmware"), 100);
+      viewer.addColumn(i18n.tr("Serial Number"), 150);
+      viewer.addColumn(i18n.tr("Vendor"), 150);
+      viewer.addColumn(i18n.tr("Interface"), 150);
       labelProvider = new ComponentTreeLabelProvider();
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ComponentTreeContentProvider());
       viewer.getTree().setHeaderVisible(true);
       viewer.getTree().setLinesVisible(true);
-   }
-
-   /**
-    * @param name
-    */
-   private void addColumn(String name, int width)
-   {
-      TreeViewerColumn tc = new TreeViewerColumn(viewer, SWT.LEFT);
-      tc.getColumn().setText(name);
-      tc.getColumn().setWidth(width);
+      viewer.setConfigPrefix("EntityMibTreeViewer");
    }
 
    /**
@@ -120,7 +111,7 @@ public class EntityMibTreeViewer extends AbstractHardwareInventoryWidget
                         labelProvider.setNode((AbstractNode)view.getObject());
                         viewer.setInput(new Object[] { root });
                         viewer.expandAll();
-                        viewer.packColumns();
+                        viewer.packColumns(false);
                      }
                   }
                });
@@ -161,6 +152,15 @@ public class EntityMibTreeViewer extends AbstractHardwareInventoryWidget
    public ColumnViewer getViewer()
    {
       return viewer;
+   }
+
+   /**
+    * @see org.netxms.nxmc.modules.objects.widgets.AbstractHardwareInventoryWidget#getAutoSizeColumnsAction()
+    */
+   @Override
+   public Action getAutoSizeColumnsAction()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

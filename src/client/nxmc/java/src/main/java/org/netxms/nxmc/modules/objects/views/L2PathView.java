@@ -24,13 +24,12 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -53,7 +52,6 @@ import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -154,7 +152,7 @@ public class L2PathView extends AdHocObjectView
 
       final String[] names = { i18n.tr("Hop"), i18n.tr("Node"), i18n.tr("Outbound interface") };
       final int[] widths = { 80, 200, 200 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
       viewer.disableSorting();
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new PathLabelProvider());
@@ -163,16 +161,6 @@ public class L2PathView extends AdHocObjectView
       actionCopyRowToClipboard = new CopyTableRowsAction(viewer, true);
       actionExportToCsv = new ExportToCsvAction(this, viewer, true);
       actionExportAllToCsv = new ExportToCsvAction(this, viewer, false);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
 
       createContextMenu();
    }
@@ -200,6 +188,12 @@ public class L2PathView extends AdHocObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**
@@ -281,7 +275,7 @@ public class L2PathView extends AdHocObjectView
                   hops.add(new HopInfo(hops.size()));
                }
                viewer.setInput(hops);
-               viewer.packColumns();
+               viewer.packColumns(false);
             });
          }
 

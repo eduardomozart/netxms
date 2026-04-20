@@ -22,10 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.AccessPoint;
@@ -35,7 +34,6 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.views.helpers.RadioInterfaceAPComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.RadioInterfaceAPLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -91,20 +89,10 @@ public class RadioInterfacesAP extends NodeSubObjectTableView
       final String[] names = { i18n.tr("Index"), i18n.tr("Name"), i18n.tr("SSID"), i18n.tr("BSSID"), i18n.tr("NIC vendor"), i18n.tr("Band"), i18n.tr("Channel"), i18n.tr("Frequency"),
             i18n.tr("Tx power dBm"), i18n.tr("Tx power mW") };
       final int[] widths = { 90, 120, 120, 100, 200, 90, 90, 90, 90, 90 };
-		viewer = new SortableTableViewer(mainArea, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(mainArea, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new RadioInterfaceAPLabelProvider(viewer));
       viewer.setComparator(new RadioInterfaceAPComparator());
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
 
 		createPopupMenu();
 	}
@@ -134,7 +122,7 @@ public class RadioInterfacesAP extends NodeSubObjectTableView
       }
 
       viewer.setInput(list);
-      viewer.packColumns();
+      viewer.packColumns(false);
    }
 
    /**
@@ -167,6 +155,12 @@ public class RadioInterfacesAP extends NodeSubObjectTableView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

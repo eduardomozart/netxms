@@ -21,6 +21,7 @@ package org.netxms.nxmc.modules.objects.widgets;
 import java.util.List;
 import org.apache.commons.lang3.SystemUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.swt.SWT;
@@ -70,7 +71,7 @@ public class HardwareInventoryTable extends AbstractHardwareInventoryWidget
       final String[] names = { i18n.tr("Category"), i18n.tr("Index"), i18n.tr("Type"), i18n.tr("Vendor"), i18n.tr("Model"),
             i18n.tr("Capacity"), i18n.tr("Part number"), i18n.tr("Serial number"), i18n.tr("Location"), i18n.tr("Description") };
       final int[] widths = { 100, 70, 100, 200, 200, 90, 130, 130, 200, 300 };
-      viewer = new SortableTableViewer(this, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(this, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, "HardwareInventoryTable");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new HardwareComponentLabelProvider());
       viewer.setComparator(new HardwareComponentComparator());
@@ -92,7 +93,7 @@ public class HardwareInventoryTable extends AbstractHardwareInventoryWidget
                public void run()
                {
                   viewer.setInput(components.toArray());
-                  viewer.packColumns();
+                  viewer.packColumns(false);
                }
             });
          }
@@ -112,6 +113,15 @@ public class HardwareInventoryTable extends AbstractHardwareInventoryWidget
    public ColumnViewer getViewer()
    {
       return viewer;
+   }
+
+   /**
+    * @see org.netxms.nxmc.modules.objects.widgets.AbstractHardwareInventoryWidget#getAutoSizeColumnsAction()
+    */
+   @Override
+   public Action getAutoSizeColumnsAction()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

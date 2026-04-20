@@ -218,6 +218,12 @@ public class HardwareInventoryView extends ObjectView
    protected void fillLocalMenu(IMenuManager manager)
    {
       manager.add(actionExportAllToCsv);
+      Action autoSize = inventoryWidget.getAutoSizeColumnsAction();
+      if (autoSize != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSize);
+      }
    }
 
    /**

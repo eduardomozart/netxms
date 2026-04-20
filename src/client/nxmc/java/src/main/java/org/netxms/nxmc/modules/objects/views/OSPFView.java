@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,9 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -45,7 +44,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.OSPFAreaLabelProvider;
 import org.netxms.nxmc.modules.objects.views.helpers.OSPFNeighborComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.OSPFNeighborLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -134,20 +132,10 @@ public class OSPFView extends ObjectView
 
       final String[] names = { i18n.tr("Area"), i18n.tr("LSA"), i18n.tr("ABR"), i18n.tr("ASBR") };
       final int[] widths = { 120, 90, 90, 90 };
-      viewerAreas = new SortableTableViewer(section.getClient(), names, widths, COLUMN_AREA_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewerAreas = new SortableTableViewer(section.getClient(), names, widths, COLUMN_AREA_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId() + ".areas");
       viewerAreas.setContentProvider(new ArrayContentProvider());
       viewerAreas.setLabelProvider(new OSPFAreaLabelProvider());
       viewerAreas.setComparator(new OSPFAreaComparator());
-
-      viewerAreas.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewerAreas, getBaseId() + ".areas");
-      viewerAreas.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewerAreas, getBaseId() + ".areas");
-         }
-      });
    }
 
    /**
@@ -162,20 +150,10 @@ public class OSPFView extends ObjectView
 
       final String[] names = { i18n.tr("Router ID"), i18n.tr("IP address"), i18n.tr("Node"), i18n.tr("ifIndex"), i18n.tr("Interface"), i18n.tr("Virtual"), i18n.tr("Area"), i18n.tr("State") };
       final int[] widths = { 120, 120, 200, 90, 200, 60, 120, 150 };
-      viewerNeighbors = new SortableTableViewer(section.getClient(), names, widths, COLUMN_NEIGHBOR_ROUTER_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewerNeighbors = new SortableTableViewer(section.getClient(), names, widths, COLUMN_NEIGHBOR_ROUTER_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId() + ".neighbors");
       viewerNeighbors.setContentProvider(new ArrayContentProvider());
       viewerNeighbors.setLabelProvider(new OSPFNeighborLabelProvider());
       viewerNeighbors.setComparator(new OSPFNeighborComparator());
-
-      viewerNeighbors.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewerNeighbors, getBaseId() + ".neighbors");
-      viewerNeighbors.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewerNeighbors, getBaseId() + ".neighbors");
-         }
-      });
    }
 
 	/**
@@ -254,6 +232,22 @@ public class OSPFView extends ObjectView
             }
          });
       }
+      Action autoSizeAction = viewerAreas.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         Action combined = new Action(autoSizeAction.getText(), Action.AS_CHECK_BOX) {
+            @Override
+            public void run()
+            {
+               boolean enabled = isChecked();
+               viewerAreas.setAutoResizeEnabled(enabled);
+               viewerNeighbors.setAutoResizeEnabled(enabled);
+            }
+         };
+         combined.setChecked(viewerAreas.isAutoResizeEnabled());
+         manager.add(combined);
+      }
       super.fillLocalMenu(manager);
    }
 
@@ -273,15 +267,11 @@ public class OSPFView extends ObjectView
          {
             final OSPFInfo info = session.getOSPFInfo(object.getObjectId());
             session.syncChildren(object);
-            runInUIThread(new Runnable() {
-               @Override
-               public void run()
-               {
-                  viewerAreas.setInput(info.getAreas());
-                  viewerNeighbors.setInput(info.getNeighbors());
-                  viewerAreas.packColumns();
-                  viewerNeighbors.packColumns();
-               }
+            runInUIThread(() -> {
+               viewerAreas.setInput(info.getAreas());
+               viewerNeighbors.setInput(info.getNeighbors());
+               viewerAreas.packColumns(false);
+               viewerNeighbors.packColumns(false);
             });
          }
 

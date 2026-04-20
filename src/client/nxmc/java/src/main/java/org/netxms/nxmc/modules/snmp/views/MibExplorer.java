@@ -33,8 +33,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.layout.FillLayout;
@@ -169,7 +167,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       {
          walkData.addAll(view.walkData);
          viewer.setInput(walkData);
-         viewer.packColumns();
+         viewer.packColumns(false);
       }
       mibBrowser.getTreeViewer().setExpandedElements(view.mibBrowser.getTreeViewer().getVisibleExpandedElements());
       mibBrowser.getTreeViewer().setSelection(view.mibBrowser.getTreeViewer().getSelection());
@@ -274,15 +272,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 		});
       viewer.addDoubleClickListener((e) -> selectInTree());
       viewer.setInput(walkData);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
+      viewer.setConfigPrefix(getBaseId());
 
       splitter.setWeights(new int[] { 70, 30 });
 
@@ -553,6 +543,13 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionFindInMibTree);
       manager.add(actionShowResultFilter);
       manager.add(actionShortTextualNames);
@@ -725,7 +722,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 
 				walkData.addAll(data);
             viewer.refresh();
-            viewer.packColumns();
+            viewer.packColumns(false);
 				try
 				{
 					viewer.getTable().showItem(viewer.getTable().getItem(viewer.getTable().getItemCount() - 1));

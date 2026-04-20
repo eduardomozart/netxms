@@ -31,8 +31,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.SessionListener;
@@ -55,7 +53,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.TemplateTargetsLabelProvide
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.resources.SharedIcons;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -102,7 +99,9 @@ public class TemplateTargets extends ObjectView
 
       };
       final int[] widths = { 60, 300, 300, 300, 300 };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      // NOTE: config prefix "InterfacesView.TableViewer" appears to be a pre-existing copy-paste bug
+      // (shared with InterfacesView); preserved here to keep any user-customized column settings intact.
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "InterfacesView.TableViewer");
       labelProvider = new TemplateTargetsLabelProvider((object) -> viewer.update(object, null));
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
@@ -110,15 +109,6 @@ public class TemplateTargets extends ObjectView
       filter = new TemplateTargetsFilter(labelProvider);
       setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "InterfacesView.TableViewer");
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "InterfacesView.TableViewer");
-         }
-      });
       viewer.addSelectionChangedListener(new ISelectionChangedListener() {
          @Override
          public void selectionChanged(SelectionChangedEvent event)
@@ -204,6 +194,9 @@ public class TemplateTargets extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+         manager.add(autoSizeAction);
       manager.add(actionAddTarget);
       manager.add(new Separator());
    }
@@ -351,7 +344,7 @@ public class TemplateTargets extends ObjectView
       if (getObject() != null)
       {
          viewer.setInput(getObject().getChildrenAsArray());
-         viewer.packColumns();
+         viewer.packColumns(false);
       }
       else
       {

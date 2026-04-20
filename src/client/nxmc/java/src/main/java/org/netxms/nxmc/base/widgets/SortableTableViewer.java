@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2023 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ package org.netxms.nxmc.base.widgets;
 import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.ViewerRow;
 import org.eclipse.swt.SWT;
@@ -34,9 +35,11 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Widget;
+import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.widgets.helpers.TableSortingListener;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -47,12 +50,26 @@ public class SortableTableViewer extends TableViewer
 	public static final int DEFAULT_STYLE = -1;
 
 	private boolean initialized = false;
-	private List<TableColumn> columns = new ArrayList<TableColumn>(16);
+   private List<TableColumn> columns;
 	private TableSortingListener sortingListener;
 	private Action actionResetColumnOrder;
 	private Action actionShowAllColumns;
+	private Action actionAutoSizeColumns;
 	private Menu headerMenu;
 	private int clickedColumnId = -1;
+   private String configPrefix;
+	private boolean autoResizeEnabled = true;
+
+   /**
+    * Constructor for delayed initialization
+    *
+    * @param parent Parent composite for table control
+    * @param style widget style
+    */
+   public SortableTableViewer(Composite parent, int style)
+   {
+      this(parent, null, null, 0, SWT.UP, style, null);
+   }
 
 	/**
     * Constructor
@@ -66,23 +83,31 @@ public class SortableTableViewer extends TableViewer
     */
    public SortableTableViewer(Composite parent, String[] names, int[] widths, int defaultSortingColumn, int defaultSortDir, int style)
 	{
-      this(parent, style);
-		createColumns(names, widths, defaultSortingColumn, defaultSortDir);
+      this(parent, names, widths, defaultSortingColumn, defaultSortDir, style, null);
 	}
 
-	/**
-    * Constructor for delayed initialization
+   /**
+    * Constructor with automatic persistence of column settings and toggleable auto-resize.
+    * When a configuration prefix is provided, the viewer restores saved column widths, order, visibility
+    * and sort state on creation, saves them on dispose, and enables column reordering.
     *
     * @param parent Parent composite for table control
+    * @param names Column names
+    * @param widths Default column widths (overridden by saved values if present)
+    * @param defaultSortingColumn Index of default sorting column
+    * @param defaultSortDir default sorting direction
     * @param style widget style
+    * @param configPrefix preference store prefix for persisting column settings
     */
-	public SortableTableViewer(Composite parent, int style)
-	{
-		super(new Table(parent, (style == DEFAULT_STYLE) ? (SWT.MULTI | SWT.FULL_SELECTION) : style));
-		getTable().setLinesVisible(true);
-		getTable().setHeaderVisible(true);
+   public SortableTableViewer(Composite parent, String[] names, int[] widths, int defaultSortingColumn, int defaultSortDir, int style, String configPrefix)
+   {
+      super(new Table(parent, (style == DEFAULT_STYLE) ? (SWT.MULTI | SWT.FULL_SELECTION) : style));
+      getTable().setLinesVisible(true);
+      getTable().setHeaderVisible(true);
+      this.configPrefix = configPrefix;
       sortingListener = new TableSortingListener(this);
-	}
+      createColumns(names, widths, defaultSortingColumn, defaultSortDir);
+   }
 
 	/**
 	 * Create columns
@@ -98,6 +123,13 @@ public class SortableTableViewer extends TableViewer
 			return;
 		initialized = true;
 
+      if (names == null)
+      {
+         columns = new ArrayList<TableColumn>(16);
+         return;
+      }
+
+      columns = new ArrayList<TableColumn>(names.length);
 		for(int i = 0; i < names.length; i++)
 		{
 			TableColumn c = new TableColumn(getTable(), SWT.LEFT);
@@ -201,10 +233,24 @@ public class SortableTableViewer extends TableViewer
 	}
 
 	/**
-	 * Pack columns
+	 * Pack columns unconditionally (equivalent to {@link #packColumns(boolean) packColumns(true)}).
 	 */
 	public void packColumns()
 	{
+	   packColumns(true);
+	}
+
+	/**
+	 * Pack columns. When <code>force</code> is <code>false</code>, columns are packed only if automatic
+	 * column resize is enabled on this viewer; this allows callers in refresh paths to respect the user's
+	 * "Resize columns automatically" preference.
+	 *
+	 * @param force if true, pack columns regardless of auto-resize preference
+	 */
+	public void packColumns(boolean force)
+	{
+	   if (!force && !autoResizeEnabled)
+	      return;
 	   Table table = getTable();
 	   int count = table.getColumnCount();
 	   for(int i = 0; i < count; i++)
@@ -464,6 +510,78 @@ public class SortableTableViewer extends TableViewer
    public Action getShowAllColumnsAction()
    {
       return actionShowAllColumns;
+   }
+
+   /**
+    * Enable persistence of column settings (widths, order, visibility, sort state) and automatic
+    * column resize preference for this viewer. Restores saved values on creation, installs dispose
+    * listener that saves them, and enables column reordering.
+    *
+    * @param configPrefix preference store prefix for persisting column settings
+    */
+   public void setConfigPrefix(String configPrefix)
+   {
+      this.configPrefix = configPrefix;
+      if (actionResetColumnOrder == null)
+         enableColumnReordering();
+      WidgetHelper.restoreTableViewerSettings(this, configPrefix);
+      autoResizeEnabled = PreferenceStore.getInstance().getAsBoolean(configPrefix + ".autoResizeColumns", true);
+      getTable().addDisposeListener(e -> {
+         WidgetHelper.saveTableViewerSettings(this, configPrefix);
+         PreferenceStore.getInstance().set(configPrefix + ".autoResizeColumns", autoResizeEnabled);
+      });
+   }
+
+   /**
+    * Check if automatic column resize is currently enabled on this viewer.
+    *
+    * @return true if automatic column resize is enabled
+    */
+   public boolean isAutoResizeEnabled()
+   {
+      return autoResizeEnabled;
+   }
+
+   /**
+    * Set automatic column resize state. Updates toggle action if it has been created. When enabling,
+    * columns are packed immediately.
+    *
+    * @param enabled new state
+    */
+   public void setAutoResizeEnabled(boolean enabled)
+   {
+      autoResizeEnabled = enabled;
+      if (actionAutoSizeColumns != null)
+         actionAutoSizeColumns.setChecked(enabled);
+      if (enabled)
+         packColumns(true);
+   }
+
+   /**
+    * Get action for toggling automatic column resize. Returns null if this viewer was not constructed
+    * with a configuration prefix (auto-resize state is then fixed and no persistence is available).
+    *
+    * @return check-box action for toggling automatic column resize, or null
+    */
+   public Action getAutoSizeColumnsAction()
+   {
+      if (configPrefix == null)
+         return null;
+      if (actionAutoSizeColumns == null)
+      {
+         final I18n i18n = LocalizationHelper.getI18n(SortableTableViewer.class);
+         actionAutoSizeColumns = new Action(i18n.tr("Resize columns automatically"), IAction.AS_CHECK_BOX) {
+            @Override
+            public void run()
+            {
+               autoResizeEnabled = isChecked();
+               if (autoResizeEnabled)
+                  packColumns(true);
+            }
+         };
+         actionAutoSizeColumns.setChecked(autoResizeEnabled);
+      }
+      return actionAutoSizeColumns;
    }
 
    /**

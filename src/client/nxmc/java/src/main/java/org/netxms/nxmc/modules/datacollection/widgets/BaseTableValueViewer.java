@@ -47,7 +47,6 @@ import org.netxms.nxmc.modules.datacollection.widgets.helpers.TableItemComparato
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.TableLabelProvider;
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.TableValueFilter;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -112,11 +111,6 @@ public abstract class BaseTableValueViewer extends Composite
 
       final PreferenceStore ds = PreferenceStore.getInstance();
       labelProvider.setUseMultipliers(ds.getAsBoolean(configId + ".useMultipliers", false));
-
-      if (saveTableSettings)
-      {
-         viewer.getTable().addDisposeListener((e) -> WidgetHelper.saveTableViewerSettings(viewer, configId));
-      }
 
       createActions();
       createPopupMenu();
@@ -226,12 +220,11 @@ public abstract class BaseTableValueViewer extends Composite
          }
          viewer.createColumns(names, widths, columnIndex, sortDirection);
 
-         viewer.enableColumnReordering();
          if (saveTableSettings)
-            WidgetHelper.restoreTableViewerSettings(viewer, configId);
+            viewer.setConfigPrefix(configId);
+         else
+            viewer.enableColumnReordering();
          viewer.getTable().addDisposeListener((e) -> {
-            if (saveTableSettings)
-               WidgetHelper.saveTableViewerSettings(viewer, configId);
             ds.set(configId + ".useMultipliers", labelProvider.areMultipliersUsed());
          });
          viewer.setComparator(new TableItemComparator(table.getColumnDataTypes()));
@@ -248,8 +241,7 @@ public abstract class BaseTableValueViewer extends Composite
          viewer.refresh();
       }
 
-      if (!saveTableSettings)
-         viewer.packColumns();
+      viewer.packColumns(false);
    }
 
    /**
@@ -309,6 +301,16 @@ public abstract class BaseTableValueViewer extends Composite
    public Action getActionShowAllColumns()
    {
       return viewer.getShowAllColumnsAction();
+   }
+
+   /**
+    * Get action for toggling automatic column resize on the underlying viewer.
+    *
+    * @return check-box action for toggling automatic column resize, or null if not available
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

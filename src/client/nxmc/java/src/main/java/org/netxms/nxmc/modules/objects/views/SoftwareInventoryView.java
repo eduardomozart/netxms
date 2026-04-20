@@ -33,8 +33,6 @@ import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCException;
@@ -60,7 +58,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.SoftwarePackageLabelProvide
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -224,19 +221,29 @@ public class SoftwareInventoryView extends ObjectView
    protected void fillLocalMenu(IMenuManager manager)
    {
       Action resetAction = null;
+      Action showAllAction = null;
+      Action autoSizeAction = null;
       if (viewer instanceof SortableTableViewer)
+      {
          resetAction = ((SortableTableViewer)viewer).getResetColumnOrderAction();
+         showAllAction = ((SortableTableViewer)viewer).getShowAllColumnsAction();
+         autoSizeAction = ((SortableTableViewer)viewer).getAutoSizeColumnsAction();
+      }
       else if (viewer instanceof SortableTreeViewer)
+      {
          resetAction = ((SortableTreeViewer)viewer).getResetColumnOrderAction();
+         showAllAction = ((SortableTreeViewer)viewer).getShowAllColumnsAction();
+         autoSizeAction = ((SortableTreeViewer)viewer).getAutoSizeColumnsAction();
+      }
       if (resetAction != null)
          manager.add(resetAction);
-      Action showAllAction = null;
-      if (viewer instanceof SortableTableViewer)
-         showAllAction = ((SortableTableViewer)viewer).getShowAllColumnsAction();
-      else if (viewer instanceof SortableTreeViewer)
-         showAllAction = ((SortableTreeViewer)viewer).getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**
@@ -275,7 +282,7 @@ public class SoftwareInventoryView extends ObjectView
                   if (viewer.getControl().isDisposed() || (object.getObjectId() != getObjectId()))
                      return;
                   viewer.setInput(packages.toArray());
-                  ((SortableTableViewer)viewer).packColumns();
+                  ((SortableTableViewer)viewer).packColumns(false);
                });
             }
             else
@@ -298,7 +305,7 @@ public class SoftwareInventoryView extends ObjectView
                   if (viewer.getControl().isDisposed() || (object.getObjectId() != getObjectId()))
                      return;
                   viewer.setInput(nodes);
-                  ((SortableTreeViewer)viewer).packColumns();
+                  ((SortableTreeViewer)viewer).packColumns(false);
                });
             }
          }
@@ -330,21 +337,12 @@ public class SoftwareInventoryView extends ObjectView
     */
    private void createTableViewer()
    {
-      viewer = new SortableTableViewer(getClientArea(), names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
-      ((SortableTableViewer)viewer).enableColumnReordering();
-      WidgetHelper.restoreColumnViewerSettings(viewer, getBaseId());
+      viewer = new SortableTableViewer(getClientArea(), names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new SoftwarePackageLabelProvider(false));
       viewer.setComparator(new SoftwarePackageComparator());
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-      viewer.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnViewerSettings(viewer, getBaseId());
-         }
-      });
       if (menuManager != null)
       {
          Menu menu = menuManager.createContextMenu(viewer.getControl());
@@ -357,21 +355,12 @@ public class SoftwareInventoryView extends ObjectView
     */
    private void createTreeViewer()
    {
-      viewer = new SortableTreeViewer(getClientArea(), names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
-      ((SortableTreeViewer)viewer).enableColumnReordering();
-      WidgetHelper.restoreColumnViewerSettings(viewer, getBaseId());
+      viewer = new SortableTreeViewer(getClientArea(), names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new SoftwareInventoryContentProvider());
       viewer.setLabelProvider(new SoftwarePackageLabelProvider(true));
       viewer.setComparator(new SoftwarePackageComparator());
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-      viewer.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnViewerSettings(viewer, getBaseId());
-         }
-      });
       if (menuManager != null)
       {
          Menu menu = menuManager.createContextMenu(viewer.getControl());

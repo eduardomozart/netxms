@@ -24,10 +24,9 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.objects.AbstractObject;
@@ -41,7 +40,6 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.views.helpers.RoutingTableComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.RoutingTableLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -98,20 +96,10 @@ public class RoutingTableView extends ObjectView
    {
       final String[] names = { i18n.tr("Destination"), i18n.tr("Next hop"), i18n.tr("Interface"), i18n.tr("Type"), i18n.tr("Metric"), i18n.tr("Protocol") };
       final int[] widths = { 180, 140, 200, 140, 140, 180 };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_DESTINATION, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_DESTINATION, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new RoutingTableLabelProvider());
 		viewer.setComparator(new RoutingTableComparator());
-
-		viewer.enableColumnReordering();
-		WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-				WidgetHelper.saveColumnOrder(viewer, getBaseId());
-			}
-		});
 
 		createActions();
 		createContextMenu();
@@ -140,6 +128,12 @@ public class RoutingTableView extends ObjectView
 		Action showAllAction = viewer.getShowAllColumnsAction();
 		if (showAllAction != null)
 			manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
 	}
 
 	/**
@@ -191,7 +185,7 @@ public class RoutingTableView extends ObjectView
             final List<Route> rt = session.getRoutingTable(getObjectId());
             runInUIThread(() -> {
                viewer.setInput(rt.toArray());
-               viewer.packColumns();
+               viewer.packColumns(false);
             });
          }
 

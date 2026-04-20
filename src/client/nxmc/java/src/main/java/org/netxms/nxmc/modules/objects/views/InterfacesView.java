@@ -23,6 +23,7 @@ import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -191,7 +192,7 @@ public class InterfacesView extends NodeSubObjectTableView
          i18n.tr("Peer last updated")
       };
       final int[] widths = { 150, 60, 150, 150, 70, 150, 100, 70, 90, 150, 100, 100, 90, 120, 200, 80, 80, 80, 80, 150, 150, 100, 120, 90, 80, 80, 80, 80, 80, 80, 80, 80, 120 };
-      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "InterfacesView.TableViewer");
       labelProvider = new InterfaceListLabelProvider(viewer);
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
@@ -200,13 +201,10 @@ public class InterfacesView extends NodeSubObjectTableView
       ((InterfaceListFilter)filter).setHideSubInterfaces(hideSubInterfaces);
       setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "InterfacesView.TableViewer");
       viewer.getTable().addDisposeListener(new DisposeListener() {
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "InterfacesView.TableViewer");
             PreferenceStore.getInstance().set("InterfacesView.HideSubInterfaces", hideSubInterfaces);
          }
       });
@@ -290,6 +288,12 @@ public class InterfacesView extends NodeSubObjectTableView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**
@@ -339,7 +343,7 @@ public class InterfacesView extends NodeSubObjectTableView
                session.syncObjectSet(idList, NXCSession.OBJECT_SYNC_WAIT);
                runInUIThread(() -> {
                   viewer.setInput(getObject().getAllChildren(AbstractObject.OBJECT_INTERFACE).toArray());
-                  viewer.packColumns();
+                  viewer.packColumns(false);
                });
             }
 

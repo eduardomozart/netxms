@@ -29,8 +29,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.TableColumn;
@@ -54,7 +52,6 @@ import org.netxms.nxmc.modules.assetmanagement.views.helpers.AssetListFilter;
 import org.netxms.nxmc.modules.assetmanagement.views.helpers.AssetListLabelProvider;
 import org.netxms.nxmc.modules.assetmanagement.views.helpers.AssetPropertyReader;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.xnap.commons.i18n.I18n;
 
@@ -129,15 +126,7 @@ public class AssetSummaryView extends ObjectView
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
+      viewer.setConfigPrefix(getBaseId());
 
       createActions();
       createContextMenu();
@@ -201,7 +190,7 @@ public class AssetSummaryView extends ObjectView
       else
          showAllColumns();
 
-      viewer.packColumns();
+      viewer.packColumns(false);
    }
 
    /**
@@ -309,6 +298,12 @@ public class AssetSummaryView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**
