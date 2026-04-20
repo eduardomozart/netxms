@@ -1649,6 +1649,7 @@ if test "x$ac_compiler_gnu" = "xyes" ; then
 	AC_CXX_CHECK_OPTION(-Waddress)
 	AC_CXX_CHECK_OPTION(-Wnon-pod-varargs)
 	AC_CXX_CHECK_OPTION(-Wdeprecated-copy)
+	AC_CXX_CHECK_OPTION(-Wtemplate-id-cdtor)
 	AC_CXX_CHECK_OPTION(-fno-exceptions)
 	if test "x$ENABLE_RTTI" != "xyes"; then
 		AC_CXX_CHECK_OPTION(-fno-rtti)
