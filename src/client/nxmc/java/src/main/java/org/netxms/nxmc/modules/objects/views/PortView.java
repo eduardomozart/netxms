@@ -28,6 +28,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -40,8 +41,6 @@ import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -281,7 +280,7 @@ public class PortView extends NodeSubObjectView implements ISelectionProvider
 
       final String[] names = { i18n.tr("ID"), i18n.tr("Name"), i18n.tr("Ports"), "Interfaces" };
       final int[] widths = { 80, 180, 400, 400 };
-      vlanList = new SortableTableViewer(vlanListArea, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      vlanList = new SortableTableViewer(vlanListArea, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, "VlanList");
       vlanList.setContentProvider(new ArrayContentProvider());
       labelProvider = new VlanLabelProvider();
       vlanList.setLabelProvider(labelProvider);
@@ -309,16 +308,6 @@ public class PortView extends NodeSubObjectView implements ISelectionProvider
             {
                vlanList.refresh();
             }
-         }
-      });
-
-      vlanList.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(vlanList, "VlanList");
-      vlanList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(vlanList, "VlanList");
          }
       });
 
@@ -360,6 +349,13 @@ public class PortView extends NodeSubObjectView implements ISelectionProvider
       Action showAllAction = vlanList.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = vlanList.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportAllToCsv);
    }
 

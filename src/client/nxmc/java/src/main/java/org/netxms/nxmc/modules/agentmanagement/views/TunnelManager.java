@@ -51,7 +51,6 @@ import org.netxms.nxmc.modules.objects.dialogs.CreateNodeDialog;
 import org.netxms.nxmc.modules.objects.dialogs.ObjectSelectionDialog;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnap.commons.i18n.I18n;
@@ -117,17 +116,13 @@ public class TunnelManager extends ConfigurationView implements SessionListener
            i18n.tr("Agent ID"), i18n.tr("Agent proxy"), i18n.tr("SNMP proxy"), i18n.tr("SNMP trap proxy"), i18n.tr("Syslog proxy"), i18n.tr("User agent"),
            i18n.tr("Certificate expiration"), i18n.tr("Connection time") };
       final int[] widths = { 80, 80, 140, 150, 80, 150, 150, 250, 300, 180, 150, 150, 150, 80, 80, 80, 80, 80, 130, 130 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, ID);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new TunnelListLabelProvider());
       viewer.setComparator(new TunnelListComparator());
       filter = new TunnelManagerFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, ID);
-      viewer.getTable().addDisposeListener((e) -> WidgetHelper.saveTableViewerSettings(viewer, ID));
 
       createActions();
       createPopupMenu();
@@ -293,6 +288,12 @@ public class TunnelManager extends ConfigurationView implements SessionListener
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionExportToCsv);
       super.fillLocalMenu(manager);
    }

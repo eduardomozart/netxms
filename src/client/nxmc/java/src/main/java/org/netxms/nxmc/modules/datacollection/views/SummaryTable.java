@@ -21,6 +21,7 @@ package org.netxms.nxmc.modules.datacollection.views;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.Table;
@@ -117,6 +118,12 @@ public class SummaryTable extends AdHocObjectView
       Action showAllAction = viewer.getViewer().getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getActionAutoSizeColumns();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionExportAllToCsv);
    }
 

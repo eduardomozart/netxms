@@ -146,6 +146,12 @@ public class AlarmsView extends ObjectView
       manager.add(alarmList.getActionShowColors());
       manager.add(alarmList.getActionResetColumnOrder());
       manager.add(alarmList.getActionShowAllColumns());
+      Action autoSizeAction = alarmList.getActionAutoSizeColumns();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(new Separator());
       manager.add(actionExportToCsv);
       super.fillLocalMenu(manager);

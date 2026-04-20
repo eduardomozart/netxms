@@ -737,18 +737,15 @@ public class ObjectFinder extends View
       results = new SortableTableViewer(resultSashForm, defaultNames, defaultWidths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
       if (!session.isZoningEnabled())
          results.removeColumnById(COL_ZONE);
+      results.enablePersistence("ResultTable");
       results.setContentProvider(new ArrayContentProvider());
       results.setLabelProvider(new ObjectSearchResultLabelProvider(results));
       results.setComparator(new ObjectSearchResultComparator());
-      results.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(results, "ResultTable");
 
       parent.addDisposeListener(new DisposeListener() {
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveTableViewerSettings(results, "ResultTable");
-
             int[] weights = splitter.getWeights();
             settings.set("ObjectFinder.weight1", weights[0]);
             settings.set("ObjectFinder.weight2", weights[1]);
@@ -858,6 +855,12 @@ public class ObjectFinder extends View
       Action showAllAction = results.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = results.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionStartSearch);
       manager.add(actionSaveAs);
       manager.add(actionToggleConsole);

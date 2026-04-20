@@ -35,8 +35,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCException;
@@ -52,7 +50,6 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.dialogs.PhysicalLinkEditDialog;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -89,7 +86,7 @@ public class PhysicalLinkManager
 
       final int[] widths = { 50, 200, 200, 400, 200, 400 };
       final String[] names = { i18n.tr("ID"), i18n.tr("Description"), i18n.tr("Object 1"), i18n.tr("Port 1"), i18n.tr("Object 2"), i18n.tr("Port 2") };
-      viewer = new SortableTableViewer(parent, names, widths, PhysicalLinkManager.COL_PHYSICAL_LINK_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, PhysicalLinkManager.COL_PHYSICAL_LINK_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       PhysicalLinkLabelProvider labelPrivater = new PhysicalLinkLabelProvider();
       viewer.setLabelProvider(labelPrivater);
@@ -115,16 +112,6 @@ public class PhysicalLinkManager
                actionEdit.setEnabled(selection.size() == 1);
                actionDelete.setEnabled(selection.size() > 0);
             }
-         }
-      });
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
 
@@ -272,9 +259,22 @@ public class PhysicalLinkManager
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          mgr.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+         mgr.add(autoSizeAction);
       mgr.add(actionAdd);
       mgr.add(actionEdit);
       mgr.add(actionDelete);
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

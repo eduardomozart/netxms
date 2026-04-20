@@ -24,7 +24,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.NXCSession;
 import org.netxms.client.SessionListener;
@@ -34,6 +33,7 @@ import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.widgets.AbstractTraceWidget;
+import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.helpers.AbstractTraceViewFilter;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.events.dialogs.EventDetailsDialog;
@@ -105,7 +105,7 @@ public class EventTraceWidget extends AbstractTraceWidget implements SessionList
     * @see org.netxms.ui.eclipse.widgets.AbstractTraceWidget#setupViewer(org.eclipse.jface.viewers.TableViewer)
     */
 	@Override
-	protected void setupViewer(TableViewer viewer)
+	protected void setupViewer(SortableTableViewer viewer)
 	{
 		labelProvider = new EventLabelProvider();
 		viewer.setLabelProvider(labelProvider);

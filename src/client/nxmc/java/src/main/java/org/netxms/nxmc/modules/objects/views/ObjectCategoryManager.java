@@ -26,6 +26,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -35,8 +36,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCException;
@@ -58,7 +57,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.ObjectCategoryLabelProvider
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -100,9 +98,7 @@ public class ObjectCategoryManager extends ConfigurationView implements SessionL
    {
       final String[] names = { i18n.tr("ID"), i18n.tr("Name"), i18n.tr("Icon"), i18n.tr("Map image") };
       final int[] widths = { 100, 500, 200, 200 };
-      viewer = new SortableTableViewer(parent, names, widths, 1, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
+      viewer = new SortableTableViewer(parent, names, widths, 1, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ObjectCategoryLabelProvider());
       viewer.setComparator(new ObjectCategoryComparator());
@@ -127,13 +123,6 @@ public class ObjectCategoryManager extends ConfigurationView implements SessionL
          public void doubleClick(DoubleClickEvent event)
          {
             editCategory();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
 
@@ -250,6 +239,13 @@ public class ObjectCategoryManager extends ConfigurationView implements SessionL
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionNew);
       manager.add(actionEdit);
       manager.add(actionDelete);

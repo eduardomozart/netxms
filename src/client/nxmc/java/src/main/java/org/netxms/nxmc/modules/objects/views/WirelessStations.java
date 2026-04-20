@@ -25,10 +25,9 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.TableItem;
@@ -107,7 +106,7 @@ public class WirelessStations extends NodeSubObjectView
 
       final String[] names = { i18n.tr("MAC Address"), i18n.tr("NIC Vendor"), i18n.tr("IP Address"), i18n.tr("Node"), i18n.tr("Access Point"), i18n.tr("Radio"), "SSID", "RSSI" };
       final int[] widths = { 140, 200, 100, 180, 180, 100, 100, 80 };
-      viewer = new SortableTableViewer(mainArea, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(mainArea, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "WirelessStations.V2");
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new WirelessStationLabelProvider(viewer));
 		viewer.setComparator(new WirelessStationComparator());
@@ -115,16 +114,6 @@ public class WirelessStations extends NodeSubObjectView
       WirelessStationFilter filter = new WirelessStationFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "WirelessStations.V2");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, "WirelessStations.V2");
-			}
-		});
 
 		createActions();
       createContextMenu();
@@ -159,6 +148,13 @@ public class WirelessStations extends NodeSubObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
 		manager.add(actionExportAllToCsv);
 	}
 

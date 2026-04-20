@@ -49,7 +49,6 @@ import org.netxms.nxmc.modules.serverconfig.views.helpers.ServerVariablesLabelPr
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -96,9 +95,7 @@ public class ServerVariables extends ConfigurationView
             i18n.tr("Description") };
       final int[] widths = { 200, 150, 150, 80, 500 };
       viewer = new SortableTableViewer(parent, names, widths, 0, SWT.FULL_SELECTION | SWT.MULTI | SWT.BORDER,
-            SortableTableViewer.DEFAULT_STYLE);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, ID);
+            SortableTableViewer.DEFAULT_STYLE, ID);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ServerVariablesLabelProvider());
       viewer.setComparator(new ServerVariableComparator());
@@ -112,8 +109,6 @@ public class ServerVariables extends ConfigurationView
          actionDelete.setEnabled(selection.size() > 0);
          actionDefaultValue.setEnabled(selection.size() > 0);
       });
-      viewer.getTable().addDisposeListener((e) -> WidgetHelper.saveTableViewerSettings(viewer, ID));
-
       createActions();
       createContextMenu();
    }
@@ -223,6 +218,13 @@ public class ServerVariables extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportAllToCsv);
    }
 

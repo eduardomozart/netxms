@@ -104,9 +104,10 @@ public class SortableTableViewer extends TableViewer
       super(new Table(parent, (style == DEFAULT_STYLE) ? (SWT.MULTI | SWT.FULL_SELECTION) : style));
       getTable().setLinesVisible(true);
       getTable().setHeaderVisible(true);
-      this.configPrefix = configPrefix;
       sortingListener = new TableSortingListener(this);
       createColumns(names, widths, defaultSortingColumn, defaultSortDir);
+      if (configPrefix != null)
+         enablePersistence(configPrefix);
    }
 
 	/**
@@ -232,6 +233,16 @@ public class SortableTableViewer extends TableViewer
 		getTable().setSortColumn(null);
 	}
 
+   /**
+    * @see org.eclipse.jface.viewers.StructuredViewer#inputChanged(java.lang.Object, java.lang.Object)
+    */
+   @Override
+   protected void inputChanged(Object input, Object oldInput)
+   {
+      super.inputChanged(input, oldInput);
+      packColumns(false);
+   }
+
 	/**
 	 * Pack columns unconditionally (equivalent to {@link #packColumns(boolean) packColumns(true)}).
 	 */
@@ -251,13 +262,19 @@ public class SortableTableViewer extends TableViewer
 	{
 	   if (!force && !autoResizeEnabled)
 	      return;
+
 	   Table table = getTable();
 	   int count = table.getColumnCount();
 	   for(int i = 0; i < count; i++)
       {
          TableColumn c = table.getColumn(i);
          if (c.getResizable())
+         {
+            // setWidth(0) forces SWT to drop any cached minimum and recompute from current content,
+            // otherwise pack() on some platforms won't shrink columns that were previously wider.
+            c.setWidth(0);
             c.pack();
+         }
       }
 	   if (!Registry.IS_WEB_CLIENT)
 	      getControl().redraw(); // Fixes display glitch on Windows
@@ -519,7 +536,7 @@ public class SortableTableViewer extends TableViewer
     *
     * @param configPrefix preference store prefix for persisting column settings
     */
-   public void setConfigPrefix(String configPrefix)
+   public void enablePersistence(String configPrefix)
    {
       this.configPrefix = configPrefix;
       if (actionResetColumnOrder == null)

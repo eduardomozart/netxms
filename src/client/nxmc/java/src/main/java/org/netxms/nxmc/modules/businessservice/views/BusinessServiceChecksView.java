@@ -39,8 +39,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.NXCSession;
 import org.netxms.client.SessionListener;
@@ -63,7 +61,6 @@ import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.RefreshTimer;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -72,7 +69,6 @@ import org.xnap.commons.i18n.I18n;
 public class BusinessServiceChecksView extends ObjectView
 {
    private final I18n i18n = LocalizationHelper.getI18n(BusinessServiceChecksView.class);
-   private static final String ID = "BusinessServiceChecks";
 
    public static final int COLUMN_ID = 0;
    public static final int COLUMN_DESCRIPTION = 1;
@@ -124,7 +120,7 @@ public class BusinessServiceChecksView extends ObjectView
             i18n.tr("Origin")
          };
       final int[] widths = { 70, 200, 100, 200, 200, 70, 300, 300 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTableViewer.DEFAULT_STYLE);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTableViewer.DEFAULT_STYLE, getBaseId());
       labelProvider = new BusinessServiceCheckLabelProvider();
       BusinessServiceCheckFilter filter = new BusinessServiceCheckFilter(labelProvider);
       setFilterClient(viewer, filter);
@@ -146,18 +142,6 @@ public class BusinessServiceChecksView extends ObjectView
             actionDelete.setEnabled(selection.size() > 0);
             actionShowObjectDetails.setEnabled(selection.size() == 1);
             actionShowDciDetails.setEnabled(selection.size() == 1 && check.getDciId() != 0);
-         }
-      });
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnSettings(viewer.getTable(), ID);
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), ID);
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
          }
       });
 
@@ -331,6 +315,12 @@ public class BusinessServiceChecksView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

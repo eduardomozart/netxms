@@ -35,8 +35,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
@@ -475,6 +473,12 @@ public class IncidentDetails extends AdHocObjectView
       Action showAllAction = alarmViewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = alarmViewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 
@@ -682,20 +686,10 @@ public class IncidentDetails extends AdHocObjectView
 
       final String[] names = { i18n.tr("Severity"), i18n.tr("State"), i18n.tr("Source"), i18n.tr("Message"), i18n.tr("Created") };
       final int[] widths = { 90, 90, 150, 300, 150 };
-      alarmViewer = new SortableTableViewer(alarmsArea, names, widths, AL_COLUMN_CREATED, SWT.DOWN, SWT.FULL_SELECTION | SWT.BORDER);
+      alarmViewer = new SortableTableViewer(alarmsArea, names, widths, AL_COLUMN_CREATED, SWT.DOWN, SWT.FULL_SELECTION | SWT.BORDER, getBaseId());
       alarmViewer.setContentProvider(new ArrayContentProvider());
       alarmViewer.setLabelProvider(new AlarmListLabelProvider());
       alarmViewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-
-      alarmViewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(alarmViewer, getBaseId());
-      alarmViewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(alarmViewer, getBaseId());
-         }
-      });
 
       alarmViewer.addDoubleClickListener(new IDoubleClickListener() {
          @Override

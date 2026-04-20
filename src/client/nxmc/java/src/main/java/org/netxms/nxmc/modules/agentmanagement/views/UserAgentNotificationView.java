@@ -48,7 +48,6 @@ import org.netxms.nxmc.modules.agentmanagement.views.helpers.UserAgentNotificati
 import org.netxms.nxmc.modules.agentmanagement.views.helpers.UserAgentNotificationFilter;
 import org.netxms.nxmc.modules.agentmanagement.views.helpers.UserAgentNotificationLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 public class UserAgentNotificationView extends ConfigurationView implements SessionListener
@@ -92,7 +91,7 @@ public class UserAgentNotificationView extends ConfigurationView implements Sess
 
       final String[] names = { i18n.tr("ID"), i18n.tr("Objects"), i18n.tr("Message"), i18n.tr("Is recalled"), i18n.tr("Is startup"), i18n.tr("Start time"), i18n.tr("End time"), i18n.tr("Creation time"), i18n.tr("Created by") };
       final int[] widths = { 80, 300, 300, 80, 80, 100, 100, 100, 100 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, ID);
       viewer.setContentProvider(new ArrayContentProvider());
       UserAgentNotificationLabelProvider lebleProvider = new UserAgentNotificationLabelProvider(viewer);
       viewer.setLabelProvider(lebleProvider);
@@ -103,8 +102,6 @@ public class UserAgentNotificationView extends ConfigurationView implements Sess
 
       PreferenceStore settings = PreferenceStore.getInstance();
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, ID);
       filter.setShowAllOneTime(settings.getAsBoolean("UserAgentNotification.showAllOneTime", false));
       filter.setShowAllOneScheduled(settings.getAsBoolean("UserAgentNotification.showAllOneScheduled", false));
 
@@ -112,7 +109,6 @@ public class UserAgentNotificationView extends ConfigurationView implements Sess
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveTableViewerSettings(viewer, ID);
             settings.set("UserAgentNotification.showAllOneTime", filter.isShowAllOneTime());
             settings.set("UserAgentNotification.showAllOneScheduled", filter.isShowAllOneScheduled());
          }
@@ -256,6 +252,12 @@ public class UserAgentNotificationView extends ConfigurationView implements Sess
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

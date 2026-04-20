@@ -32,8 +32,6 @@ import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -60,7 +58,6 @@ import org.netxms.nxmc.modules.datacollection.views.helpers.HistoricalDataLabelP
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -261,7 +258,7 @@ public class HistoricalDataView extends ViewWithContext
          new String[] { i18n.tr("Timestamp"), i18n.tr("Value") } :
          new String[] { i18n.tr("Timestamp"), i18n.tr("Value"), i18n.tr("Formatted value"), i18n.tr("Raw value") };
       final int[] widths = { 180, 400, 400, 400 };
-		viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new HistoricalDataLabelProvider());
 		viewer.setComparator(new HistoricalDataComparator());
@@ -269,15 +266,6 @@ public class HistoricalDataView extends ViewWithContext
       viewer.addFilter(filter);
       viewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		setFilterClient(viewer, filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
 
 		createActions();
 		createContextMenu();
@@ -360,6 +348,12 @@ public class HistoricalDataView extends ViewWithContext
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionSelectRange);
       manager.add(actionSkipRepeatedValues);
       manager.add(new Separator());

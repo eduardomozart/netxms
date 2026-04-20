@@ -26,8 +26,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.SessionListener;
@@ -48,7 +46,6 @@ import org.netxms.nxmc.modules.objects.ObjectContextMenuManager;
 import org.netxms.nxmc.modules.objects.views.helpers.NodeListComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.NodeListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -125,21 +122,12 @@ public class NodesView extends ObjectView
             i18n.tr("Status")
       };
 		final int[] widths = { 60, 150, 100, 150, 150, 100, 300, 100 };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "NodeTable.V2");
 		viewer.setLabelProvider(new NodeListLabelProvider());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setComparator(new NodeListComparator());
 		viewer.getTable().setHeaderVisible(true);
 		viewer.getTable().setLinesVisible(true);
-		viewer.enableColumnReordering();
-		WidgetHelper.restoreTableViewerSettings(viewer, "NodeTable.V2");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "NodeTable.V2");
-         }
-		});
 		createActions();
 		createContextMenu();
 
@@ -207,6 +195,12 @@ public class NodesView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

@@ -35,8 +35,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
@@ -61,7 +59,6 @@ import org.netxms.nxmc.modules.alarms.widgets.helpers.AlarmCategoryListComparato
 import org.netxms.nxmc.modules.alarms.widgets.helpers.AlarmCategoryListFilter;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -118,29 +115,18 @@ public class AlarmCategoryList extends Composite implements SessionListener
       final String[] names = { i18n.tr("ID"), i18n.tr("Name"), i18n.tr("Description") };
       final int[] widths = { 50, 200, 200 };
       viewer = new SortableTableViewer(this, names, widths, 1, SWT.UP, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.H_SCROLL
-            | SWT.V_SCROLL);
+            | SWT.V_SCROLL, configPrefix);
       viewer.setLabelProvider(new AlarmCategoryLabelProvider());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setComparator(new AlarmCategoryListComparator());
       filter = new AlarmCategoryListFilter();
       viewer.addFilter(filter);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
-
       addListener(SWT.Resize, new Listener() {
          @Override
          public void handleEvent(Event e)
          {
             viewer.getControl().setBounds(AlarmCategoryList.this.getClientArea());
-         }
-      });
-
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
          }
       });
 
@@ -462,5 +448,15 @@ public class AlarmCategoryList extends Composite implements SessionListener
    public Action getActionShowAllColumns()
    {
       return viewer.getShowAllColumnsAction();
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 }

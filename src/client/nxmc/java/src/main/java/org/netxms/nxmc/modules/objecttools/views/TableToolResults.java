@@ -25,9 +25,8 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.Table;
@@ -41,7 +40,6 @@ import org.netxms.nxmc.modules.datacollection.widgets.helpers.TableItemComparato
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.TableLabelProvider;
 import org.netxms.nxmc.modules.objects.ObjectContext;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -107,6 +105,12 @@ public class TableToolResults extends ObjectToolResultView
 		Action showAllAction = viewer.getShowAllColumnsAction();
 		if (showAllAction != null)
 		   manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
 		manager.add(actionExportAllToCsv);
 	}
 
@@ -191,15 +195,7 @@ public class TableToolResults extends ObjectToolResultView
 			final int[] widths = new int[names.length];
 			Arrays.fill(widths, 100);
 			viewer.createColumns(names, widths, 0, SWT.UP);
-			viewer.enableColumnReordering();
-			WidgetHelper.restoreTableViewerSettings(viewer, "TableToolResults." + Long.toString(tool.getId())); //$NON-NLS-1$
-			viewer.getTable().addDisposeListener(new DisposeListener() {
-				@Override
-				public void widgetDisposed(DisposeEvent e)
-				{
-					WidgetHelper.saveTableViewerSettings(viewer, "TableToolResults." + Long.toString(tool.getId())); //$NON-NLS-1$
-				}
-			});
+			viewer.enablePersistence("TableToolResults." + Long.toString(tool.getId())); //$NON-NLS-1$
 			viewer.setComparator(new TableItemComparator(table.getColumnDataTypes()));
 		}
 		((TableLabelProvider)viewer.getLabelProvider()).setColumns(table.getColumns());

@@ -28,8 +28,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
@@ -94,21 +92,11 @@ public class SearchResult extends Composite
 
       final String[] names = { i18n.tr("Seq."), i18n.tr("Node"), i18n.tr("Interface"), i18n.tr("MAC"), i18n.tr("NIC vendor"), i18n.tr("IP"), i18n.tr("Switch"), i18n.tr("Port"), i18n.tr("Index"), i18n.tr("Type") };
       final int[] widths = { 70, 120, 120, 180, 90, 90, 120, 120, 60, 60 };
-      viewer = new SortableTableViewer(this, names, widths, COLUMN_SEQUENCE, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(this, names, widths, COLUMN_SEQUENCE, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, configPrefix);
       viewer.setContentProvider(new ArrayContentProvider());
       ConnectionPointLabelProvider labelProvider = new ConnectionPointLabelProvider(viewer);
       viewer.setLabelProvider(labelProvider);
       viewer.setComparator(new ConnectionPointComparator(labelProvider));
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
-
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
-         }
-      });
 
       createActions();
       createPopupMenu();
@@ -261,6 +249,22 @@ public class SearchResult extends Composite
       manager.add(actionCopyMAC);
       manager.add(new Separator());
       manager.add(actionClearLog);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

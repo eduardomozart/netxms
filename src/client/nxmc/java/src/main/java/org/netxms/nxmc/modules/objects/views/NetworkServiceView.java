@@ -20,10 +20,9 @@ package org.netxms.nxmc.modules.objects.views;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.NetworkService;
@@ -33,7 +32,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.NetworkServiceFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.NetworkServiceListComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.NetworkServiceListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 /**
  * "NetworkServices" tab
  */
@@ -113,7 +111,7 @@ public class NetworkServiceView extends NodeSubObjectTableView
       final String[] names = { "Id", "Name", "Status", "Service type", "Address", "Port", "Request", "Response", "Poller node", "Poll count" };
 
       final int[] widths = { 60, 150, 80, 80, 80, 80, 200, 200, 200, 80 };
-      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "NetworkService.V1");
       labelProvider = new NetworkServiceListLabelProvider();
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
@@ -123,15 +121,6 @@ public class NetworkServiceView extends NodeSubObjectTableView
       filter = new NetworkServiceFilter(labelProvider);
       setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "NetworkService.V1"); //$NON-NLS-1$
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "NetworkService.V1"); //$NON-NLS-1$
-         }
-      });
    }
 
    /**
@@ -146,6 +135,12 @@ public class NetworkServiceView extends NodeSubObjectTableView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

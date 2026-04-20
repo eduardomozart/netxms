@@ -30,6 +30,7 @@ import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -41,8 +42,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -75,7 +74,6 @@ import org.netxms.nxmc.modules.objecttools.widgets.ServerCommandExecutor;
 import org.netxms.nxmc.modules.objecttools.widgets.ServerScriptExecutor;
 import org.netxms.nxmc.modules.objecttools.widgets.helpers.ExecutorStateChangeListener;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.xnap.commons.i18n.I18n;
 
@@ -160,7 +158,7 @@ public class MultiNodeCommandExecutor extends ObjectView
 
       final String[] names = { "Name", "Status" };
       final int[] widths = { 600, 200 };
-      viewer = new SortableTableViewer(topPart, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(topPart, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ExecutorListLabelProvider());
       viewer.setComparator(new ViewerComparator() {
@@ -202,16 +200,6 @@ public class MultiNodeCommandExecutor extends ObjectView
             Rectangle clientArea = resultArea.getClientArea();
             for(Control c : resultArea.getChildren())
                c.setSize(clientArea.width, clientArea.height);
-         }
-      });
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
          }
       });
 
@@ -520,6 +508,12 @@ public class MultiNodeCommandExecutor extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

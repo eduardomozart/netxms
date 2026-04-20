@@ -24,6 +24,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -32,8 +33,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.MaintenanceJournalEntry;
@@ -55,7 +54,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.MaintenanceJournalFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.MaintenanceJournalLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -118,7 +116,7 @@ public class MaintenanceJournalView extends ObjectView
    {
       final int[] widths = { 50, 100, 100, 100, 500, 300, 300 };
       final String[] names = { i18n.tr("ID"), i18n.tr("Object"), i18n.tr("Author"), i18n.tr("Last edited by"), i18n.tr("Description"), i18n.tr("Creation time"), i18n.tr("Modification time") };
-      viewer = new SortableTableViewer(parent, names, widths, COL_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COL_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       MaintenanceJournalLabelProvider labelProvider = new MaintenanceJournalLabelProvider(viewer);
       viewer.setLabelProvider(labelProvider);
@@ -146,16 +144,6 @@ public class MaintenanceJournalView extends ObjectView
             {
                actionEdit.setEnabled(selection.size() == 1);
             }
-         }
-      });
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
 
@@ -246,6 +234,12 @@ public class MaintenanceJournalView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

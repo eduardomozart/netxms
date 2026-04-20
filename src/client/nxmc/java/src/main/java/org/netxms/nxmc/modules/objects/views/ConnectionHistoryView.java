@@ -28,10 +28,9 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.objects.AbstractObject;
@@ -47,7 +46,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.ConnectionHistoryComparator
 import org.netxms.nxmc.modules.objects.views.helpers.ConnectionHistoryFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.ConnectionHistoryLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -110,23 +108,13 @@ public class ConnectionHistoryView extends ObjectView
          i18n.tr("Node"), i18n.tr("Switch"), i18n.tr("Port"), i18n.tr("VLAN")
       };
       final int[] widths = { 160, 110, 180, 150, 200, 200, 200, 80 };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_TIMESTAMP, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_TIMESTAMP, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, "ConnectionHistory");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ConnectionHistoryLabelProvider());
       viewer.setComparator(new ConnectionHistoryComparator());
       ConnectionHistoryFilter filter = new ConnectionHistoryFilter();
       setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "ConnectionHistory");
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "ConnectionHistory");
-         }
-      });
 
       createActions();
       createPopupMenu();
@@ -193,6 +181,13 @@ public class ConnectionHistoryView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportAllToCsv);
    }
 

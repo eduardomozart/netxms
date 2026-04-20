@@ -28,6 +28,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -37,8 +38,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -59,7 +58,6 @@ import org.netxms.nxmc.modules.nxsl.views.helpers.MappingTableListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -102,7 +100,7 @@ public class MappingTableManagerView extends ConfigurationView
 	{
 		final int[] widths = { 80, 160, 80, 400 };
       final String[] names = { i18n.tr("ID"), i18n.tr("Name"), i18n.tr("Flags"), i18n.tr("Description") };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "MappingTablesList");
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new MappingTableListLabelProvider());
 		viewer.setComparator(new MappingTableListComparator());
@@ -126,16 +124,6 @@ public class MappingTableManagerView extends ConfigurationView
       MappingTableListFilter filter = new MappingTableListFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "MappingTablesList");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, "MappingTablesList");
-			}
-		});
 
 		createActions();
 		createPopupMenu();
@@ -257,6 +245,12 @@ public class MappingTableManagerView extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
 		manager.add(actionNewTable);
 	}
 

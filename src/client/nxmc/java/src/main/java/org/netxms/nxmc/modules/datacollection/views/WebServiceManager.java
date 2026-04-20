@@ -27,6 +27,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceManager;
 import org.eclipse.jface.preference.PreferenceNode;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -37,8 +38,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -56,7 +55,6 @@ import org.netxms.nxmc.modules.datacollection.views.helpers.WebServiceDefinition
 import org.netxms.nxmc.modules.datacollection.views.helpers.WebServiceDefinitionLabelProvider;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -99,7 +97,7 @@ public class WebServiceManager extends ConfigurationView
    {
       final String[] names = { i18n.tr("Name"), i18n.tr("URL"), i18n.tr("Method"), i18n.tr("Authentication"), i18n.tr("Login"), i18n.tr("Retention Time"), i18n.tr("Timeout"), i18n.tr("Description") };
       final int[] widths = { 300, 600, 100, 100, 160, 90, 90, 600 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, "WebServiceManager");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new WebServiceDefinitionLabelProvider());
       viewer.setComparator(new WebServiceDefinitionComparator());
@@ -107,8 +105,6 @@ public class WebServiceManager extends ConfigurationView
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "WebServiceManager");
       viewer.addSelectionChangedListener(new ISelectionChangedListener() {
          @Override
          public void selectionChanged(SelectionChangedEvent event)
@@ -123,13 +119,6 @@ public class WebServiceManager extends ConfigurationView
          public void doubleClick(DoubleClickEvent event)
          {
             editDefinition();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "WebServiceManager");
          }
       });
 
@@ -202,6 +191,12 @@ public class WebServiceManager extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionCreate);
       manager.add(actionEdit);
       manager.add(actionDelete);

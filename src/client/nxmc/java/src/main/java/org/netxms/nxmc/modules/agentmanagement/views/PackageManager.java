@@ -29,12 +29,11 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Menu;
@@ -95,20 +94,10 @@ public class PackageManager extends ConfigurationView
 		      i18n.tr("Version"), i18n.tr("Platform"),
             i18n.tr("File"), i18n.tr("Command"), i18n.tr("Description") };
       final int[] widths = { 70, 120, 100, 90, 120, 300, 300, 400 };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new PackageLabelProvider());
 		viewer.setComparator(new PackageComparator());
-
-		viewer.enableColumnReordering();
-		WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-				WidgetHelper.saveColumnOrder(viewer, getBaseId());
-			}
-		});
 
 		createActions();
 		createPopupMenu();
@@ -211,6 +200,12 @@ public class PackageManager extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

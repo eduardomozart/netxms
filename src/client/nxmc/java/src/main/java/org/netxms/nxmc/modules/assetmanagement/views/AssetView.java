@@ -30,6 +30,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
@@ -37,8 +38,6 @@ import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Composite;
@@ -60,7 +59,6 @@ import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -122,7 +120,7 @@ public class AssetView extends ObjectView
 
       final int[] widths = { 200, 400, 100, 100, 200 };
       final String[] names = { i18n.tr("Property"), i18n.tr("Value"), i18n.tr("Mandatory"), i18n.tr("Unique"), i18n.tr("System type") };
-      viewer = new SortableTableViewer(parent, names, widths, NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "Asset");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new AssetPropertyListLabelProvider(propertyReader));
       viewer.setComparator(new AssetPropertyComparator(propertyReader));
@@ -137,16 +135,6 @@ public class AssetView extends ObjectView
       filter = new AssetPropertyFilter(propertyReader);
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "Asset");
-      viewer.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "Asset");
-         }
-      });
 
       createActions();
       createContextMenu();
@@ -418,6 +406,12 @@ public class AssetView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       attributeSelectionSubMenu.update(true);
       manager.add(attributeSelectionSubMenu);
    }

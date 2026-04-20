@@ -23,10 +23,9 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -56,7 +55,6 @@ import org.netxms.nxmc.modules.datacollection.views.helpers.ThresholdTreeFilter;
 import org.netxms.nxmc.modules.datacollection.views.helpers.ThresholdTreeLabelProvider;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -126,7 +124,7 @@ public class ThresholdSummaryView extends ObjectView
    {
       final String[] names = { i18n.tr("Node"), i18n.tr("Status"), i18n.tr("Metric"), i18n.tr("Value"), i18n.tr("Condition"), i18n.tr("Event"), i18n.tr("Since") };
       final int[] widths = { 200, 100, 250, 100, 100, 250, 140 };
-      viewer = new SortableTreeViewer(parent, names, widths, COLUMN_NODE, SWT.UP, SWT.FULL_SELECTION);
+      viewer = new SortableTreeViewer(parent, names, widths, COLUMN_NODE, SWT.UP, SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new ThresholdTreeContentProvider());
       viewer.setLabelProvider(new ThresholdTreeLabelProvider());
       viewer.setComparator(new ThresholdTreeComparator());
@@ -134,16 +132,6 @@ public class ThresholdSummaryView extends ObjectView
       ThresholdTreeFilter filter = new ThresholdTreeFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTree().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
 
       createContextMenu();
 
@@ -230,6 +218,12 @@ public class ThresholdSummaryView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

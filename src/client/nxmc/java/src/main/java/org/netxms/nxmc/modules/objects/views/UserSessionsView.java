@@ -29,8 +29,6 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.UserSession;
@@ -46,7 +44,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.UserSessionFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.UserSessionLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.tools.ViewRefreshController;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.netxms.nxmc.tools.VisibilityValidator;
 import org.xnap.commons.i18n.I18n;
 
@@ -110,7 +107,7 @@ public class UserSessionsView extends ObjectView
       final String[] names = { i18n.tr("ID"), i18n.tr("User"), i18n.tr("Terminal"), i18n.tr("State"), i18n.tr("Client name"), i18n.tr("Client address"), i18n.tr("Display"), i18n.tr("Login timestamp"),
             i18n.tr("Idle time"), i18n.tr("Agent type"), i18n.tr("Agent PID") };
       final int[] widths = { 100, 150, 150, 100, 150, 150, 150, 180, 120, 150, 120 };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
       viewer.setLabelProvider(new UserSessionLabelProvider());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setComparator(new UserSessionComparator());
@@ -138,16 +135,6 @@ public class UserSessionsView extends ObjectView
          }
       }, validator);
       refreshController.setInterval(30);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
 
       createActions();
       createContextMenu();
@@ -242,6 +229,12 @@ public class UserSessionsView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

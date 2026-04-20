@@ -41,8 +41,6 @@ import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Item;
@@ -63,7 +61,6 @@ import org.netxms.nxmc.modules.filemanager.views.helpers.ServerFileLabelProvider
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -103,9 +100,7 @@ public class ServerFileManager extends ConfigurationView implements SessionListe
    {
       final String[] columnNames = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("Size"), i18n.tr("Modified") };
       final int[] columnWidths = { 300, 150, 300, 300 };
-      viewer = new SortableTableViewer(parent, columnNames, columnWidths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
+      viewer = new SortableTableViewer(parent, columnNames, columnWidths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ServerFileLabelProvider());
       viewer.setComparator(new ServerFileComparator());
@@ -132,13 +127,6 @@ public class ServerFileManager extends ConfigurationView implements SessionListe
             {
                actionDelete.setEnabled(selection.size() > 0);
             }
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
       TableViewerEditor.create(viewer, new ColumnViewerEditorActivationStrategy(viewer) {
@@ -243,6 +231,12 @@ public class ServerFileManager extends ConfigurationView implements SessionListe
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

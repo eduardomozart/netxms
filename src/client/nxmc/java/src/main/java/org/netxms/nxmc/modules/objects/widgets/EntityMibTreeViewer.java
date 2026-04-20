@@ -82,7 +82,7 @@ public class EntityMibTreeViewer extends AbstractHardwareInventoryWidget
       viewer.setContentProvider(new ComponentTreeContentProvider());
       viewer.getTree().setHeaderVisible(true);
       viewer.getTree().setLinesVisible(true);
-      viewer.setConfigPrefix("EntityMibTreeViewer");
+      viewer.enablePersistence("EntityMibTreeViewer");
    }
 
    /**

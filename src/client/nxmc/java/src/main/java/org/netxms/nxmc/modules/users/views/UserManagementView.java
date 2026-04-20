@@ -38,8 +38,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -74,7 +72,6 @@ import org.netxms.nxmc.modules.users.views.helpers.UserFilter;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -141,7 +138,7 @@ public class UserManagementView extends ConfigurationView
 		      i18n.tr("Created")
 		   };
 		final int[] widths = { 100, 80, 180, 250, 80, 170, 250, 400, 250, 250 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
 		DecoratingUserLabelProvider labelProvider = new DecoratingUserLabelProvider();
 		viewer.setLabelProvider(labelProvider);
@@ -170,16 +167,6 @@ public class UserManagementView extends ConfigurationView
 				actionEditUser.run();
 			}
 		});
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
-
       createActions();
 		createContextMenu();
 
@@ -367,6 +354,12 @@ public class UserManagementView extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionGenerateAccessReport);
       super.fillLocalMenu(manager);
    }

@@ -57,7 +57,6 @@ import org.netxms.nxmc.modules.events.widgets.helpers.EventTemplateFilter;
 import org.netxms.nxmc.modules.events.widgets.helpers.EventTemplateLabelProvider;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -123,10 +122,8 @@ public class EventTemplateList extends Composite implements SessionListener
 
       viewer = new SortableTableViewer(this, isDialog ? dialogNames : names,
             isDialog ? dialogWidths : widths,
-            0, SWT.UP, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+            0, SWT.UP, SWT.BORDER | SWT.FULL_SELECTION | SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL, configPrefix);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new EventTemplateLabelProvider(isDialog));
       viewer.setComparator(new EventTemplateComparator(isDialog));
@@ -150,7 +147,6 @@ public class EventTemplateList extends Composite implements SessionListener
          public void widgetDisposed(DisposeEvent e)
          {
             session.removeListener(EventTemplateList.this);
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
          }
       });
 
@@ -565,5 +561,15 @@ public class EventTemplateList extends Composite implements SessionListener
    public Action getActionShowAllColumns()
    {
       return viewer.getShowAllColumnsAction();
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 }

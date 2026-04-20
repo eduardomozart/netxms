@@ -81,7 +81,6 @@ import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.services.ReportFieldEditorFactory;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -293,19 +292,9 @@ public class ReportExecutionForm extends Composite
 	{
       final String[] names = { "Schedule", "Owner", "Last Run", "Status" };
       final int[] widths = { 200, 140, 150, 250 };
-      scheduleList = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      scheduleList = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, "ReportExecutionForm.ScheduleList");
 		scheduleList.setContentProvider(new ArrayContentProvider());
 		scheduleList.setLabelProvider(new ScheduleLabelProvider(scheduleList));
-
-      scheduleList.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(scheduleList, "ReportExecutionForm.ScheduleList");
-		scheduleList.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(scheduleList, "ReportExecutionForm.ScheduleList");
-         }
-      });
 
 	   createSchedulesContextMenu();
 
@@ -347,6 +336,26 @@ public class ReportExecutionForm extends Composite
       manager.add(actionDeleteSchedule);
    }
 
+   /**
+    * Get action to toggle automatic column resize on the schedule list.
+    *
+    * @return action for toggling automatic column resize on the schedule list
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return scheduleList.getAutoSizeColumnsAction();
+   }
+
+   /**
+    * Get action to toggle automatic column resize on the result list.
+    *
+    * @return action for toggling automatic column resize on the result list
+    */
+   public Action getActionAutoSizeResultColumns()
+   {
+      return resultList.getAutoSizeColumnsAction();
+   }
+
 	/**
 	 * Create "Results" section's content
 	 *
@@ -357,20 +366,10 @@ public class ReportExecutionForm extends Composite
 	{
 		final String[] names = { "Execution Time", "Started by", "Status" };
 		final int[] widths = { 180, 140, 100 };
-      resultList = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      resultList = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, "ReportExecutionForm.ResultList");
 		resultList.setContentProvider(new ArrayContentProvider());
 		resultList.setLabelProvider(new ReportResultLabelProvider(resultList));
       resultList.setComparator(new ReportResultComparator());
-
-      resultList.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(resultList, "ReportExecutionForm.ResultList");
-      resultList.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(resultList, "ReportExecutionForm.ResultList");
-         }
-      });
 
 		createResultsContextMenu();
 

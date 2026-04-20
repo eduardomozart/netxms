@@ -26,6 +26,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -34,8 +35,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -54,7 +53,6 @@ import org.netxms.nxmc.modules.actions.views.helpers.ActionManagerFilter;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -100,9 +98,7 @@ public class ActionManager extends ConfigurationView
       final String[] columnNames = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("Recipient"),
             i18n.tr("Subject"), i18n.tr("Data"), i18n.tr("Channel") };
       final int[] columnWidths = { 150, 90, 100, 120, 200, 100 };
-      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "ActionManager");
+      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "ActionManager");
       viewer.setContentProvider(new ArrayContentProvider());
       ActionLabelProvider labelProvider = new ActionLabelProvider();
       viewer.setLabelProvider(labelProvider);
@@ -128,13 +124,6 @@ public class ActionManager extends ConfigurationView
          public void doubleClick(DoubleClickEvent event)
          {
             actionEdit.run();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "ActionManager");
          }
       });
 
@@ -347,6 +336,12 @@ public class ActionManager extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionNew);
    }
 

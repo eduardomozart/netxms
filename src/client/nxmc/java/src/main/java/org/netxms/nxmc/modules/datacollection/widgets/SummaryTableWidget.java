@@ -64,7 +64,6 @@ import org.netxms.nxmc.modules.objects.ObjectMenuFactory;
 import org.netxms.nxmc.modules.objects.ObjectWrapper;
 import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.tools.ViewRefreshController;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -314,17 +313,15 @@ public class SummaryTableWidget extends Composite
          final int[] widths = new int[names.length];
          Arrays.fill(widths, 100);
          viewer.createColumns(names, widths, 0, SWT.UP);
-         viewer.enableColumnReordering(false);
          final PreferenceStore settings = PreferenceStore.getInstance();
          final String key = view.getBaseId() + ".SummaryTable." + Integer.toString(tableId);
-         WidgetHelper.restoreTreeViewerSettings(viewer, key);
+         viewer.enablePersistence(key);
          useMultipliers = settings.getAsBoolean(key + ".useMultipliers", useMultipliers);
          labelProvider.setUseMultipliers(useMultipliers);
          viewer.getControl().addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e)
             {
-               WidgetHelper.saveTreeViewerSettings(viewer, key);
                settings.set(key + ".useMultipliers", useMultipliers);
             }
          });
@@ -462,6 +459,16 @@ public class SummaryTableWidget extends Composite
    public Action getActionUseMultipliers()
    {
       return actionUseMultipliers;
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize, or null if columns have not been created yet
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 
    /**

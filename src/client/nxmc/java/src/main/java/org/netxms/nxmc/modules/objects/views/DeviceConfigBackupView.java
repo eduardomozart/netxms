@@ -41,8 +41,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -143,21 +141,12 @@ public class DeviceConfigBackupView extends ObjectView
 
       String[] columnNames = { i18n.tr("Timestamp"), i18n.tr("Last Check"), i18n.tr("Running Config"), i18n.tr("Startup Config"), i18n.tr("Status") };
       int[] columnWidths = { 200, 200, 120, 120, 150 };
-      viewer = new SortableTableViewer(sashForm, columnNames, columnWidths, COLUMN_TIMESTAMP, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(sashForm, columnNames, columnWidths, COLUMN_TIMESTAMP, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new DeviceConfigBackupLabelProvider(backupList));
       viewer.setComparator(new DeviceConfigBackupComparator());
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
       viewer.addSelectionChangedListener(new ISelectionChangedListener() {
          @Override
          public void selectionChanged(SelectionChangedEvent event)
@@ -319,6 +308,12 @@ public class DeviceConfigBackupView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

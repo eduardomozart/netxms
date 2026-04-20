@@ -41,8 +41,6 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCException;
@@ -106,7 +104,7 @@ public class SSHKeys extends ConfigurationView
    {
       final String[] setColumnNames = { "ID", "Name" };
       final int[] setColumnWidths = { 150, 250 };
-      viewer = new SortableTableViewer(parent, setColumnNames, setColumnWidths, 0, SWT.UP, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION);
+      viewer = new SortableTableViewer(parent, setColumnNames, setColumnWidths, 0, SWT.UP, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION, getBaseId());
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new SSHKeyLabelProvider());
       viewer.setComparator(new ElementLabelComparator((ILabelProvider)viewer.getLabelProvider()));
@@ -141,16 +139,6 @@ public class SSHKeys extends ConfigurationView
             editKey();
          }
       });
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
-
       createActions();
       createContextMenu();
 
@@ -249,6 +237,13 @@ public class SSHKeys extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionImport);
       manager.add(actionGenerateNew);
    }

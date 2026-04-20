@@ -221,7 +221,7 @@ public abstract class BaseTableValueViewer extends Composite
          viewer.createColumns(names, widths, columnIndex, sortDirection);
 
          if (saveTableSettings)
-            viewer.setConfigPrefix(configId);
+            viewer.enablePersistence(configId);
          else
             viewer.enableColumnReordering();
          viewer.getTable().addDisposeListener((e) -> {

@@ -27,6 +27,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceManager;
 import org.eclipse.jface.preference.PreferenceNode;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -37,8 +38,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -58,7 +57,6 @@ import org.netxms.nxmc.modules.snmp.views.helpers.SnmpTrapComparator;
 import org.netxms.nxmc.modules.snmp.views.helpers.SnmpTrapLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -126,9 +124,7 @@ public class SnmpTrapEditor extends ConfigurationView
 	{
       final String[] columnNames = { i18n.tr("ID"), i18n.tr("OID"), i18n.tr("Event"), i18n.tr("Description") };
 		final int[] columnWidths = { 70, 200, 100, 200 };
-		viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
+		viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, TABLE_CONFIG_PREFIX);
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new SnmpTrapLabelProvider());
 		viewer.setComparator(new SnmpTrapComparator());
@@ -149,13 +145,6 @@ public class SnmpTrapEditor extends ConfigurationView
 			public void doubleClick(DoubleClickEvent event)
 			{
 				actionEdit.run();
-			}
-		});
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
 			}
 		});
 
@@ -251,6 +240,12 @@ public class SnmpTrapEditor extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

@@ -25,10 +25,9 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.objects.AbstractObject;
@@ -44,7 +43,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.FDBComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.FDBFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.FDBLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -105,23 +103,13 @@ public class SwitchForwardingDatabaseView extends ObjectView
             i18n.tr("MAC"), i18n.tr("NIC Vendor"), i18n.tr("Port"), i18n.tr("Interface"), i18n.tr("VLAN"), i18n.tr("Node"), i18n.tr("Type")
 		   };
 		final int[] widths = { 180, 200, 100, 200, 100, 250, 110 };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_MAC_ADDRESS, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, COLUMN_MAC_ADDRESS, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, "SwitchForwardingDatabase");
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new FDBLabelProvider(viewer));
 		viewer.setComparator(new FDBComparator());
 		FDBFilter filter = new FDBFilter();
 		setFilterClient(viewer, filter);
 		viewer.addFilter(filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "SwitchForwardingDatabase");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, "SwitchForwardingDatabase");
-			}
-		});
 
 		createActions();
 		createPopupMenu();
@@ -189,6 +177,13 @@ public class SwitchForwardingDatabaseView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportAllToCsv);
    }
 

@@ -41,8 +41,6 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.Composite;
@@ -115,7 +113,7 @@ public class ImageLibrary extends ConfigurationView
 
       final String[] names = { i18n.tr("Name"), i18n.tr("MIME type"), i18n.tr("Protected"), i18n.tr("GUID") };
 		final int[] widths = { 400, 120, 80, 200 };
-		viewer = new SortableTreeViewer(splitter, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION | SWT.BORDER);
+		viewer = new SortableTreeViewer(splitter, names, widths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION | SWT.BORDER, getBaseId());
 		viewer.setContentProvider(new ImageLibraryContentProvider());
 		viewer.setLabelProvider(new ImageLibraryLabelProvider());
       viewer.setComparator(new ViewerComparator() {
@@ -125,16 +123,6 @@ public class ImageLibrary extends ConfigurationView
             String n1 = (e1 instanceof LibraryImage) ? ((LibraryImage)e1).getName() : ((ImageCategory)e1).getName();
             String n2 = (e2 instanceof LibraryImage) ? ((LibraryImage)e2).getName() : ((ImageCategory)e2).getName();
             return n1.compareToIgnoreCase(n2);
-         }
-      });
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTree().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
          }
       });
 
@@ -728,6 +716,12 @@ public class ImageLibrary extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

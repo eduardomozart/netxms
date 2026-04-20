@@ -20,10 +20,9 @@ package org.netxms.nxmc.modules.objects.views;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Cluster;
@@ -34,7 +33,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.ClusterResourceListComparat
 import org.netxms.nxmc.modules.objects.views.helpers.ClusterResourceListFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.ClusterResourceListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -70,23 +68,13 @@ public class ResourcesView extends ObjectView
 	{
 		final String[] names = { i18n.tr("Resource"), i18n.tr("VIP"), i18n.tr("Owner") };
 		final int[] widths = { 200, 120, 150 };
-		resourceList = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
+		resourceList = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SortableTableViewer.DEFAULT_STYLE, getBaseId());
 		resourceList.setContentProvider(new ArrayContentProvider());
 		resourceList.setLabelProvider(new ClusterResourceListLabelProvider());
       resourceList.setComparator(new ClusterResourceListComparator());
       ClusterResourceListFilter filter = new ClusterResourceListFilter();
       resourceList.addFilter(filter);
 		setFilterClient(resourceList, filter);
-
-		resourceList.enableColumnReordering();
-		WidgetHelper.restoreColumnOrder(resourceList, getBaseId());
-		resourceList.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-				WidgetHelper.saveColumnOrder(resourceList, getBaseId());
-			}
-		});
 	}
 
    /**
@@ -101,6 +89,12 @@ public class ResourcesView extends ObjectView
       Action showAllAction = resourceList.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = resourceList.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

@@ -32,6 +32,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -43,8 +44,6 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
@@ -119,9 +118,7 @@ public class GeoAreasManager extends ConfigurationView implements SessionListene
 
       final String[] names = { "ID", "Name", "Comments" };
       final int[] widths = { 100, 400, 800 };
-      viewer = new SortableTableViewer(splitter, names, widths, 1, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
+      viewer = new SortableTableViewer(splitter, names, widths, 1, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new GeoAreaLabelProvider());
       viewer.setComparator(new GeoAreaComparator());
@@ -147,13 +144,6 @@ public class GeoAreasManager extends ConfigurationView implements SessionListene
          public void doubleClick(DoubleClickEvent event)
          {
             editArea();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
 
@@ -291,6 +281,12 @@ public class GeoAreasManager extends ConfigurationView implements SessionListene
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

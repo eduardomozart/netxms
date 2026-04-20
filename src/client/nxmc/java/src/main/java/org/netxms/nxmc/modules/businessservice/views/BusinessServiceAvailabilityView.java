@@ -24,10 +24,9 @@ import java.util.List;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -205,22 +204,10 @@ public class BusinessServiceAvailabilityView extends ObjectView
 
       final String[] names = { i18n.tr("ID"), i18n.tr("Service"), i18n.tr("Check ID"), i18n.tr("Description"), i18n.tr("Created"), i18n.tr("Closed"), i18n.tr("Reason") };
       final int[] widths = {70, 200, 70, 300, 150, 150, 300};
-      ticketViewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTableViewer.DEFAULT_STYLE);
+      ticketViewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SortableTableViewer.DEFAULT_STYLE, getBaseId());
       ticketViewer.setContentProvider(new ArrayContentProvider());
       ticketViewer.setLabelProvider(new BusinessServiceTicketLabelProvider());
       ticketViewer.setComparator(new BusinessServiceTicketComparator());
-
-      ticketViewer.enableColumnReordering();
-      WidgetHelper.restoreColumnSettings(ticketViewer.getTable(), ID);
-      WidgetHelper.restoreColumnOrder(ticketViewer, getBaseId());
-      ticketViewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(ticketViewer.getTable(), ID);
-            WidgetHelper.saveColumnOrder(ticketViewer, getBaseId());
-         }
-      });
 
       gd = new GridData();
       gd.grabExcessHorizontalSpace = true;
@@ -270,6 +257,12 @@ public class BusinessServiceAvailabilityView extends ObjectView
       Action showAllAction = ticketViewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = ticketViewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 

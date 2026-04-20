@@ -25,6 +25,7 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferenceManager;
 import org.eclipse.jface.preference.PreferenceNode;
@@ -34,8 +35,6 @@ import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
@@ -57,7 +56,6 @@ import org.netxms.nxmc.modules.assetmanagement.views.helpers.AssetAttributeListL
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -106,7 +104,7 @@ public class AssetManagementSchemaManager extends ConfigurationView
       final int[] widths = { 200, 200, 100, 100, 100, 100, 100, 100, 100, 100 };
       final String[] names = { i18n.tr("Name"), i18n.tr("Display Name"), i18n.tr("Data Type"), i18n.tr("Mandatory"),
             i18n.tr("Unique"), i18n.tr("Hidden"), i18n.tr("Autofill"), i18n.tr("Range min"), i18n.tr("Range max"), i18n.tr("System type") };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "AssetManagementAttributes");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new AssetAttributeListLabelProvider());
       viewer.setComparator(new AssetAttributeComparator());
@@ -121,17 +119,6 @@ public class AssetManagementSchemaManager extends ConfigurationView
       filter = new AssetAttributeFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "AssetManagementAttributes");
-
-      viewer.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "AssetManagementAttributes");
-         }
-      });
 
       listener = new SessionListener() {
          @Override
@@ -326,6 +313,12 @@ public class AssetManagementSchemaManager extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionAdd);
    }
 

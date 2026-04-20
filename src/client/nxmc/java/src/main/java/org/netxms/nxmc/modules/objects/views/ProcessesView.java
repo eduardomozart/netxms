@@ -27,6 +27,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITableLabelProvider;
@@ -35,8 +36,6 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
@@ -55,7 +54,6 @@ import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.ViewRefreshController;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -143,20 +141,11 @@ public class ProcessesView extends ObjectView
       final String[] names = { i18n.tr("PID"), i18n.tr("Name"), i18n.tr("User"), i18n.tr("Threads"), i18n.tr("Handles"), i18n.tr("VM Size"), i18n.tr("RSS"), i18n.tr("CPU %"),
             i18n.tr("Memory %"), i18n.tr("Page faults"), i18n.tr("System time"), i18n.tr("User time"), i18n.tr("Command line") };
       final int[] widths = { 90, 200, 140, 90, 90, 90, 90, 90, 90, 90, 90, 90, 500 };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "ProcessTable");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ProcessLabelProvider());
       viewer.setComparator(new ProcessComparator());
       viewer.addFilter(new ProcessFilter());
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "ProcessTable");
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "ProcessTable");
-         }
-      });
 
       createActions();
       createContextMenu();
@@ -235,6 +224,12 @@ public class ProcessesView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

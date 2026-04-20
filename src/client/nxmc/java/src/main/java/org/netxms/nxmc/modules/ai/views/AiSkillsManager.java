@@ -25,6 +25,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -34,8 +35,6 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -54,7 +53,6 @@ import org.netxms.nxmc.modules.ai.views.helpers.AiItemLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -96,9 +94,7 @@ public class AiSkillsManager extends ConfigurationView
    {
       final String[] columnNames = { i18n.tr("Type"), i18n.tr("Name"), i18n.tr("Description"), i18n.tr("Status") };
       final int[] columnWidths = { 90, 200, 400, 100 };
-      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "AISkillsManager");
+      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "AISkillsManager");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new AiItemLabelProvider());
       viewer.setComparator(new AiItemComparator());
@@ -110,13 +106,6 @@ public class AiSkillsManager extends ConfigurationView
          public void selectionChanged(SelectionChangedEvent event)
          {
             updateActionState();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "AISkillsManager");
          }
       });
 
@@ -230,6 +219,26 @@ public class AiSkillsManager extends ConfigurationView
          manager.add(actionEnable);
          manager.add(actionDisable);
          manager.add(actionAddCustom);
+      }
+   }
+
+   /**
+    * @see org.netxms.nxmc.base.views.View#fillLocalMenu(org.eclipse.jface.action.IMenuManager)
+    */
+   @Override
+   protected void fillLocalMenu(IMenuManager manager)
+   {
+      Action resetAction = viewer.getResetColumnOrderAction();
+      if (resetAction != null)
+         manager.add(resetAction);
+      Action showAllAction = viewer.getShowAllColumnsAction();
+      if (showAllAction != null)
+         manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
       }
    }
 

@@ -57,7 +57,6 @@ import org.netxms.nxmc.modules.serverconfig.views.helpers.ScheduledTaskLabelProv
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -112,7 +111,7 @@ public class ScheduledTasks extends ConfigurationView
       final int[] widths = { 50, 100, 200, 400, 200, 150, 200, 150, 100, 200, 250, 200 };
       final String[] names = { i18n.tr("ID"), i18n.tr("Schedule Type"), i18n.tr("Object"), i18n.tr("Parameters"), i18n.tr("Timer key"), i18n.tr("Execution time"), i18n.tr("Execution time description"), i18n.tr("Last execution time"),
             i18n.tr("Execution status"), i18n.tr("Administrative status"), i18n.tr("Owner"), i18n.tr("Comments") };
-      viewer = new SortableTableViewer(parent, names, widths, SCHEDULE_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, SCHEDULE_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "ScheduledTasks");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ScheduledTaskLabelProvider(viewer));
       viewer.setComparator(new ScheduledTaskComparator());
@@ -128,8 +127,6 @@ public class ScheduledTasks extends ConfigurationView
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "ScheduledTasks");
       final PreferenceStore settings = PreferenceStore.getInstance();
       filter.setShowCompletedTasks(settings.getAsBoolean("ScheduledTasks.showCompleted", true));
       filter.setShowDisabledTasks(settings.getAsBoolean("ScheduledTasks.showDisabled", true));
@@ -139,7 +136,6 @@ public class ScheduledTasks extends ConfigurationView
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveTableViewerSettings(viewer, "ScheduledTasks");
             settings.set("ScheduledTasks.showCompleted", filter.isShowCompletedTasks());
             settings.set("ScheduledTasks.showDisabled", filter.isShowDisabledTasks());
             settings.set("ScheduledTasks.showSystem", filter.isShowSystemTasks());
@@ -421,6 +417,12 @@ public class ScheduledTasks extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(new Separator());
       manager.add(actionShowCompletedTasks);
       manager.add(actionShowDisabledTasks);

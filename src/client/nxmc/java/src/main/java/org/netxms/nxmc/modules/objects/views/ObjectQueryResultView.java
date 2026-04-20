@@ -30,12 +30,11 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.TableColumn;
@@ -55,7 +54,6 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.views.helpers.ObjectQueryResultLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -70,6 +68,7 @@ public class ObjectQueryResultView extends ConfigurationView
    private Composite contentArea;
    private SashForm sashForm;
    private SortableTableViewer viewer;
+   private boolean persistenceEnabled = false;
    private TextConsole console;
    private Action actionExportToCSV;
    private Action actionCopyToClipboard;
@@ -177,16 +176,6 @@ public class ObjectQueryResultView extends ConfigurationView
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ObjectQueryResultLabelProvider(viewer.getTable()));
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(viewer, getBaseId());
-         }
-      });
-
       createActions();
       createContextMenu();
    }
@@ -293,6 +282,12 @@ public class ObjectQueryResultView extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**
@@ -369,6 +364,11 @@ public class ObjectQueryResultView extends ConfigurationView
          }
       }
 
+      if (!persistenceEnabled)
+      {
+         viewer.enablePersistence(getBaseId());
+         persistenceEnabled = true;
+      }
       viewer.setInput(objects);
    }
 

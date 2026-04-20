@@ -37,8 +37,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -95,9 +93,7 @@ public class ScriptLibraryView extends ConfigurationView
    {
       final String[] names = { i18n.tr("ID"), i18n.tr("Name") };
       final int[] widths = { 90, 500 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, ID);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, ID);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ScriptLabelProvider());
       viewer.setComparator(new ScriptComparator());
@@ -123,13 +119,6 @@ public class ScriptLibraryView extends ConfigurationView
          public void doubleClick(DoubleClickEvent event)
          {
             editScript();
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, ID);
          }
       });
 
@@ -265,6 +254,12 @@ public class ScriptLibraryView extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

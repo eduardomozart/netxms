@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,7 +86,6 @@ import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.DialogData;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.netxms.nxmc.tools.VisibilityValidator;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnap.commons.i18n.I18n;
@@ -223,7 +222,7 @@ public class DataCollectionView extends BaseDataCollectionView
             i18n.tr("Data Type"), i18n.tr("Polling Interval"), i18n.tr("Retention Time"), i18n.tr("Tag"), i18n.tr("Status"),
             i18n.tr("Thresholds"), i18n.tr("Template"), i18n.tr("Related Object"), i18n.tr("Is status calculation") };
       final int[] widths = { 60, 250, 150, 200, 90, 90, 90, 90, 120, 100, 200, 150, 150, 90 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, configPrefix);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new DciLabelProvider());
       viewer.setComparator(new DciComparator((DciLabelProvider)viewer.getLabelProvider()));
@@ -231,8 +230,6 @@ public class DataCollectionView extends BaseDataCollectionView
       setFilterClient(viewer, dcFilter);
       dcFilter.setHideTemplateItems(ds.getAsBoolean(configPrefix + ".hideTemplateItems", false));
       viewer.addFilter(dcFilter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
 
       viewer.addSelectionChangedListener(new DciSelectionChange());
       viewer.addDoubleClickListener((e) -> editSelectedObject());
@@ -240,7 +237,6 @@ public class DataCollectionView extends BaseDataCollectionView
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix); //$NON-NLS-1$
             ds.set(configPrefix + ".hideModificationWarnings", hideModificationWarnings);
             ds.set(configPrefix + ".hideTemplateItems", actionHideTemplateItems.isChecked());
          }

@@ -26,10 +26,9 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.objects.AbstractObject;
@@ -49,7 +48,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.Dot1xPortFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.Dot1xPortListLabelProvider;
 import org.netxms.nxmc.modules.objects.views.helpers.Dot1xPortSummary;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -86,23 +84,13 @@ public class Dot1xStatusView extends ObjectView
 	{
 		final String[] names = { i18n.tr("Device"), i18n.tr("Port"), i18n.tr("Interface"), i18n.tr("PAE State"), i18n.tr("Backend State") };
 		final int[] widths = { 250, 60, 180, 150, 150 };
-		viewer = new SortableTableViewer(parent, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, 1, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "Dot1xStatusView");
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new Dot1xPortListLabelProvider());
 		viewer.setComparator(new Dot1xPortComparator());
 		Dot1xPortFilter filter = new Dot1xPortFilter();
 		setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "Dot1xStatusView");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, "Dot1xStatusView");
-			}
-		});
 
 		createActions();
 		createPopupMenu();
@@ -159,6 +147,13 @@ public class Dot1xStatusView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportToCsv);
       manager.add(actionExportAllToCsv);
    }

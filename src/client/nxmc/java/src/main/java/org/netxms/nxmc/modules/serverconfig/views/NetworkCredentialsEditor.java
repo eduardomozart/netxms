@@ -25,6 +25,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
@@ -37,8 +38,6 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.ModifyEvent;
@@ -345,6 +344,12 @@ public class NetworkCredentialsEditor extends ConfigurationView
       Action showAllAction = snmpUsmCredentialsList.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = snmpUsmCredentialsList.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       super.fillLocalMenu(manager);
    }
 
@@ -559,7 +564,7 @@ public class NetworkCredentialsEditor extends ConfigurationView
 
       final String[] names = { i18n.tr("User name"), i18n.tr("Auth type"), i18n.tr("Priv type"), i18n.tr("Auth password"), i18n.tr("Priv password"), i18n.tr("Comments") };
 		final int[] widths = { 100, 100, 100, 100, 100, 100 };
-      snmpUsmCredentialsList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
+      snmpUsmCredentialsList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, getBaseId() + ".snmpUsm");
 		GridData gd = new GridData();
 		gd.horizontalAlignment = SWT.FILL;
 		gd.grabExcessHorizontalSpace = true;
@@ -577,16 +582,6 @@ public class NetworkCredentialsEditor extends ConfigurationView
             editUsmCredentials();
          }
       });
-      snmpUsmCredentialsList.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(snmpUsmCredentialsList, getBaseId() + ".snmpUsm");
-      snmpUsmCredentialsList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(snmpUsmCredentialsList, getBaseId() + ".snmpUsm");
-         }
-      });
-
       Label separator = new Label(clientArea, SWT.SEPARATOR | SWT.VERTICAL);
       gd = new GridData();
       gd.verticalAlignment = SWT.FILL;

@@ -36,8 +36,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
@@ -62,7 +60,6 @@ import org.netxms.nxmc.modules.objects.views.ObjectView;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -114,14 +111,12 @@ public class PolicyListView extends ObjectView implements SessionListener
       final String[] names = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("GUID"), i18n.tr("Last Modified") };
       final int[] widths = { 250, 200, 100, 150 };
 
-      policyList = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
+      policyList = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, "PolicyEditorView");
       policyList.setContentProvider(new ArrayContentProvider());
       policyList.setLabelProvider(new PolicyLabelProvider());
       policyList.setComparator(new PolicyComparator());
       filter = new PolicyFilter();
       policyList.addFilter(filter);
-      policyList.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(policyList, "PolicyEditorView"); //$NON-NLS-1$
       policyList.addSelectionChangedListener(new ISelectionChangedListener() {
          @Override
          public void selectionChanged(SelectionChangedEvent event)
@@ -144,13 +139,6 @@ public class PolicyListView extends ObjectView implements SessionListener
          public void doubleClick(DoubleClickEvent event)
          {
             actionEdit.run();
-         }
-      });
-      policyList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(policyList, "DataCollectionEditor"); //$NON-NLS-1$
          }
       });
 
@@ -598,6 +586,12 @@ public class PolicyListView extends ObjectView implements SessionListener
       Action showAllAction = policyList.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = policyList.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionCreate);
       manager.add(actionForceDeploy);
       manager.add(new Separator());

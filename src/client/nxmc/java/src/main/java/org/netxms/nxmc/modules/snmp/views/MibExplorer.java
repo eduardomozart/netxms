@@ -272,7 +272,7 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 		});
       viewer.addDoubleClickListener((e) -> selectInTree());
       viewer.setInput(walkData);
-      viewer.setConfigPrefix(getBaseId());
+      viewer.enablePersistence(getBaseId());
 
       splitter.setWeights(new int[] { 70, 30 });
 

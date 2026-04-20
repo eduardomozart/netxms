@@ -18,7 +18,6 @@
  */
 package org.netxms.nxmc.modules.snmp.widgets;
 
-import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
@@ -28,6 +27,7 @@ import org.netxms.client.SessionNotification;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.widgets.AbstractTraceWidget;
+import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.helpers.AbstractTraceViewFilter;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.snmp.widgets.helpers.SnmpTrapMonitorFilter;
@@ -80,7 +80,7 @@ public class SnmpTrapTraceWidget extends AbstractTraceWidget implements SessionL
     * @see org.netxms.ui.eclipse.widgets.AbstractTraceWidget#setupViewer(org.eclipse.jface.viewers.TableViewer)
     */
 	@Override
-	protected void setupViewer(TableViewer viewer)
+	protected void setupViewer(SortableTableViewer viewer)
 	{
       addColumn(i18n.tr("Timestamp"), 150);
       addColumn(i18n.tr("Source IP"), 120);

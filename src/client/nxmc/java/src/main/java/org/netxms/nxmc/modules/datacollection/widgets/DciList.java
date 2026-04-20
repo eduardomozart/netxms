@@ -28,8 +28,6 @@ import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.layout.FormAttachment;
@@ -49,7 +47,6 @@ import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.DciListComparator;
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.DciListFilter;
 import org.netxms.nxmc.modules.datacollection.widgets.helpers.DciListLabelProvider;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -116,23 +113,13 @@ public class DciList extends Composite
 		// Setup table columns
       final String[] names = { i18n.tr("ID"), i18n.tr("Metric"), i18n.tr("Display name") };
 		final int[] widths = { 70, 150, 250 };
-		viewer = new SortableTableViewer(this, names, widths, 2, SWT.DOWN, selectionType | SWT.FULL_SELECTION);
+		viewer = new SortableTableViewer(this, names, widths, 2, SWT.DOWN, selectionType | SWT.FULL_SELECTION, configPrefix);
 
 		viewer.setLabelProvider(new DciListLabelProvider());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setComparator(new DciListComparator());
 		filter = new DciListFilter();
 		viewer.addFilter(filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
-
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
-			}
-		});
 
       // Setup layout
       FormData fd = new FormData();
@@ -318,5 +305,15 @@ public class DciList extends Composite
       final String text = filterText.getText();
       filter.setFilterString(text);
       viewer.refresh(false);
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 }

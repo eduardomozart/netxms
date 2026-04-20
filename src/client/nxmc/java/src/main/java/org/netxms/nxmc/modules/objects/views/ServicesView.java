@@ -33,8 +33,6 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
@@ -46,7 +44,6 @@ import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -130,20 +127,11 @@ public class ServicesView extends ObjectView
    {
       final String[] names = { "Name", "Display name", "State", "PID", "Type", "Startup", "Run as", "Command line", "Dependencies" };
       final int[] widths = { 180, 280, 90, 80, 100, 150, 300, 500, 200 };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "ServiceTable");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ServiceLabelProvider());
       viewer.setComparator(new ServiceComparator());
       viewer.addFilter(new ServiceFilter());
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "ServiceTable");
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "ServiceTable");
-         }
-      });
 
       createActions();
       createContextMenu();
@@ -241,6 +229,12 @@ public class ServicesView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

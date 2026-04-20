@@ -25,12 +25,10 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelectionProvider;
-import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.widgets.helpers.AbstractTraceViewFilter;
@@ -50,7 +48,7 @@ public abstract class AbstractTraceWidget extends Composite
 	private static final int MAX_ELEMENTS = 500;
 
    protected View view;
-   protected TableViewer viewer;
+   protected SortableTableViewer viewer;
    protected AbstractTraceViewFilter filter = null;
 
 	private LinkedList<Object> data = new LinkedList<Object>();
@@ -75,12 +73,11 @@ public abstract class AbstractTraceWidget extends Composite
 
       setLayout(new FillLayout());
 
-		viewer = new TableViewer(this, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(this, SWT.FULL_SELECTION | SWT.MULTI);
 		viewer.getTable().setHeaderVisible(true);
 		viewer.setContentProvider(new ArrayContentProvider());
 		setupViewer(viewer);
-      WidgetHelper.restoreColumnSettings(viewer.getTable(), getConfigPrefix());
-      viewer.getTable().addDisposeListener((e) -> WidgetHelper.saveColumnSettings(viewer.getTable(), getConfigPrefix()));
+		viewer.enablePersistence(getConfigPrefix());
 
       filter = createFilter();
       viewer.addFilter(filter);
@@ -167,10 +164,10 @@ public abstract class AbstractTraceWidget extends Composite
 
 	/**
 	 * Setup table vewer
-	 * 
+	 *
 	 * @param viewer
 	 */
-	protected abstract void setupViewer(TableViewer viewer);
+	protected abstract void setupViewer(SortableTableViewer viewer);
 
    /**
     * Create filter for viewer.
@@ -181,15 +178,13 @@ public abstract class AbstractTraceWidget extends Composite
 
 	/**
 	 * Add column to viewer
-	 * 
+	 *
 	 * @param name
 	 * @param width
 	 */
 	protected void addColumn(String name, int width)
 	{
-		final TableColumn tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-		tc.setText(name);
-		tc.setWidth(width);
+		viewer.addColumn(name, width);
 	}
 
 	/**
@@ -407,11 +402,22 @@ public abstract class AbstractTraceWidget extends Composite
    /**
     * @return the viewer
     */
-   public TableViewer getViewer()
+   public SortableTableViewer getViewer()
    {
       return viewer;
    }
-   
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
+   }
+
+
    /**
     * Get selection provider
     * 

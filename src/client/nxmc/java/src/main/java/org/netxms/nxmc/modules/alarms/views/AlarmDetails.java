@@ -27,6 +27,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.window.Window;
@@ -214,6 +215,12 @@ public class AlarmDetails extends AdHocObjectView
          Action showAllAction = eventViewer.getShowAllColumnsAction();
          if (showAllAction != null)
             manager.add(showAllAction);
+         Action autoSizeAction = eventViewer.getAutoSizeColumnsAction();
+         if (autoSizeAction != null)
+         {
+            manager.add(new Separator());
+            manager.add(autoSizeAction);
+         }
       }
    }
 
@@ -443,20 +450,10 @@ public class AlarmDetails extends AdHocObjectView
 
 		final String[] names = { i18n.tr("Severity"), i18n.tr("Source"), i18n.tr("Name"), i18n.tr("Message"), i18n.tr("Timestamp")};
 		final int[] widths = { 130, 160, 160, 400, 150 };
-      eventViewer = new SortableTreeViewer(section.getClient(), names, widths, EV_COLUMN_TIMESTAMP, SWT.DOWN, SWT.FULL_SELECTION);
+      eventViewer = new SortableTreeViewer(section.getClient(), names, widths, EV_COLUMN_TIMESTAMP, SWT.DOWN, SWT.FULL_SELECTION, "AlarmDetails.Events"); //$NON-NLS-1$
 		eventViewer.setContentProvider(new EventTreeContentProvider());
 		eventViewer.setLabelProvider(new EventTreeLabelProvider());
 		eventViewer.setComparator(new EventTreeComparator());
-      eventViewer.enableColumnReordering();
-
-		WidgetHelper.restoreTreeViewerSettings(eventViewer, "AlarmDetails.Events"); //$NON-NLS-1$
-		eventViewer.getControl().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTreeViewerSettings(eventViewer, "AlarmDetails.Events"); //$NON-NLS-1$
-         }
-      });
 	}
 
 	/**

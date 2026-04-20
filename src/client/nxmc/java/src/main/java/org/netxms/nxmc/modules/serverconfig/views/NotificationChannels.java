@@ -32,8 +32,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
@@ -55,7 +53,6 @@ import org.netxms.nxmc.modules.serverconfig.views.helpers.NotificationChannelLis
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -103,9 +100,7 @@ public class NotificationChannels extends ConfigurationView
    {
       final int[] widths = { 160, 250, 100, 100, 100, 100, 100, 80, 400 };
       final String[] names = { i18n.tr("Name"), i18n.tr("Description"), i18n.tr("Driver"), i18n.tr("Messages"), i18n.tr("Failures"), i18n.tr("Digested"), i18n.tr("Queue"), i18n.tr("Status"), i18n.tr("Error message") };
-      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "NotificationChannelList");
+      viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "NotificationChannelList");
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new NotificationChannelLabelProvider());
       viewer.setComparator(new NotificationChannelListComparator());
@@ -120,14 +115,6 @@ public class NotificationChannels extends ConfigurationView
             IStructuredSelection selection = viewer.getStructuredSelection();
             actionEditChannel.setEnabled(selection.size() == 1);
             actionDeleteChannel.setEnabled(selection.size() > 0);
-         }
-      });
-
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "NotificationChannelList");
          }
       });
 
@@ -282,6 +269,13 @@ public class NotificationChannels extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionNewChannel);
       manager.add(actionSendNotificationGlobal);
    }

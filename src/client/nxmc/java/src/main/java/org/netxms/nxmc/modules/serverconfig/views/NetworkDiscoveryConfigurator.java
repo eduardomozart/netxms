@@ -24,6 +24,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -35,8 +36,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -241,6 +240,7 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             {
                filterAddressList.resetColumnOrder();
                activeDiscoveryAddressList.resetColumnOrder();
+               topologyExcludedSubnetsList.resetColumnOrder();
             }
          });
       }
@@ -253,9 +253,17 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             {
                filterAddressList.showAllColumns();
                activeDiscoveryAddressList.showAllColumns();
+               topologyExcludedSubnetsList.showAllColumns();
             }
          });
       }
+      Action autoSizeAction = filterAddressList.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionSave);
    }
 
@@ -597,7 +605,7 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
 
       final String[] names = { i18n.tr("Range"), i18n.tr("Comment") };
       final int[] widths = { 150, 150 };
-      filterAddressList = new SortableTableViewer(addressRangeEditor, names, widths, 0, SWT.DOWN, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION);
+      filterAddressList = new SortableTableViewer(addressRangeEditor, names, widths, 0, SWT.DOWN, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION, getBaseId() + ".filterAddressList");
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
@@ -617,16 +625,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             editAddressFilterElement();
          }
       });
-      filterAddressList.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(filterAddressList, getBaseId() + ".filterAddressList");
-      filterAddressList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(filterAddressList, getBaseId() + ".filterAddressList");
-         }
-      });
-
       final ImageHyperlink linkAdd = new ImageHyperlink(addressRangeEditor, SWT.NONE);
       linkAdd.setText(i18n.tr("Add..."));
       linkAdd.setImage(SharedIcons.IMG_ADD_OBJECT);
@@ -793,7 +791,7 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
 
       final String[] names = { i18n.tr("Range"), i18n.tr("Zone"), i18n.tr("Proxy"), i18n.tr("Comments") };
       final int[] widths = { 150, 150, 150, 150 };
-      activeDiscoveryAddressList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
+      activeDiscoveryAddressList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, getBaseId() + ".activeDiscoveryAddressList");
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
@@ -820,16 +818,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             editTargetAddressListElement();
          }
       });
-      activeDiscoveryAddressList.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(activeDiscoveryAddressList, getBaseId() + ".activeDiscoveryAddressList");
-      activeDiscoveryAddressList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(activeDiscoveryAddressList, getBaseId() + ".activeDiscoveryAddressList");
-         }
-      });
-
       Label separator = new Label(clientArea, SWT.SEPARATOR | SWT.VERTICAL);
       gd = new GridData();
       gd.verticalAlignment = SWT.FILL;
@@ -941,7 +929,7 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
 
       final String[] names = { i18n.tr("Range"), i18n.tr("Zone"), i18n.tr("Proxy"), i18n.tr("Comments") };
       final int[] widths = { 150, 150, 150, 150 };
-      topologyExcludedSubnetsList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION);
+      topologyExcludedSubnetsList = new SortableTableViewer(clientArea, names, widths, 0, SWT.DOWN, SWT.MULTI | SWT.FULL_SELECTION, getBaseId() + ".topologyExcludedSubnetsList");
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
       gd.grabExcessHorizontalSpace = true;
@@ -973,16 +961,6 @@ public class NetworkDiscoveryConfigurator extends ConfigurationView
             editTopologyExcludedSubnetElement();
          }
       });
-      topologyExcludedSubnetsList.enableColumnReordering();
-      WidgetHelper.restoreColumnOrder(topologyExcludedSubnetsList, getBaseId() + ".topologyExcludedSubnetsList");
-      topologyExcludedSubnetsList.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnOrder(topologyExcludedSubnetsList, getBaseId() + ".topologyExcludedSubnetsList");
-         }
-      });
-
       Label separator = new Label(clientArea, SWT.SEPARATOR | SWT.VERTICAL);
       gd = new GridData();
       gd.verticalAlignment = SWT.FILL;

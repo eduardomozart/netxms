@@ -258,6 +258,12 @@ public abstract class BaseDataCollectionView extends ObjectView implements Viewe
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportAllToCsv);
       manager.add(new Separator());
       manager.add(actionUseMultipliers);
@@ -467,8 +473,7 @@ public abstract class BaseDataCollectionView extends ObjectView implements Viewe
     */
    protected void postLastValueViewCreation(String configPrefix, VisibilityValidator validator)
    {
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
+      viewer.enablePersistence(configPrefix);
 
       final PreferenceStore ds = PreferenceStore.getInstance();
 
@@ -502,7 +507,6 @@ public abstract class BaseDataCollectionView extends ObjectView implements Viewe
          @Override
          public void widgetDisposed(DisposeEvent e)
          {
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
             ds.set(configPrefix + ".autoRefresh", autoRefreshEnabled);
             ds.set(configPrefix + ".autoRefreshInterval", autoRefreshEnabled);
             ds.set(configPrefix + ".useMultipliers", labelProvider.areMultipliersUsed());

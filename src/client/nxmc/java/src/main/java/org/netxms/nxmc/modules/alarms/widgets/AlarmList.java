@@ -211,8 +211,7 @@ public class AlarmList extends CompositeWithMessageArea
 		alarmViewer = new SortableTreeViewer(getContent(), names, widths, 0, SWT.DOWN, SortableTreeViewer.DEFAULT_STYLE);
       if (!session.isZoningEnabled())
          alarmViewer.removeColumnById(COLUMN_ZONE);
-      alarmViewer.enableColumnReordering();
-      WidgetHelper.restoreTreeViewerSettings(alarmViewer, configPrefix);
+      alarmViewer.enablePersistence(configPrefix);
 
       labelProvider = new AlarmListLabelProvider(alarmViewer);
       labelProvider.setShowColor(PreferenceStore.getInstance().getAsBoolean("AlarmList.ShowStatusColor", false));
@@ -221,13 +220,6 @@ public class AlarmList extends CompositeWithMessageArea
       alarmViewer.setComparator(new AlarmComparator());
       alarmFilter = new AlarmListFilter();
       alarmViewer.addFilter(alarmFilter);
-      alarmViewer.getTree().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTreeViewerSettings(alarmViewer, configPrefix);
-         }
-      });
       alarmViewer.addDoubleClickListener(new IDoubleClickListener() {
          @Override
          public void doubleClick(DoubleClickEvent event)
@@ -1384,6 +1376,16 @@ public class AlarmList extends CompositeWithMessageArea
    public Action getActionShowAllColumns()
    {
       return alarmViewer.getShowAllColumnsAction();
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return alarmViewer.getAutoSizeColumnsAction();
    }
 
    /**

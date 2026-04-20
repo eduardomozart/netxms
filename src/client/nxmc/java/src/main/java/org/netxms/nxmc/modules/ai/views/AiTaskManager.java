@@ -26,14 +26,13 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.NXCSession;
@@ -52,7 +51,6 @@ import org.netxms.nxmc.modules.ai.views.helpers.AiTaskLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -94,9 +92,7 @@ public class AiTaskManager extends ConfigurationView
    {
       final String[] columnNames = { i18n.tr("ID"), i18n.tr("Description"), i18n.tr("Owner"), i18n.tr("State"), i18n.tr("Last Execution"), i18n.tr("Next Execution"), i18n.tr("Explanation") };
       final int[] columnWidths = { 90, 300, 150, 100, 150, 150, 400 };
-      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "AITaskManager");
+      viewer = new SortableTableViewer(parent, columnNames, columnWidths, COLUMN_ID, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "AITaskManager");
       viewer.setContentProvider(new ArrayContentProvider());
       AiTaskLabelProvider labelProvider = new AiTaskLabelProvider(viewer);
       viewer.setLabelProvider(labelProvider);
@@ -115,14 +111,6 @@ public class AiTaskManager extends ConfigurationView
             }
          }
       });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, "AITaskManager");
-         }
-      });
-
       createActions();
       createContextMenu();
 
@@ -275,6 +263,12 @@ public class AiTaskManager extends ConfigurationView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionNew);
    }
 

@@ -20,10 +20,9 @@ package org.netxms.nxmc.modules.objects.views;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.netxms.client.objects.AbstractNode;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.VPNConnector;
@@ -33,7 +32,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.VPNConnectorFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.VPNConnectorListComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.VPNConnectorListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -113,7 +111,7 @@ public class VpnView extends NodeSubObjectTableView
       final String[] names = { i18n.tr("Id"), i18n.tr("Name"), i18n.tr("Status"), i18n.tr("Peer gateway"), i18n.tr("Local subnets"), i18n.tr("Remote subnets") };
 
       final int[] widths = { 60, 150, 80, 150, 200, 200 };
-      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(mainArea, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "VPNTable.V1");
       labelProvider = new VPNConnectorListLabelProvider();
       viewer.setLabelProvider(labelProvider);
       viewer.setContentProvider(new ArrayContentProvider());
@@ -123,15 +121,6 @@ public class VpnView extends NodeSubObjectTableView
       filter = new VPNConnectorFilter(labelProvider);
       setFilterClient(viewer, filter);
       viewer.addFilter(filter);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "VPNTable.V1"); //$NON-NLS-1$
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "VPNTable.V1"); //$NON-NLS-1$
-         }
-      });
    }
 
    /**
@@ -146,6 +135,12 @@ public class VpnView extends NodeSubObjectTableView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

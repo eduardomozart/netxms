@@ -48,8 +48,6 @@ import org.eclipse.swt.dnd.DragSourceAdapter;
 import org.eclipse.swt.dnd.DragSourceEvent;
 import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.dnd.TransferData;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Item;
 import org.eclipse.swt.widgets.Menu;
@@ -167,10 +165,8 @@ public class AgentFileManager extends ObjectView
    {
       final String[] columnNames = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("Size"), i18n.tr("Date modified"), i18n.tr("Owner"), i18n.tr("Group"), i18n.tr("Access Rights") };
       final int[] columnWidths = { 300, 120, 150, 150, 150, 150, 200 };
-      viewer = new SortableTreeViewer(parent, columnNames, columnWidths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE);
+      viewer = new SortableTreeViewer(parent, columnNames, columnWidths, 0, SWT.UP, SortableTableViewer.DEFAULT_STYLE, TABLE_CONFIG_PREFIX);
 
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTreeViewerSettings(viewer, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ViewAgentFilesProvider());
       viewer.setLabelProvider(new AgentFileLabelProvider());
       viewer.setComparator(new AgentFileComparator());
@@ -189,14 +185,6 @@ public class AgentFileManager extends ObjectView
             }
          }
       });
-      viewer.getTree().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTreeViewerSettings(viewer, TABLE_CONFIG_PREFIX);
-         }
-      });
-
       enableDragSupport();
       enableDropSupport();
       enableInPlaceRename();
@@ -469,6 +457,12 @@ public class AgentFileManager extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

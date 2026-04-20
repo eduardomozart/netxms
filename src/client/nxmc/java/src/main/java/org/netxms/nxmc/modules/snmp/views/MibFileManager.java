@@ -40,8 +40,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -128,9 +126,7 @@ public class MibFileManager extends ConfigurationView implements SessionListener
 
       final String[] columnNames = { i18n.tr("Name"), i18n.tr("Type"), i18n.tr("Size"), i18n.tr("Modified") };
       final int[] columnWidths = { 300, 150, 300, 300 };
-      viewer = new SortableTableViewer(listArea, columnNames, columnWidths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION);
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
+      viewer = new SortableTableViewer(listArea, columnNames, columnWidths, 0, SWT.UP, SWT.MULTI | SWT.FULL_SELECTION, TABLE_CONFIG_PREFIX);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new ServerFileLabelProvider());
       viewer.setComparator(new ServerFileComparator());
@@ -157,13 +153,6 @@ public class MibFileManager extends ConfigurationView implements SessionListener
             {
                actionDelete.setEnabled(selection.size() > 0);
             }
-         }
-      });
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, TABLE_CONFIG_PREFIX);
          }
       });
       viewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -276,6 +265,12 @@ public class MibFileManager extends ConfigurationView implements SessionListener
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
    }
 
    /**

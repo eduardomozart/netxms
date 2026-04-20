@@ -53,7 +53,6 @@ import org.netxms.nxmc.modules.ai.widgets.helpers.AiMessageListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -114,7 +113,7 @@ public class AiMessageList extends Composite
       };
       final int[] columnWidths = { 70, 80, 80, 300, 150, 150, 150 };
 
-      viewer = new SortableTableViewer(this, columnNames, columnWidths, COLUMN_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(this, columnNames, columnWidths, COLUMN_ID, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, configPrefix);
       viewer.setContentProvider(new ArrayContentProvider());
       AiMessageListLabelProvider labelProvider = new AiMessageListLabelProvider();
       viewer.setLabelProvider(labelProvider);
@@ -122,16 +121,6 @@ public class AiMessageList extends Composite
 
       filter = new AiMessageListFilter(labelProvider);
       viewer.addFilter(filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, configPrefix);
-      viewer.getTable().addDisposeListener(new DisposeListener() {
-         @Override
-         public void widgetDisposed(DisposeEvent e)
-         {
-            WidgetHelper.saveTableViewerSettings(viewer, configPrefix);
-         }
-      });
 
       createActions();
       createContextMenu();
@@ -529,5 +518,15 @@ public class AiMessageList extends Composite
    public Action getActionShowAllColumns()
    {
       return viewer.getShowAllColumnsAction();
+   }
+
+   /**
+    * Get action to toggle automatic column resize.
+    *
+    * @return action for toggling automatic column resize
+    */
+   public Action getActionAutoSizeColumns()
+   {
+      return viewer.getAutoSizeColumnsAction();
    }
 }

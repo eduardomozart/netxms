@@ -126,7 +126,7 @@ public class AssetSummaryView extends ObjectView
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
 
-      viewer.setConfigPrefix(getBaseId());
+      viewer.enablePersistence(getBaseId());
 
       createActions();
       createContextMenu();

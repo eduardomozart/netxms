@@ -25,6 +25,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferenceManager;
 import org.eclipse.jface.preference.PreferenceNode;
@@ -33,8 +34,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
@@ -60,7 +59,6 @@ import org.netxms.nxmc.modules.objecttools.propertypages.Filter;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -100,20 +98,10 @@ public class TemplateGraphView extends ConfigurationView implements SessionListe
 	{
       final String[] names = { i18n.tr("Graph name"), i18n.tr("DCI names"), i18n.tr("DCI descriptions"), i18n.tr("DCI tags") };
       final int[] widths = { 150, 400, 400, 400 };
-		viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, 0, SWT.DOWN, SWT.FULL_SELECTION | SWT.MULTI, getBaseId());
 		viewer.setContentProvider(new ArrayContentProvider());
 		viewer.setLabelProvider(new TemplateGraphLabelProvider());
       viewer.addDoubleClickListener((e) -> editTemplateGraph());
-
-		viewer.enableColumnReordering();
-		WidgetHelper.restoreColumnOrder(viewer, getBaseId());
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-				WidgetHelper.saveColumnOrder(viewer, getBaseId());
-			}
-		});
 
 		createActions();
 		createPopupMenu();
@@ -362,6 +350,12 @@ public class TemplateGraphView extends ConfigurationView implements SessionListe
 		Action showAllAction = viewer.getShowAllColumnsAction();
 		if (showAllAction != null)
 			manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
 	}
 
    /**

@@ -47,7 +47,6 @@ import org.netxms.nxmc.modules.agentmanagement.views.helpers.DeploymentJobLabelP
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.tools.MessageDialogHelper;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnap.commons.i18n.I18n;
@@ -104,17 +103,13 @@ public class DeploymentJobManager extends ConfigurationView implements SessionLi
             i18n.tr("Package ID"), i18n.tr("Package type"), i18n.tr("Package name"), i18n.tr("Platform"), i18n.tr("Version"), i18n.tr("File"), i18n.tr("Description")
          };
       final int[] widths = { 80, 140, 140, 70, 200, 120, 120, 120, 80, 100, 150, 120, 120, 300, 300 };
-      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+      viewer = new SortableTableViewer(parent, names, widths, 0, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, ID);
       viewer.setContentProvider(new ArrayContentProvider());
       viewer.setLabelProvider(new DeploymentJobLabelProvider(viewer));
       viewer.setComparator(new DeploymentJobComparator());
       filter = new DeploymentJobFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, ID);
-      viewer.getTable().addDisposeListener((e) -> WidgetHelper.saveTableViewerSettings(viewer, ID));
 
       createActions();
       createPopupMenu();
@@ -247,6 +242,12 @@ public class DeploymentJobManager extends ConfigurationView implements SessionLi
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
       manager.add(actionExportToCsv);
       super.fillLocalMenu(manager);
    }

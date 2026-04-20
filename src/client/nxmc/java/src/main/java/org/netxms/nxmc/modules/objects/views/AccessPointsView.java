@@ -26,8 +26,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.netxms.client.SessionListener;
@@ -45,7 +43,6 @@ import org.netxms.nxmc.modules.objects.views.helpers.AccessPointFilter;
 import org.netxms.nxmc.modules.objects.views.helpers.AccessPointListComparator;
 import org.netxms.nxmc.modules.objects.views.helpers.AccessPointListLabelProvider;
 import org.netxms.nxmc.resources.ResourceManager;
-import org.netxms.nxmc.tools.WidgetHelper;
 import org.xnap.commons.i18n.I18n;
 
 /**
@@ -125,7 +122,7 @@ public class AccessPointsView extends ObjectView
             i18n.tr("Status")
       };
       final int[] widths = { 60, 150, 100, 100, 150, 150, 100, 100, 80, 80 };
-		viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI);
+		viewer = new SortableTableViewer(parent, names, widths, COLUMN_NAME, SWT.UP, SWT.FULL_SELECTION | SWT.MULTI, "AccessPointsTable");
       viewer.setLabelProvider(new AccessPointListLabelProvider());
 		viewer.setContentProvider(new ArrayContentProvider());
       viewer.setComparator(new AccessPointListComparator());
@@ -135,16 +132,6 @@ public class AccessPointsView extends ObjectView
       AccessPointFilter filter = new AccessPointFilter();
       viewer.addFilter(filter);
       setFilterClient(viewer, filter);
-
-      viewer.enableColumnReordering();
-      WidgetHelper.restoreTableViewerSettings(viewer, "AccessPointsTable");
-		viewer.getTable().addDisposeListener(new DisposeListener() {
-			@Override
-			public void widgetDisposed(DisposeEvent e)
-			{
-            WidgetHelper.saveColumnSettings(viewer.getTable(), "AccessPointsTable");
-         }
-		});
 
 		createActions();
 		createContextMenu();
@@ -216,6 +203,13 @@ public class AccessPointsView extends ObjectView
       Action showAllAction = viewer.getShowAllColumnsAction();
       if (showAllAction != null)
          manager.add(showAllAction);
+      Action autoSizeAction = viewer.getAutoSizeColumnsAction();
+      if (autoSizeAction != null)
+      {
+         manager.add(new Separator());
+         manager.add(autoSizeAction);
+      }
+      manager.add(new Separator());
       manager.add(actionExportToCsv);
    }
 

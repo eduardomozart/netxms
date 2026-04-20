@@ -19,7 +19,6 @@
 package org.netxms.nxmc.modules.events.widgets;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.widgets.Composite;
 import org.netxms.client.NXCSession;
 import org.netxms.client.SessionListener;
@@ -28,6 +27,7 @@ import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.views.View;
 import org.netxms.nxmc.base.widgets.AbstractTraceWidget;
+import org.netxms.nxmc.base.widgets.SortableTableViewer;
 import org.netxms.nxmc.base.widgets.helpers.AbstractTraceViewFilter;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.events.widgets.helpers.SyslogLabelProvider;
@@ -85,7 +85,7 @@ public class SyslogTraceWidget extends AbstractTraceWidget implements SessionLis
     * @see org.netxms.ui.eclipse.widgets.AbstractTraceWidget#setupViewer(org.eclipse.jface.viewers.TableViewer)
     */
 	@Override
-	protected void setupViewer(TableViewer viewer)
+	protected void setupViewer(SortableTableViewer viewer)
 	{
 		labelProvider = new SyslogLabelProvider();
 		viewer.setLabelProvider(labelProvider);
