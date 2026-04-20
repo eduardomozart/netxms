@@ -30,6 +30,7 @@ templates_DATA = \
 	mikrotik-authentication-failures-syslog.json \
 	netgear_nas.xml \
 	netxms_agent.xml \
+        netxms_ai_providers.json \
 	netxms_file_handle_usage.xml \
 	netxms_server.xml \
 	object_tools.xml \
