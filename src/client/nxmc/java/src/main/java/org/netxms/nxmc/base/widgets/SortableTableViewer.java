@@ -68,7 +68,7 @@ public class SortableTableViewer extends TableViewer
     */
    public SortableTableViewer(Composite parent, int style)
    {
-      this(parent, null, null, 0, SWT.UP, style, null);
+      this(parent, null, null, 0, -1, style, null);
    }
 
 	/**
@@ -105,9 +105,12 @@ public class SortableTableViewer extends TableViewer
       getTable().setLinesVisible(true);
       getTable().setHeaderVisible(true);
       sortingListener = new TableSortingListener(this);
-      createColumns(names, widths, defaultSortingColumn, defaultSortDir);
-      if (configPrefix != null)
-         enablePersistence(configPrefix);
+      if (names != null)
+      {
+         createColumns(names, widths, defaultSortingColumn, defaultSortDir);
+         if (configPrefix != null)
+            enablePersistence(configPrefix);
+      }
    }
 
 	/**
@@ -123,12 +126,6 @@ public class SortableTableViewer extends TableViewer
 		if (initialized)
 			return;
 		initialized = true;
-
-      if (names == null)
-      {
-         columns = new ArrayList<TableColumn>(16);
-         return;
-      }
 
       columns = new ArrayList<TableColumn>(names.length);
 		for(int i = 0; i < names.length; i++)

@@ -65,7 +65,7 @@ public class SortableTreeViewer extends TreeViewer
     */
    public SortableTreeViewer(Composite parent, int style)
    {
-      this(parent, null, null, 0, SWT.UP, style, null);
+      this(parent, null, null, 0, -1, style, null);
    }
 
    /**
@@ -100,9 +100,12 @@ public class SortableTreeViewer extends TreeViewer
       getTree().setLinesVisible(true);
       getTree().setHeaderVisible(true);
       sortingListener = new TreeSortingListener(this);
-      createColumns(names, widths, defaultSortingColumn, defaultSortDir);
-      if (configPrefix != null)
-         enablePersistence(configPrefix);
+      if (names != null)
+      {
+         createColumns(names, widths, defaultSortingColumn, defaultSortDir);
+         if (configPrefix != null)
+            enablePersistence(configPrefix);
+      }
    }
 
 	/**
@@ -118,12 +121,6 @@ public class SortableTreeViewer extends TreeViewer
 		if (initialized)
 			return;
 		initialized = true;
-
-      if (names == null)
-      {
-         columns = new ArrayList<TreeColumn>(16);
-         return;
-      }
 
       columns = new ArrayList<TreeColumn>(names.length);
 		for(int i = 0; i < names.length; i++)

@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Victor Kirhenshtein
+ * Copyright (C) 2003-2026 Victor Kirhenshtein
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,7 +44,6 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.Node;
@@ -253,8 +252,9 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
       filterText.setCloseCallback(() -> showResultFilter(false));
 
       // walk results
-      viewer = new SortableTableViewer(resultArea, SWT.FULL_SELECTION | SWT.MULTI);
-		setupViewerColumns();
+      final String[] names = new String[] { i18n.tr("OID"), i18n.tr("OID as text"), i18n.tr("Type"), i18n.tr("Value"), i18n.tr("Raw value") };
+      final int[] widths = { 300, 300, 100, 200, 200 };
+      viewer = new SortableTableViewer(resultArea, names, widths, 0, -1, SWT.FULL_SELECTION | SWT.MULTI);
 		viewer.setContentProvider(new ArrayContentProvider());
       valuesLabelProvider = new SnmpValueLabelProvider();
       viewer.setLabelProvider(valuesLabelProvider);
@@ -627,32 +627,6 @@ public class MibExplorer extends AdHocObjectView implements SnmpWalkListener
 		manager.add(new Separator());
       manager.add(actionCreateSnmpDci);
       manager.add(actionCreateSnmpTableDciFromWalk);
-	}
-
-	/**
-	 * Setup viewer columns
-	 */
-	private void setupViewerColumns()
-	{
-		TableColumn tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-		tc.setText(i18n.tr("OID"));
-		tc.setWidth(300);
-
-		tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-      tc.setText("OID as text");
-      tc.setWidth(300);
-
-		tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-		tc.setText(i18n.tr("Type"));
-		tc.setWidth(100);
-
-		tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-		tc.setText(i18n.tr("Value"));
-		tc.setWidth(300);
-
-      tc = new TableColumn(viewer.getTable(), SWT.LEFT);
-      tc.setText(i18n.tr("Raw value"));
-      tc.setWidth(300);
 	}
 
 	/**
