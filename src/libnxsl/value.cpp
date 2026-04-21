@@ -30,6 +30,7 @@ NXSL_Value::NXSL_Value()
 {
    m_dataType = NXSL_DT_NULL;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -79,15 +80,18 @@ NXSL_Value::NXSL_Value(const NXSL_Value *value)
          {
             memcpy(m_stringValue, value->m_stringValue, (m_length + 1) * sizeof(TCHAR));
             m_stringPtr = nullptr;
+            m_stringCapacity = 0;
          }
          else
          {
             m_stringPtr = MemCopyBlock(value->m_stringPtr, (m_length + 1) * sizeof(TCHAR));
+            m_stringCapacity = m_length + 1;
          }
       }
       else
       {
          m_stringPtr = nullptr;
+         m_stringCapacity = 0;
       }
 		m_name = MemCopyStringA(value->m_name);
    }
@@ -95,6 +99,7 @@ NXSL_Value::NXSL_Value(const NXSL_Value *value)
    {
       m_dataType = NXSL_DT_NULL;
       m_stringPtr = nullptr;
+      m_stringCapacity = 0;
 		m_name = nullptr;
    }
 #ifdef UNICODE
@@ -111,6 +116,7 @@ NXSL_Value::NXSL_Value(NXSL_Object *object)
    m_dataType = NXSL_DT_OBJECT;
    m_value.object = object;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -129,6 +135,7 @@ NXSL_Value::NXSL_Value(NXSL_Array *array)
    m_value.arrayHandle = new NXSL_Handle<NXSL_Array>(array);
 	m_value.arrayHandle->incRefCount();
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -147,6 +154,7 @@ NXSL_Value::NXSL_Value(NXSL_HashMap *hashMap)
    m_value.hashMapHandle = new NXSL_Handle<NXSL_HashMap>(hashMap);
 	m_value.hashMapHandle->incRefCount();
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -165,6 +173,7 @@ NXSL_Value::NXSL_Value(NXSL_Iterator *iterator)
    m_value.iterator = iterator;
 	iterator->incRefCount();
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -182,6 +191,7 @@ NXSL_Value::NXSL_Value(const uuid& guid)
    m_dataType = NXSL_DT_GUID;
    memcpy(m_value.guid, &guid.getValue(), UUID_LENGTH);
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
    m_mbString = nullptr;
@@ -198,6 +208,7 @@ NXSL_Value::NXSL_Value(int32_t nValue)
 {
    m_dataType = NXSL_DT_INT32;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -215,6 +226,7 @@ NXSL_Value::NXSL_Value(uint32_t uValue)
 {
    m_dataType = NXSL_DT_UINT32;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -232,6 +244,7 @@ NXSL_Value::NXSL_Value(int64_t nValue)
 {
    m_dataType = NXSL_DT_INT64;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -249,6 +262,7 @@ NXSL_Value::NXSL_Value(uint64_t uValue)
 {
    m_dataType = NXSL_DT_UINT64;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -266,6 +280,7 @@ NXSL_Value::NXSL_Value(double dValue)
 {
    m_dataType = NXSL_DT_REAL;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -283,6 +298,7 @@ NXSL_Value::NXSL_Value(bool bValue)
 {
    m_dataType = NXSL_DT_BOOLEAN;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
    m_mbString = nullptr;
@@ -300,6 +316,7 @@ NXSL_Value::NXSL_Value(Timestamp value)
 {
    m_dataType = NXSL_DT_INT64;
    m_stringPtr = nullptr;
+   m_stringCapacity = 0;
    m_length = 0;
 #ifdef UNICODE
    m_mbString = nullptr;
@@ -323,10 +340,12 @@ NXSL_Value::NXSL_Value(const TCHAR *value)
 		{
 		   _tcscpy(m_stringValue, value);
 		   m_stringPtr = nullptr;
+		   m_stringCapacity = 0;
 		}
 		else
 		{
 		   m_stringPtr = MemCopyString(value);
+		   m_stringCapacity = m_length + 1;
 		}
 	}
 	else
@@ -334,6 +353,7 @@ NXSL_Value::NXSL_Value(const TCHAR *value)
 		m_length = 0;
 		m_stringValue[0] = 0;
 		m_stringPtr = nullptr;
+		m_stringCapacity = 0;
 	}
 #ifdef UNICODE
 	m_mbString = nullptr;
@@ -359,11 +379,13 @@ NXSL_Value::NXSL_Value(const char *value)
 	      size_t l = utf8_to_wchar(value, -1, m_stringValue, NXSL_SHORT_STRING_LENGTH);
          m_length = static_cast<uint32_t>(l - 1);  // returned length includes 0 byte
          m_stringPtr = nullptr;
+         m_stringCapacity = 0;
 	   }
 	   else
 	   {
          m_stringPtr = WideStringFromUTF8String(value);
          m_length = static_cast<uint32_t>(wcslen(m_stringPtr));
+         m_stringCapacity = m_length + 1;
 	   }
 	}
 	else
@@ -371,6 +393,7 @@ NXSL_Value::NXSL_Value(const char *value)
 		m_length = 0;
       m_stringValue[0] = 0;
       m_stringPtr = nullptr;
+      m_stringCapacity = 0;
 	}
 	m_mbString = nullptr;
    m_stringIsValid = TRUE;
@@ -400,10 +423,12 @@ NXSL_Value::NXSL_Value(const TCHAR *value, size_t len)
          memset(m_stringValue, 0, (len + 1) * sizeof(TCHAR));
       }
       m_stringPtr = nullptr;
+      m_stringCapacity = 0;
    }
    else
    {
       m_stringPtr = MemAllocString(len + 1);
+      m_stringCapacity = static_cast<uint32_t>(len + 1);
       if (value != nullptr)
       {
          memcpy(m_stringPtr, value, len * sizeof(TCHAR));
@@ -440,6 +465,7 @@ void NXSL_Value::dispose(bool disposeString)
    if (disposeString && m_stringIsValid)
    {
       MemFreeAndNull(m_stringPtr);
+      m_stringCapacity = 0;
 #ifdef UNICODE
       MemFreeAndNull(m_mbString);
 #endif
@@ -564,10 +590,12 @@ void NXSL_Value::updateString()
       {
          _tcscpy(m_stringValue, sb.cstr());
          m_stringPtr = nullptr;
+         m_stringCapacity = 0;
       }
       else
       {
          m_stringPtr = MemCopyString(sb.cstr());
+         m_stringCapacity = m_length + 1;
       }
    }
    else if (m_dataType == NXSL_DT_GUID)
@@ -576,6 +604,7 @@ void NXSL_Value::updateString()
       _uuid_to_string(m_value.guid, text);
       m_length = 36;
       m_stringPtr = MemCopyString(text);
+      m_stringCapacity = 37;
    }
    else
    {
@@ -619,10 +648,12 @@ void NXSL_Value::updateString()
       {
          _tcscpy(m_stringValue, buffer);
          m_stringPtr = nullptr;
+         m_stringCapacity = 0;
       }
       else
       {
          m_stringPtr = MemCopyString(buffer);
+         m_stringCapacity = m_length + 1;
       }
    }
    m_stringIsValid = TRUE;
@@ -803,7 +834,9 @@ double NXSL_Value::getValueAsReal()
 }
 
 /**
- * Concatenate string value
+ * Concatenate string value. Uses amortized 2x capacity growth when overflowing
+ * the embedded buffer or the current heap allocation, so repeated appends
+ * (e.g. "s .= x" in a loop) run in O(n) instead of O(n^2).
  */
 void NXSL_Value::concatenate(const TCHAR *pszString, UINT32 dwLen)
 {
@@ -817,9 +850,13 @@ void NXSL_Value::concatenate(const TCHAR *pszString, UINT32 dwLen)
 		MemFreeAndNull(m_mbString);
 	}
 #endif
-   if (m_length < NXSL_SHORT_STRING_LENGTH)
+
+   uint32_t needed = m_length + dwLen + 1;  // including null terminator
+
+   if (m_stringPtr == nullptr)
    {
-      if (m_length + dwLen < NXSL_SHORT_STRING_LENGTH)
+      // Currently in embedded buffer
+      if (needed <= NXSL_SHORT_STRING_LENGTH)
       {
          memcpy(&m_stringValue[m_length], pszString, dwLen * sizeof(TCHAR));
          m_length += dwLen;
@@ -827,7 +864,10 @@ void NXSL_Value::concatenate(const TCHAR *pszString, UINT32 dwLen)
       }
       else
       {
-         m_stringPtr = MemAllocString(m_length + dwLen + 1);
+         // Promote to heap with slack for future appends
+         uint32_t cap = std::max(needed * 2, static_cast<uint32_t>(NXSL_SHORT_STRING_LENGTH * 2));
+         m_stringPtr = MemAllocArrayNoInit<TCHAR>(cap);
+         m_stringCapacity = cap;
          memcpy(m_stringPtr, m_stringValue, m_length * sizeof(TCHAR));
          memcpy(&m_stringPtr[m_length], pszString, dwLen * sizeof(TCHAR));
          m_length += dwLen;
@@ -836,7 +876,13 @@ void NXSL_Value::concatenate(const TCHAR *pszString, UINT32 dwLen)
    }
    else
    {
-      m_stringPtr = MemRealloc(m_stringPtr, (m_length + dwLen + 1) * sizeof(TCHAR));
+      // Already on heap
+      if (needed > m_stringCapacity)
+      {
+         uint32_t cap = std::max(needed, m_stringCapacity * 2);
+         m_stringPtr = MemReallocArray(m_stringPtr, cap);
+         m_stringCapacity = cap;
+      }
       memcpy(&m_stringPtr[m_length], pszString, dwLen * sizeof(TCHAR));
       m_length += dwLen;
       m_stringPtr[m_length] = 0;
@@ -1634,6 +1680,11 @@ NXSL_Value *NXSL_Value::load(NXSL_ValueManager *vm, ByteStream &s)
             _tcscpy(v->m_stringValue, v->m_stringPtr);
             MemFree(v->m_stringPtr);
             v->m_stringPtr = nullptr;
+            v->m_stringCapacity = 0;
+         }
+         else
+         {
+            v->m_stringCapacity = v->m_length + 1;
          }
          v->m_stringIsValid = TRUE;
          v->updateNumber();

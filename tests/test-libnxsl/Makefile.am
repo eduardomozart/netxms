@@ -17,6 +17,7 @@ nxsltest_DATA = \
 	bitops.nxsl \
 	boolean.nxsl \
 	bytestream.nxsl \
+	concat.nxsl \
 	control.nxsl \
 	gethost.nxsl \
 	globals.nxsl \

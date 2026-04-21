@@ -90,6 +90,7 @@ OperandType NXSL_Instruction::getOperandType() const
       case OPCODE_CASE_CONST:
       case OPCODE_CASE_CONST_LT:
       case OPCODE_CASE_CONST_GT:
+      case OPCODE_CONCAT_VAR:
       case OPCODE_DEC:
       case OPCODE_DECP:
       case OPCODE_GET_ATTRIBUTE:
@@ -116,6 +117,7 @@ OperandType NXSL_Instruction::getOperandType() const
       case OPCODE_CASE_GT:
       case OPCODE_PUSH_CONSTANT:
          return OP_TYPE_CONST;
+      case OPCODE_CONCAT_VARPTR:
       case OPCODE_PUSH_VARPTR:
       case OPCODE_SET_VARPTR:
       case OPCODE_INC_VARPTR:
@@ -158,6 +160,9 @@ void NXSL_Instruction::restoreVariableReference(NXSL_Identifier *identifier)
          break;
       case OPCODE_SET_VARPTR:
          m_opCode = OPCODE_SET;
+         break;
+      case OPCODE_CONCAT_VARPTR:
+         m_opCode = OPCODE_CONCAT_VAR;
          break;
       case OPCODE_INC_VARPTR:
          m_opCode = OPCODE_INC;

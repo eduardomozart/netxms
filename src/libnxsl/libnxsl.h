@@ -158,6 +158,8 @@ typedef void *yyscan_t;
 #define OPCODE_SAFE_CALL      113
 #define OPCODE_HAS_BITS       114
 #define OPCODE_LOCAL          115
+#define OPCODE_CONCAT_VAR     116
+#define OPCODE_CONCAT_VARPTR  117
 
 class NXSL_Compiler;
 
@@ -293,6 +295,8 @@ public:
    bool addFunction(const NXSL_Identifier& name, uint32_t addr, char *errorText);
    void resolveFunctions();
    void addPushVariableInstruction(const NXSL_Identifier& name, int line);
+   void addConcatAssignInstructions(const NXSL_Identifier& name, int line);
+   bool isExpressionVariable(const NXSL_Identifier& name) { return getExpressionVariableCodeBlock(name) != INVALID_ADDRESS; }
    void resolveLastJump(int opcode, int offset = 0);
    void createJumpAt(uint32_t opAddr, uint32_t jumpAddr);
    void addRequiredModule(const char *name, int lineNumber, bool removeLastElement, bool fullImport, bool optional);

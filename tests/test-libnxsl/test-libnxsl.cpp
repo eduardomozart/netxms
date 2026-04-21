@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
    RunTestScript(_T("bitops.nxsl"));
    RunTestScript(_T("boolean.nxsl"));
    RunTestScript(_T("bytestream.nxsl"));
+   RunTestScript(_T("concat.nxsl"));
    RunTestScript(_T("control.nxsl"));
    RunTestScript(_T("gethost.nxsl"));
    RunTestScript(_T("globals.nxsl"));

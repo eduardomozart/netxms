@@ -19,7 +19,7 @@ int yylex(YYSTYPE *lvalp, yyscan_t scanner);
 %}
 
 %expect		1
-%pure-parser
+%define api.pure
 %lex-param		{yyscan_t scanner}
 %parse-param	{yyscan_t scanner}
 %parse-param	{NXSL_Lexer *lexer}
@@ -477,10 +477,16 @@ Expression:
 	builder->addInstruction(lexer->getCurrLine(), OPCODE_REM);
 	builder->addInstruction(lexer->getCurrLine(), OPCODE_SET, $1);
 }
-|	T_IDENTIFIER T_ASSIGN_CONCAT { builder->addPushVariableInstruction($1, lexer->getCurrLine()); } Expression
+|	T_IDENTIFIER T_ASSIGN_CONCAT
+   {
+      // For expression variables keep the classic PUSH/CONCAT/SET sequence
+      // (materialization is handled by PUSH_EXPRVAR); otherwise we defer and
+      // emit the dedicated in-place OPCODE_CONCAT_VAR after parsing Expression.
+      if (builder->isExpressionVariable($1))
+         builder->addPushVariableInstruction($1, lexer->getCurrLine());
+   } Expression
 {
-	builder->addInstruction(lexer->getCurrLine(), OPCODE_CONCAT);
-	builder->addInstruction(lexer->getCurrLine(), OPCODE_SET, $1);
+	builder->addConcatAssignInstructions($1, lexer->getCurrLine());
 }
 |	T_IDENTIFIER T_ASSIGN_AND { builder->addPushVariableInstruction($1, lexer->getCurrLine()); } Expression
 {

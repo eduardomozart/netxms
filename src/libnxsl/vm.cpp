@@ -694,6 +694,62 @@ NXSL_Variable *NXSL_VM::findOrCreateVariable(const NXSL_Identifier& name, NXSL_V
 }
 
 /**
+ * Implementation of in-place string append to variable (OPCODE_CONCAT_VAR).
+ * Pops right-hand-side value from the data stack and appends its string form
+ * to pVar's current value. When the variable holds the sole reference, the
+ * append grows the underlying buffer in place (amortized O(1) per char);
+ * otherwise the value is cloned first to preserve shared-reference semantics.
+ * Returns true on success.
+ */
+bool NXSL_VM::doConcatAssign(NXSL_Variable *pVar)
+{
+   NXSL_Value *rhs = m_dataStack.pop();
+   if (rhs == nullptr)
+   {
+      error(NXSL_ERR_DATA_STACK_UNDERFLOW);
+      return false;
+   }
+
+   uint32_t rhsLen;
+   const TCHAR *rhsText = rhs->getValueAsString(&rhsLen);
+
+   NXSL_Value *curVal = pVar->getValue();
+   if (curVal->isShared())
+   {
+      // Someone else holds the value (including the common "s = """ case where
+      // s initially aliases the constant-pool empty string). Clone before mutating.
+      NXSL_Value *newVal = createValue(curVal);
+      if (newVal->convert(NXSL_DT_STRING))
+      {
+         newVal->concatenate(rhsText, rhsLen);
+         pVar->setValue(newVal);
+      }
+      else
+      {
+         destroyValue(newVal);
+         destroyValue(rhs);
+         error(NXSL_ERR_TYPE_CAST);
+         return false;
+      }
+   }
+   else
+   {
+      // Sole holder — append in place. concatenate() does amortized 2x growth
+      // so a loop of s ..= x runs in O(n) total characters copied.
+      if (!curVal->convert(NXSL_DT_STRING))
+      {
+         destroyValue(rhs);
+         error(NXSL_ERR_TYPE_CAST);
+         return false;
+      }
+      curVal->concatenate(rhsText, rhsLen);
+   }
+
+   destroyValue(rhs);
+   return true;
+}
+
+/**
  * Find local variable or create if does not exist
  */
 NXSL_Variable *NXSL_VM::findOrCreateLocalVariable(const NXSL_Identifier& name)
@@ -976,6 +1032,28 @@ void NXSL_VM::execute()
          {
             error(NXSL_ERR_DATA_STACK_UNDERFLOW);
          }
+         break;
+      case OPCODE_CONCAT_VAR:
+         pVar = findOrCreateVariable(*cp->m_operand.m_identifier, &vs);
+         if (!pVar->isConstant())
+         {
+            if (doConcatAssign(pVar))
+            {
+               // Convert to direct variable access without name lookup
+               if (vs->createVariableReferenceRestorePoint(m_cp, cp->m_operand.m_identifier))
+               {
+                  cp->m_opCode = OPCODE_CONCAT_VARPTR;
+                  cp->m_operand.m_variable = pVar;
+               }
+            }
+         }
+         else
+         {
+            error(NXSL_ERR_ASSIGNMENT_TO_CONSTANT);
+         }
+         break;
+      case OPCODE_CONCAT_VARPTR:
+         doConcatAssign(cp->m_operand.m_variable);
          break;
 		case OPCODE_ARRAY:
 			// Check if variable already exist

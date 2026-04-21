@@ -59,7 +59,8 @@ static const char *s_nxslCommandMnemonic[] =
    "CASELT", "CASEGT", "CASEGT", "PUSH",
    "PUSH", "PUSH", "PUSH", "PUSH", "PUSH",
    "PUSH", "PUSH", "SPREAD", "ARGV", "APPEND",
-   "FSTR", "CALL", "CALLS", "HASBITS", "LOCAL"
+   "FSTR", "CALL", "CALLS", "HASBITS", "LOCAL",
+   "CONCAT", "CONCAT"
 };
 
 /**
@@ -181,6 +182,26 @@ void NXSL_ProgramBuilder::addPushVariableInstruction(const NXSL_Identifier& name
    {
       addInstruction(line, OPCODE_PUSH_EXPRVAR, name, 0, addr);
       addInstruction(line, OPCODE_SET_EXPRVAR, name);
+   }
+}
+
+/**
+ * Emit instructions for "var ..= expr" after the expression has been pushed.
+ * For regular variables a single OPCODE_CONCAT_VAR grows the variable's value
+ * in place when it's not shared, avoiding the full-string clone that would
+ * otherwise happen every iteration of an accumulator loop. For expression
+ * variables the classic CONCAT + SET sequence is preserved.
+ */
+void NXSL_ProgramBuilder::addConcatAssignInstructions(const NXSL_Identifier& name, int line)
+{
+   if (getExpressionVariableCodeBlock(name) != INVALID_ADDRESS)
+   {
+      addInstruction(line, OPCODE_CONCAT);
+      addInstruction(line, OPCODE_SET, name);
+   }
+   else
+   {
+      addInstruction(line, OPCODE_CONCAT_VAR, name);
    }
 }
 
@@ -375,6 +396,7 @@ void NXSL_ProgramBuilder::dump(FILE *fp, uint32_t addr, const NXSL_Instruction& 
       case OPCODE_PUSH_PROPERTY:
       case OPCODE_BIND:
       case OPCODE_ARRAY:
+      case OPCODE_CONCAT_VAR:
       case OPCODE_GLOBAL_ARRAY:
       case OPCODE_INC:
       case OPCODE_DEC:
@@ -402,6 +424,7 @@ void NXSL_ProgramBuilder::dump(FILE *fp, uint32_t addr, const NXSL_Instruction& 
          _ftprintf(fp, _T("(%hs), %04X\n"), instruction.m_operand.m_identifier->value, instruction.m_addr2);
          break;
       case OPCODE_PUSH_VARPTR:
+      case OPCODE_CONCAT_VARPTR:
          _ftprintf(fp, _T("%hs\n"), instruction.m_operand.m_variable->getName().value);
          break;
       case OPCODE_SET_VARPTR:
@@ -491,6 +514,33 @@ template<typename T> static inline bool ValidateConstantConversion(T intValue, c
    TCHAR buffer[32];
    _sntprintf(buffer, 32, format, intValue);
    return !_tcscmp(buffer, strValue);
+}
+
+/**
+ * Check if opcode is a single-value push that has no observable side effects.
+ * Used by peephole to decide whether reordering evaluation relative to a SET
+ * is safe (e.g. rewriting "s = s .. X" into an in-place append).
+ * Regular variable reads are considered side-effect-free; expression variables,
+ * property reads, method/function calls, and array indexing are not.
+ */
+static inline bool IsSideEffectFreePush(int16_t opCode)
+{
+   switch(opCode)
+   {
+      case OPCODE_PUSH_CONSTANT:
+      case OPCODE_PUSH_VARIABLE:
+      case OPCODE_PUSH_CONSTREF:
+      case OPCODE_PUSH_INT32:
+      case OPCODE_PUSH_INT64:
+      case OPCODE_PUSH_UINT32:
+      case OPCODE_PUSH_UINT64:
+      case OPCODE_PUSH_TRUE:
+      case OPCODE_PUSH_FALSE:
+      case OPCODE_PUSH_NULL:
+         return true;
+      default:
+         return false;
+   }
 }
 
 /**
@@ -633,6 +683,98 @@ void NXSL_ProgramBuilder::optimize()
          instr->m_stackItems = 1;
          removeInstructions(i + 1, 1);
       }
+   }
+
+   // Rewrite "s = s .. X[.. Y .. Z ...];" into in-place concat sequence.
+   //
+   // Matches the compiled pattern:
+   //   PUSH_VARIABLE s
+   //   <safe_push_1>  CONCAT
+   //   <safe_push_2>  CONCAT
+   //   ...
+   //   <safe_push_N>  CONCAT
+   //   SET s (pop)
+   //
+   // and rewrites to:
+   //   <safe_push_1>  CONCAT_VAR s
+   //   <safe_push_2>  CONCAT_VAR s
+   //   ...
+   //   <safe_push_N>  CONCAT_VAR s
+   //
+   // Only pushes that can't observe s before the assignment are allowed on the
+   // RHS — otherwise mutating s between successive appends would change visible
+   // behavior. Regular variable reads, constants, and literals qualify.
+   for(i = 0; i < m_instructionSet.size() - 3; i++)
+   {
+      NXSL_Instruction *pushVar = m_instructionSet.get(i);
+      if (pushVar->m_opCode != OPCODE_PUSH_VARIABLE)
+         continue;
+
+      int pos = i + 1;
+      int chainLen = 0;
+      bool targetReadInRHS = false;
+      while (pos + 1 < m_instructionSet.size())
+      {
+         NXSL_Instruction *push = m_instructionSet.get(pos);
+         if (!IsSideEffectFreePush(push->m_opCode))
+            break;
+         if (m_instructionSet.get(pos + 1)->m_opCode != OPCODE_CONCAT)
+            break;
+         // Track whether any RHS push reads the assignment target. This is safe
+         // for a single-link chain (the read happens before any mutation), but
+         // in longer chains each successive CONCAT_VAR mutates the target, so
+         // a later PUSH_VARIABLE would observe the partially-appended value.
+         if ((push->m_opCode == OPCODE_PUSH_VARIABLE) &&
+             push->m_operand.m_identifier->equals(*pushVar->m_operand.m_identifier))
+         {
+            targetReadInRHS = true;
+         }
+         pos += 2;
+         chainLen++;
+      }
+
+      if (chainLen == 0)
+         continue;
+      if (pos >= m_instructionSet.size())
+         continue;
+
+      NXSL_Instruction *setInstr = m_instructionSet.get(pos);
+      if ((setInstr->m_opCode != OPCODE_SET) || (setInstr->m_stackItems != 1))
+         continue;
+      if (!pushVar->m_operand.m_identifier->equals(*setInstr->m_operand.m_identifier))
+         continue;
+      // Bail out of chains ≥2 that would mutate-then-read the same variable.
+      if (targetReadInRHS && (chainLen > 1))
+         continue;
+
+      // Rewrite each CONCAT in the chain to CONCAT_VAR. The last one steals
+      // the identifier from SET; the others get cloned copies.
+      for (int k = 0; k < chainLen; k++)
+      {
+         NXSL_Instruction *concat = m_instructionSet.get(i + 2 + k * 2);
+         concat->m_opCode = OPCODE_CONCAT_VAR;
+         if (k == chainLen - 1)
+         {
+            concat->m_operand.m_identifier = setInstr->m_operand.m_identifier;
+            setInstr->m_operand.m_identifier = nullptr;
+         }
+         else
+         {
+            concat->m_operand.m_identifier = createIdentifier(*setInstr->m_operand.m_identifier);
+         }
+      }
+
+      // Detach SET's identifier (already moved) so removeInstructions disposes cleanly.
+      setInstr->m_opCode = OPCODE_NOP;
+
+      // Remove SET (now NOP) at pos, then PUSH_VAR at i. Order matters because
+      // removing at lower index shifts higher indices down.
+      removeInstructions(pos, 1);
+      removeInstructions(i, 1);
+
+      // After removal, the rewritten block occupies positions i..i+2*chainLen-1.
+      // Skip past it; the outer for-loop will then i++ past the last CONCAT_VAR.
+      i += 2 * chainLen - 1;
    }
 }
 

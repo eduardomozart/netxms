@@ -680,6 +680,7 @@ class LIBNXSL_EXPORTABLE NXSL_Value
 
 protected:
    uint32_t m_length;
+   uint32_t m_stringCapacity;  // allocated TCHARs in m_stringPtr buffer (including null terminator); 0 when m_stringPtr == nullptr
    TCHAR m_stringValue[NXSL_SHORT_STRING_LENGTH];
    TCHAR *m_stringPtr;
 #ifdef UNICODE
@@ -726,6 +727,7 @@ protected:
          return;
 
       MemFreeAndNull(m_stringPtr);
+      m_stringCapacity = 0;
 #ifdef UNICODE
       MemFreeAndNull(m_mbString);
 #endif
@@ -1489,6 +1491,8 @@ protected:
    void relocateCode(uint32_t startOffset, uint32_t len, uint32_t shift);
    uint32_t getFunctionAddress(const NXSL_Identifier& name);
    const NXSL_ExtFunction *findExternalFunction(const NXSL_Identifier& name);
+
+   bool doConcatAssign(NXSL_Variable *pVar);
 
    NXSL_Value *createValueRef(NXSL_Value *v)
    {

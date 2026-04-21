@@ -1,0 +1,234 @@
+/* Test string concatenation semantics, the ..= operator, and the peephole
+   optimization that rewrites "s = s .. ..." patterns into in-place appends. */
+
+/* --- Basic concatenation --- */
+
+a = "hello";
+b = "world";
+assert((a .. b) == "helloworld");
+assert((a .. " " .. b) == "hello world");
+assert(("" .. a) == "hello");
+assert((a .. "") == "hello");
+assert(("" .. "") == "");
+
+/* Numeric / bool / null auto-conversion */
+assert(("n=" .. 42) == "n=42");
+assert(("n=" .. -7) == "n=-7");
+assert(("x=" .. 3.5) == "x=3.5");   /* real formatted */
+assert(("b=" .. true) == "b=true");
+assert(("b=" .. false) == "b=false");
+assert(("x=" .. null) == "x=");     /* null concatenates as empty */
+
+/* --- ..= operator, simple cases --- */
+
+s = "";
+s ..= "a";
+s ..= "b";
+s ..= "c";
+assert(s == "abc");
+
+/* Growth past embedded short-string buffer (NXSL_SHORT_STRING_LENGTH = 32) */
+s = "";
+for(i = 0; i < 10; i++)
+   s ..= "0123456789";
+assert(s.length == 100);
+assert(s.left(10) == "0123456789");
+assert(s.right(10) == "0123456789");
+
+/* ..= on undefined variable creates it */
+t ..= "created";
+assert(t == "created");
+
+/* ..= with non-string RHS (auto-conversion) */
+s = "count=";
+s ..= 42;
+assert(s == "count=42");
+
+/* ..= empty string is a no-op */
+s = "abc";
+s ..= "";
+assert(s == "abc");
+
+/* --- s = s .. X peephole pattern --- */
+
+s = "";
+for(i = 0; i < 10; i++)
+   s = s .. "x";
+assert(s == "xxxxxxxxxx");
+
+/* Chained: s = s .. a .. b .. c */
+s = "";
+x = "aa";
+y = "bb";
+for(i = 0; i < 3; i++)
+   s = s .. x .. y .. "!";
+assert(s == "aabb!aabb!aabb!");
+
+/* Mixed types in chain */
+s = "";
+for(i = 0; i < 3; i++)
+   s = s .. "n=" .. i .. ";";
+assert(s == "n=0;n=1;n=2;");
+
+/* Local variable inside function */
+function build_str(count) {
+   local r = "[";
+   local i;
+   for(i = 0; i < count; i++)
+      r = r .. i .. ",";
+   return r .. "]";
+}
+assert(build_str(3) == "[0,1,2,]");
+
+/* Nested scope inside if/while */
+s = "";
+i = 0;
+while(i < 5) {
+   if (i % 2 == 0)
+      s = s .. "e";
+   else
+      s = s .. "o";
+   i++;
+}
+assert(s == "eoeoe");
+
+/* --- Shared-reference correctness: peephole must not mutate aliases --- */
+
+/* ..= on aliased value */
+a = "hello";
+b = a;
+b ..= " world";
+assert(b == "hello world");
+assert(a == "hello");
+
+/* s = s .. X on aliased value */
+a = "hello";
+s = a;
+s = s .. " world";
+assert(s == "hello world");
+assert(a == "hello");
+
+/* Same, chained */
+a = "hello";
+s = a;
+s = s .. " " .. "world";
+assert(s == "hello world");
+assert(a == "hello");
+
+/* --- Self-reference correctness --- */
+
+/* ..= self */
+s = "ab";
+s ..= s;
+assert(s == "abab");
+s ..= s;
+assert(s == "abababab");
+
+/* s = s .. s */
+s = "xy";
+s = s .. s;
+assert(s == "xyxy");
+
+/* s = s .. s .. s */
+s = "a";
+s = s .. s .. s;
+assert(s == "aaa");
+
+/* --- Peephole must NOT fire when RHS has side effects or depends on s --- */
+
+/* Case 1: variable is RHS, not LHS */
+s = "end";
+s = "start-" .. s;
+assert(s == "start-end");
+
+/* Case 2: function call in RHS could observe the target variable */
+global obs;
+
+function snapshot() {
+   return "[snap=" .. obs .. "]";
+}
+
+obs = "A";
+obs = obs .. snapshot() .. "-done";
+/* If peephole wrongly fired: snapshot() would see "A[snap=A]" after the first
+   append. Correct order: snapshot() sees original "A", result is "A[snap=A]-done" */
+assert(obs == "A[snap=A]-done");
+
+/* Case 3: parenthesized inner concat — bytecode has extra CONCAT, simple
+   chain pattern won't match, but semantics must still be correct */
+s = "x";
+s = s .. ("a" .. "b");
+assert(s == "xab");
+
+/* Case 4: arithmetic on RHS (not a single push) */
+s = "sum=";
+s = s .. (2 + 3);
+assert(s == "sum=5");
+
+/* --- Assignment-as-expression (peek-style SET) must NOT be rewritten --- */
+
+s = "a";
+r = (s = s .. "b");
+assert(s == "ab");
+assert(r == "ab");
+
+/* Assignment in a more complex context */
+a = "x";
+b = "y";
+a = (b = b .. "!") .. a;
+assert(a == "y!x");
+assert(b == "y!");
+
+/* --- Long-string growth path (exercises 2x capacity doubling) --- */
+
+s = "";
+for(i = 0; i < 1000; i++)
+   s ..= "x";
+assert(s.length == 1000);
+
+/* Verify content integrity after heavy growth */
+s = "";
+for(i = 0; i < 500; i++)
+   s = s .. "abcd";
+assert(s.length == 2000);
+assert(s.left(8) == "abcdabcd");
+assert(s.right(8) == "abcdabcd");
+
+/* Concat producing a value well past the embedded buffer, then re-reading */
+s = "";
+for(i = 0; i < 100; i++)
+   s ..= ("chunk" .. i .. "|");
+/* Verify first and last markers */
+assert(s.startsWith("chunk0|"));
+assert(s.endsWith("chunk99|"));
+assert(s.indexOf("|chunk50|") >= 0);
+
+/* --- Mixing .. and ..= --- */
+
+s = "foo";
+r = s .. "bar";
+s ..= "baz";
+assert(r == "foobar");
+assert(s == "foobaz");
+
+/* --- Concat doesn't corrupt constant pool --- */
+
+/* Both a and b initially alias the same constant "" from the constant pool.
+   After a ..= "x", a must be "x" and b must remain "" — neither the constant
+   pool copy nor the variable holding the original should be mutated. */
+a = "";
+b = "";
+a ..= "x";
+assert(a == "x");
+assert(b == "");
+
+/* After many concats on a, another fresh assignment to "" must still give "". */
+a = "";
+for(i = 0; i < 100; i++)
+   a ..= "y";
+assert(a.length == 100);
+c = "";
+assert(c == "");
+assert(c.length == 0);
+
+return 0;
