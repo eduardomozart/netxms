@@ -55,7 +55,7 @@ public class CASLoginHelper
    private static final int TICKET_WAIT_TIMEOUT_SECONDS = 120;
 
    /** Path on which the local HTTP server listens for the CAS callback. */
-   private static final String CALLBACK_PATH = "/cas-callback";
+   private static final String CALLBACK_PATH = "/cas/callback";
 
    /**
     * Result of a CAS authentication attempt.

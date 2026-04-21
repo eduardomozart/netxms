@@ -520,15 +520,8 @@ public class Startup
             credentials = performCASLogin(server, casUrl);
             if (credentials == null)
             {
-               // CAS flow failed - fall back to manual login dialog
-               logger.warn("CAS login flow failed, falling back to manual login dialog");
-               casUrl = null; // prevent CAS loop on retry
-               if (loginDialog.open() != Window.OK)
-               {
-                  logger.info("Login cancelled by user after CAS failure - exiting");
-                  return false;
-               }
-               credentials = loginDialog.getCredentials();
+               logger.error("CAS login flow failed - exiting");
+               return false;
             }
          }
          else if (autoConnect)
