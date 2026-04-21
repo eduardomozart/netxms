@@ -99,6 +99,9 @@ int H_GrafanaDciList(Context *context);
 int H_ImageLibrary(Context *context);
 int H_ImageLibraryDetails(Context *context);
 int H_ImageLibraryData(Context *context);
+int H_ImageLibraryCreate(Context *context);
+int H_ImageLibraryUpdate(Context *context);
+int H_ImageLibraryDelete(Context *context);
 int H_FindMacAddress(Context *context);
 int H_GrafanaGetAlarms(Context *context);
 int H_GrafanaGetSummaryTable(Context *context);
@@ -311,9 +314,12 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/image-library")
       .GET(H_ImageLibrary)
+      .POST(H_ImageLibraryCreate)
       .build();
    RouteBuilder("v1/image-library/:guid")
       .GET(H_ImageLibraryDetails)
+      .PUT(H_ImageLibraryUpdate)
+      .DELETE(H_ImageLibraryDelete)
       .build();
    RouteBuilder("v1/image-library/:guid/data")
       .GET(H_ImageLibraryData)

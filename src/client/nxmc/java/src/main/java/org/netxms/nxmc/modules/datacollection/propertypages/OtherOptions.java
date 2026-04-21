@@ -55,6 +55,7 @@ public class OtherOptions extends AbstractDCIPropertyPage
    private LabeledCombo interpretation;
    private LabeledText userTag;
    private ObjectSelector relatedObject;
+   private LabeledText aiHint;
 
    /**
     * Constructor
@@ -126,6 +127,7 @@ public class OtherOptions extends AbstractDCIPropertyPage
       agentCacheMode.select(dci.getCacheMode().getValue());
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
       agentCacheMode.setLayoutData(gd);
 
       multiplierDegree = new LabeledCombo(dialogArea, SWT.NONE);
@@ -144,6 +146,7 @@ public class OtherOptions extends AbstractDCIPropertyPage
       multiplierDegree.select(5 - dci.getMultiplier());
       gd = new GridData();
       gd.horizontalAlignment = SWT.FILL;
+      gd.grabExcessHorizontalSpace = true;
       multiplierDegree.setLayoutData(gd);
 
       relatedObject = new ObjectSelector(dialogArea, SWT.NONE, true);
@@ -182,6 +185,14 @@ public class OtherOptions extends AbstractDCIPropertyPage
       gd.horizontalSpan = 2;
       userTag.setLayoutData(gd);
 
+      aiHint = new LabeledText(dialogArea, SWT.NONE, SWT.BORDER | SWT.MULTI);
+      aiHint.setLabel(i18n.tr("AI Hint"));
+      aiHint.setText(dci.getAiHint());
+      gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+      gd.heightHint = 160;
+      gd.horizontalSpan = 2;
+      aiHint.setLayoutData(gd);
+
       return dialogArea;
    }
 
@@ -203,6 +214,7 @@ public class OtherOptions extends AbstractDCIPropertyPage
       dci.setRelatedObject(relatedObject.getObjectId());
       dci.setSystemTag(tagFromInterpretation(interpretation.getSelectionIndex()));
       dci.setUserTag(userTag.getText().trim());
+      dci.setAiHint(aiHint.getText().trim());
       editor.modify();
       return true;
    }
@@ -224,6 +236,7 @@ public class OtherOptions extends AbstractDCIPropertyPage
 		relatedObject.setObjectId(0);
       interpretation.select(0);
       userTag.setText("");
+      aiHint.setText("");
 	}
 
    /**

@@ -75,6 +75,7 @@ public class DataCollectionItem extends DataCollectionObject
 	private int snmpRawValueType;
    private List<Threshold> thresholds;
    private int allThresholdsRearmEvent;
+   private String aiHint;
 
 	/**
 	 * Create data collection item object from NXCP message
@@ -95,6 +96,7 @@ public class DataCollectionItem extends DataCollectionObject
 		unitName = msg.getFieldAsString(NXCPCodes.VID_UNITS_NAME);
 		snmpRawValueType = msg.getFieldAsInt32(NXCPCodes.VID_SNMP_RAW_VALUE_TYPE);
       allThresholdsRearmEvent = msg.getFieldAsInt32(NXCPCodes.VID_DEACTIVATION_EVENT);
+      aiHint = msg.getFieldAsString(NXCPCodes.VID_AI_HINT);
 
 		int count = msg.getFieldAsInt32(NXCPCodes.VID_NUM_THRESHOLDS);
 		thresholds = new ArrayList<Threshold>(count);
@@ -175,6 +177,7 @@ public class DataCollectionItem extends DataCollectionObject
       unitName = src.unitName;
       snmpRawValueType = src.snmpRawValueType;
       allThresholdsRearmEvent = src.allThresholdsRearmEvent;
+      aiHint = src.aiHint;
       thresholds = new ArrayList<Threshold>(src.thresholds);
    }
 
@@ -196,8 +199,8 @@ public class DataCollectionItem extends DataCollectionObject
 		msg.setFieldInt16(NXCPCodes.VID_SNMP_RAW_VALUE_TYPE, snmpRawValueType);
       msg.setFieldInt32(NXCPCodes.VID_DEACTIVATION_EVENT, allThresholdsRearmEvent);
 		msg.setFieldInt32(NXCPCodes.VID_MULTIPLIER, multiplier);
-		if (unitName != null)
-			msg.setField(NXCPCodes.VID_UNITS_NAME, unitName);
+      msg.setField(NXCPCodes.VID_UNITS_NAME, unitName);
+      msg.setField(NXCPCodes.VID_AI_HINT, aiHint);
 
 		msg.setFieldInt32(NXCPCodes.VID_NUM_THRESHOLDS, thresholds.size());
 		long varId = NXCPCodes.VID_DCI_THRESHOLD_BASE;
@@ -575,5 +578,21 @@ public class DataCollectionItem extends DataCollectionObject
    public void setSampleSaveInterval(int sampleSaveInterval)
    {
       this.sampleSaveInterval = sampleSaveInterval;
+   }
+
+   /**
+    * @return the aiHint
+    */
+   public String getAiHint()
+   {
+      return aiHint;
+   }
+
+   /**
+    * @param aiHint the aiHint to set
+    */
+   public void setAiHint(String aiHint)
+   {
+      this.aiHint = aiHint;
    }
 }

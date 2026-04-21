@@ -817,6 +817,7 @@ void DCItem::createMessage(NXCPMessage *pMsg)
 	pMsg->setField(VID_SNMP_RAW_VALUE_TYPE, m_snmpRawValueType);
    pMsg->setField(VID_UNITS_NAME, m_unitName);
    pMsg->setField(VID_DEACTIVATION_EVENT, m_allThresholdsRearmEvent);
+   pMsg->setField(VID_AI_HINT, m_aiHint);
 	if (m_thresholds != nullptr)
 	{
 		pMsg->setField(VID_NUM_THRESHOLDS, static_cast<uint32_t>(m_thresholds->size()));
@@ -899,6 +900,7 @@ void DCItem::updateFromMessage(const NXCPMessage& msg, uint32_t *numMaps, uint32
 	m_unitName = msg.getFieldAsSharedString(VID_UNITS_NAME);
 	m_snmpRawValueType = msg.getFieldAsUInt16(VID_SNMP_RAW_VALUE_TYPE);
 	m_allThresholdsRearmEvent = msg.getFieldAsUInt32(VID_DEACTIVATION_EVENT);
+	m_aiHint = msg.getFieldAsSharedString(VID_AI_HINT);
 
    // Update thresholds
    uint32_t numThresholds = msg.getFieldAsUInt32(VID_NUM_THRESHOLDS);
