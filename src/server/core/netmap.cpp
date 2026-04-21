@@ -49,7 +49,7 @@ bool NetworkMapGroup::showThresholdSummary() const
  */
 NetworkMap::NetworkMap() : super(), AutoBindTarget(this), Pollable(this, Pollable::AUTOBIND | Pollable::MAP_UPDATE), DelegateObject(this)
 {
-	m_mapType = NETMAP_USER_DEFINED;
+	m_mapType = MAP_TYPE_CUSTOM;
 	m_discoveryRadius = 0;
 	m_flags = MF_SHOW_STATUS_ICON;
 	m_layout = MAP_LAYOUT_MANUAL;
@@ -127,7 +127,7 @@ NetworkMap::NetworkMap(int type, const IntegerArray<uint32_t>& seeds) : super(),
 	}
 	m_discoveryRadius = 0;
 	m_flags = MF_SHOW_STATUS_ICON;
-   m_layout = (type == NETMAP_USER_DEFINED) ? MAP_LAYOUT_MANUAL : MAP_LAYOUT_SPRING;
+   m_layout = (type == MAP_TYPE_CUSTOM) ? MAP_LAYOUT_MANUAL : MAP_LAYOUT_SPRING;
 	m_status = STATUS_NORMAL;
 	m_backgroundLatitude = 0;
 	m_backgroundLongitude = 0;
