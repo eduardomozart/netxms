@@ -169,6 +169,49 @@ Fallback: if the chosen tier has no data for the range (e.g., aggregation recent
 - **Java client** — new `NXCSession.getCollectedData()` overload with `DciTier` and `DciAggregationFunction` enums; legacy overload delegates to `(AUTO, AVG)`.
 - **NXSL** — `GetDCIValues(dci, from, to, tier?, function?)` — trailing optional string parameters.
 
+## DCI Recalculation
+
+NetXMS lets administrators recalculate DCI values after changing the transformation script or delta calculation type — the existing recalculation task reads `raw_value` from `idata_<N>` and rewrites `idata_value` using the new transformation. After recalculation, any previously-computed aggregates are stale because they were derived from the old `idata_value`s.
+
+**Constraint**: raw retention is typically shorter than aggregate retention (e.g., raw 90 days, hourly aggregates 1 year). Aggregate buckets older than the earliest retained raw sample cannot be recomputed because the source data is gone.
+
+**Approach**: recompute aggregates where possible, preserve older aggregates as-is.
+
+### Non-TSDB
+
+1. Run the existing recalculation (rewrites `idata_value` in `idata_<N>`)
+2. After recalc completes: `UPDATE items SET aggregation_watermark = (SELECT MIN(idata_timestamp) FROM idata_<N>) WHERE item_id = ?`
+3. Next scheduled rollup re-aggregates the range `[earliest_raw, now − close_window]`; UPSERT overwrites existing aggregate rows
+4. Aggregates with `bucket_start < earliest_raw` remain untouched (they continue to reflect the previous transformation)
+
+### TSDB
+
+1. Run the existing recalculation
+2. Explicit CAGG refresh over the affected range (the automatic refresh policy's `start_offset` may be shorter than raw retention):
+   ```sql
+   CALL refresh_continuous_aggregate('idata_1h', <earliest_raw_ts>, now());
+   CALL refresh_continuous_aggregate('idata_1d', <earliest_raw_ts>, now());
+   ```
+3. Buckets older than `earliest_raw_ts` remain as-is
+
+### User-facing behavior
+
+The recalculation confirmation dialog surfaces the scope of recomputation:
+
+> Recalculating DCI values using the updated transformation.
+> Aggregates will be recomputed for the period where raw data is retained
+> (from {earliest_raw_ts} to present). Older aggregates will continue to reflect
+> the previous transformation and cannot be updated.
+
+### Concurrency
+
+Watermark reset is a single atomic `UPDATE`; if a rollup pass is running concurrently it picks up the new watermark on its next iteration. Existing serialization around the recalculation task is sufficient — no new locks required.
+
+### Edge cases
+
+- **Aggregation disabled for the DCI**: recalc runs normally; no aggregate-side action
+- **Aggregation eligible but never enabled until now**: same as "enable on existing" — backfill via watermark init, which recalc's watermark reset effectively performs anyway
+
 ## Configuration
 
 All new server configuration variables live under `DataCollection.Aggregation.*`:
