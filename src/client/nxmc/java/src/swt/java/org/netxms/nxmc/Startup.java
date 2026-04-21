@@ -580,14 +580,11 @@ public class Startup
                if (action != SecurityWarningDialog.NO)
                {
                   encrypt = false;
-                  // Re-use current credentials for retry
+                  // Re-use current credentials for retry.
+                  // For CAS/SSO auth, casUrl remains set so the next iteration re-runs the CAS flow
+                  // and obtains a fresh ticket. For other auth types, rebuild credentials from saved values.
                   server = credentials.getServer();
-                  if (credentials.getAuthMethod() == AuthenticationType.SSO_TICKET)
-                  {
-                     // CAS/SSO: keep casUrl set so the next loop iteration re-runs the CAS flow
-                     // (the existing ticket may be consumed; obtain a fresh one)
-                  }
-                  else
+                  if (credentials.getAuthMethod() != AuthenticationType.SSO_TICKET)
                   {
                      autoConnect = true;
                      loginName = credentials.getLoginName();

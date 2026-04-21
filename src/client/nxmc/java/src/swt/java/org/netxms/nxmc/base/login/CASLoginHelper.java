@@ -22,7 +22,6 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +30,8 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+// com.sun.net.httpserver is part of the JDK standard library (module jdk.httpserver) since Java 6
+// and is reliably available on JDK 17+ as required by this project.
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -41,11 +42,10 @@ import org.slf4j.LoggerFactory;
  * Helper class for CAS Single Sign-On authentication in the desktop client.
  *
  * Flow:
- *  1. Find an available ephemeral port on localhost.
- *  2. Start a minimal HTTP server on that port to receive the CAS callback.
- *  3. Open the system browser to the CAS login URL with service=http://127.0.0.1:<port>/cas-callback.
- *  4. Wait for the browser to redirect back with the Service Ticket (ST-...).
- *  5. Shut down the local server and return the ticket and service URL to the caller.
+ *  1. Start a minimal HTTP server on 127.0.0.1 with an OS-assigned ephemeral port (port 0).
+ *  2. Open the system browser to the CAS login URL with service=http://127.0.0.1:&lt;port&gt;/cas-callback.
+ *  3. Wait for the browser to redirect back with the Service Ticket (ST-...).
+ *  4. Shut down the local server and return the ticket and service URL to the caller.
  */
 public class CASLoginHelper
 {
@@ -94,37 +94,27 @@ public class CASLoginHelper
       if (casBaseUrl.endsWith("/"))
          casBaseUrl = casBaseUrl.substring(0, casBaseUrl.length() - 1);
 
-      // Find an available ephemeral port
-      int port;
-      try
-      {
-         ServerSocket probe = new ServerSocket(0);
-         port = probe.getLocalPort();
-         probe.close();
-      }
-      catch(IOException e)
-      {
-         logger.error("Cannot find available local port for CAS callback server", e);
-         return null;
-      }
-
-      final String serviceUrl = "http://127.0.0.1:" + port + CALLBACK_PATH;
-
       // Shared state between HTTP handler and main thread
       final AtomicReference<String> ticketRef = new AtomicReference<>(null);
       final CountDownLatch latch = new CountDownLatch(1);
 
-      // Start local HTTP server bound to loopback only
+      // Start local HTTP server bound to loopback only.
+      // Use port 0 so the OS assigns an available ephemeral port atomically,
+      // avoiding the race condition of probe-then-bind.
       HttpServer httpServer;
       try
       {
-         httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+         httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
       }
       catch(IOException e)
       {
-         logger.error("Cannot start local CAS callback HTTP server on port " + port, e);
+         logger.error("Cannot start local CAS callback HTTP server", e);
          return null;
       }
+
+      // Retrieve the actual port assigned by the OS
+      int port = httpServer.getAddress().getPort();
+      final String serviceUrl = "http://127.0.0.1:" + port + CALLBACK_PATH;
 
       httpServer.createContext(CALLBACK_PATH, new HttpHandler() {
          @Override
