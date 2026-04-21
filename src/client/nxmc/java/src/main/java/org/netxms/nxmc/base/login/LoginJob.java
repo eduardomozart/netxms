@@ -67,6 +67,7 @@ public class LoginJob implements IRunnableWithProgress
    private Certificate certificate;
    private Signature signature;
    private String clientAddress;
+   private String casServiceUrl;
 
    /**
     * Create login job with specified credentials.
@@ -85,6 +86,7 @@ public class LoginJob implements IRunnableWithProgress
       this.password = credentials.getPassword();
       this.certificate = credentials.getCertificate();
       this.signature = credentials.getSignature();
+      this.casServiceUrl = credentials.getCasServiceUrl();
       this.enableCompression = enableCompression;
       this.ignoreProtocolVersion = ignoreProtocolVersion;
       this.clientAddress = Registry.getClientAddress();
@@ -133,7 +135,7 @@ public class LoginJob implements IRunnableWithProgress
          session.connect(new int[] { ProtocolVersion.INDEX_FULL });
          monitor.worked(1);
 
-         session.login(authMethod, loginName, password, certificate, signature, new TwoFactorAuthenticationCallback() {
+         session.login(authMethod, loginName, password, certificate, signature, casServiceUrl, new TwoFactorAuthenticationCallback() {
             private boolean trustedDevice = false;
 
             @Override

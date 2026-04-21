@@ -216,7 +216,7 @@ static int IsValidCertificate(X509 *cert, const char *hostname)
  *  is valid and not exceeds NetXMS user name length limitation and returning 0.
  *  If not, error code is returned.
  */
-static int CASValidate(const char *ticket, char *loginName)
+static int CASValidate(const char *ticket, char *loginName, const char *serviceUrl)
 {
    InetAddress a;
    SockAddrBuffer sa;
@@ -273,7 +273,8 @@ static int CASValidate(const char *ticket, char *loginName)
    X509_free(s_cert);
 
    full_request = MemAllocStringA(4096);
-   if (snprintf(full_request, 4096, "GET %s?ticket=%s&service=%s HTTP/1.0\r\n\r\n", s_validateURL, ticket, s_service) >= 4096)
+   const char *effectiveService = ((serviceUrl != nullptr) && (serviceUrl[0] != 0)) ? serviceUrl : s_service;
+   if (snprintf(full_request, 4096, "GET %s?ticket=%s&service=%s HTTP/1.0\r\n\r\n", s_validateURL, ticket, effectiveService) >= 4096)
    {
       SET_RET_AND_GOTO_END(CAS_SSL_ERROR_HTTPS);
    }
@@ -358,12 +359,12 @@ end:
 /**
  * Authenticate user via CAS
  */
-bool CASAuthenticate(const char *ticket, wchar_t *loginName)
+bool CASAuthenticate(const char *ticket, wchar_t *loginName, const char *serviceUrl)
 {
    bool success = false;
    s_lock.lock();
    char mbLogin[MAX_USER_NAME];
-   int rc = CASValidate(ticket, mbLogin);
+   int rc = CASValidate(ticket, mbLogin, serviceUrl);
    if (rc == CAS_SUCCESS)
    {
       mb_to_wchar(mbLogin, -1, loginName, MAX_USER_NAME);

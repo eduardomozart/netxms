@@ -81,6 +81,7 @@
 #define NETXMS_AUTH_TYPE_CERTIFICATE    1
 #define NETXMS_AUTH_TYPE_SSO_TICKET     2
 #define NETXMS_AUTH_TYPE_TOKEN          3
+#define NETXMS_AUTH_TYPE_CAS            NETXMS_AUTH_TYPE_SSO_TICKET   /* Alias: CAS ticket auth uses SSO_TICKET path */
 
 /**
  * Client type

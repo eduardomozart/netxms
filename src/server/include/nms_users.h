@@ -610,6 +610,6 @@ template<typename C> static inline void EnumerateUserDbObjectAttributes(uint32_t
  * CAS API
  */
 void CASReadSettings();
-bool CASAuthenticate(const char *ticket, wchar_t *loginName);
+bool CASAuthenticate(const char *ticket, wchar_t *loginName, const char *serviceUrl = nullptr);
 
 #endif   /* _nms_users_h_ */

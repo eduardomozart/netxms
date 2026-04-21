@@ -59,6 +59,7 @@ import org.netxms.nxmc.base.dialogs.PasswordExpiredDialog;
 import org.netxms.nxmc.base.dialogs.PasswordRequestDialog;
 import org.netxms.nxmc.base.dialogs.ReconnectDialog;
 import org.netxms.nxmc.base.dialogs.SecurityWarningDialog;
+import org.netxms.nxmc.base.login.CASLoginHelper;
 import org.netxms.nxmc.base.login.LoginCredentials;
 import org.netxms.nxmc.base.login.LoginDialog;
 import org.netxms.nxmc.base.login.LoginJob;
@@ -467,6 +468,8 @@ public class Startup
       if (v != null)
          autoConnect = Boolean.parseBoolean(v);
 
+      String casUrl = System.getProperty("netxms.cas");
+
       // Parse command line arguments (override JVM properties)
       for(String s : args)
       {
@@ -488,6 +491,10 @@ public class Startup
             token = s.substring(7);
             password = null; // token overrides password
          }
+         else if (s.startsWith("-cas="))
+         {
+            casUrl = s.substring(5);
+         }
          else if (s.equals("-auto"))
          {
             autoConnect = true;
@@ -508,7 +515,23 @@ public class Startup
 
       while(!success)
       {
-         if (autoConnect)
+         if ((casUrl != null) && !casUrl.isEmpty() && (server != null) && !server.isEmpty())
+         {
+            credentials = performCASLogin(server, casUrl);
+            if (credentials == null)
+            {
+               // CAS flow failed - fall back to manual login dialog
+               logger.warn("CAS login flow failed, falling back to manual login dialog");
+               casUrl = null; // prevent CAS loop on retry
+               if (loginDialog.open() != Window.OK)
+               {
+                  logger.info("Login cancelled by user after CAS failure - exiting");
+                  return false;
+               }
+               credentials = loginDialog.getCredentials();
+            }
+         }
+         else if (autoConnect)
          {
             if (server == null)
                server = "127.0.0.1";
@@ -556,13 +579,21 @@ public class Startup
                int action = getAction(credentials.getServer(), alwaysAllow);
                if (action != SecurityWarningDialog.NO)
                {
-                  autoConnect = true;
                   encrypt = false;
                   // Re-use current credentials for retry
                   server = credentials.getServer();
-                  loginName = credentials.getLoginName();
-                  password = credentials.getPassword();
-                  token = (credentials.getAuthMethod() == AuthenticationType.TOKEN) ? credentials.getLoginName() : null;
+                  if (credentials.getAuthMethod() == AuthenticationType.SSO_TICKET)
+                  {
+                     // CAS/SSO: keep casUrl set so the next loop iteration re-runs the CAS flow
+                     // (the existing ticket may be consumed; obtain a fresh one)
+                  }
+                  else
+                  {
+                     autoConnect = true;
+                     loginName = credentials.getLoginName();
+                     password = credentials.getPassword();
+                     token = (credentials.getAuthMethod() == AuthenticationType.TOKEN) ? credentials.getLoginName() : null;
+                  }
                   if (action == SecurityWarningDialog.ALWAYS)
                   {
                      settings.set("Connect.AllowUnencrypted." + credentials.getServer(), true);
@@ -690,6 +721,23 @@ public class Startup
       if (dialog.open() == Window.OK)
          return dialog.getPassword();
       return null;
+   }
+
+   /**
+    * Perform CAS SSO login by opening the system browser and capturing the returned Service Ticket.
+    * This method blocks until the ticket is received or the flow times out.
+    *
+    * @param server NetXMS server address (used as the target for credentials)
+    * @param casUrl CAS server base URL (e.g. {@code https://cas.example.com/cas})
+    * @return {@link LoginCredentials} for SSO_TICKET auth on success, or {@code null} on failure
+    */
+   private static LoginCredentials performCASLogin(String server, String casUrl)
+   {
+      logger.info("Starting CAS SSO login flow for server " + server + " via CAS " + casUrl);
+      CASLoginHelper.CASResult result = CASLoginHelper.performCASLogin(casUrl);
+      if (result == null)
+         return null;
+      return LoginCredentials.forSSOTicket(server, "", result.ticket, result.serviceUrl);
    }
 
    /**
