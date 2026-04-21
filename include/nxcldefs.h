@@ -454,16 +454,6 @@ enum InterfaceOperState
 #define SA_PROPAGATE_TRANSLATED           4
 
 /**
- * Network map types
- */
-#define MAP_TYPE_CUSTOM                      0
-#define MAP_TYPE_LAYER2_TOPOLOGY             1
-#define MAP_TYPE_IP_TOPOLOGY                 2
-#define MAP_INTERNAL_COMMUNICATION_TOPOLOGY  3
-#define MAP_TYPE_OSPF_TOPOLOGY               4
-#define MAP_TYPE_HYBRID_TOPOLOGY             5
-
-/**
  * Components that can be locked by management pack installer
  */
 #define NXMP_LC_EVENTDB    0
@@ -1266,13 +1256,6 @@ enum AggregationFunction
 #define RF_AI_AUTO_ASSIGN        0x200000
 
 /**
- * Network map types
- */
-#define NETMAP_USER_DEFINED   0
-#define NETMAP_IP_TOPOLOGY    1
-#define NETMAP_L2_TOPOLOGY    2
-
-/**
  * Network map flags
  */
 #define MF_SHOW_STATUS_ICON        0x00000001
@@ -1291,6 +1274,16 @@ enum AggregationFunction
 #define MF_SHOW_AS_OBJECT_VIEW     0x00002000
 #define MF_SHOW_TRAFFIC            0x00004000
 #define MF_SHOW_WIFI_CLIENTS       0x00008000
+
+/**
+ * Network map types
+ */
+#define MAP_TYPE_CUSTOM                      0
+#define MAP_TYPE_LAYER2_TOPOLOGY             1
+#define MAP_TYPE_IP_TOPOLOGY                 2
+#define MAP_INTERNAL_COMMUNICATION_TOPOLOGY  3
+#define MAP_TYPE_OSPF_TOPOLOGY               4
+#define MAP_TYPE_HYBRID_TOPOLOGY             5
 
 /**
  * Network map layouts
