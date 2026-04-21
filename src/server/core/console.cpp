@@ -436,6 +436,152 @@ static void ShowTasks(ServerConsole *console)
 }
 
 /**
+ * Execute a script from the debug console "exec" command.
+ *
+ * Locations from `DebugConsole.AllowedScriptLocations` are searched left-to-right;
+ * the first match wins. Supported tokens:
+ *   @library            - server script library (lookup by exact name as typed)
+ *   <absolute-dir>      - non-recursive directory; tries <dir>/<scriptName>[.nxsl]
+ * Empty configuration disables the command entirely.
+ */
+static void ExecuteScriptFromConsole(ServerConsole *console, const wchar_t *scriptName, const wchar_t *args)
+{
+   if (scriptName[0] == 0)
+   {
+      ConsoleWrite(console, L"ERROR: Missing script name\n\n");
+      return;
+   }
+   if (wcspbrk(scriptName, L"/\\") != nullptr)
+   {
+      ConsoleWrite(console, L"ERROR: Script name must not contain path separators\n\n");
+      return;
+   }
+
+   wchar_t fileName[MAX_PATH];
+   if (wcschr(scriptName, L'.') != nullptr)
+      wcslcpy(fileName, scriptName, MAX_PATH);
+   else
+      nx_swprintf(fileName, MAX_PATH, L"%s.nxsl", scriptName);
+
+   wchar_t locations[4096];
+   ConfigReadStr(L"DebugConsole.AllowedScriptLocations", locations, 4096, L"");
+   Trim(locations);
+   if (locations[0] == 0)
+   {
+      ConsoleWrite(console, L"ERROR: \"exec\" is disabled (DebugConsole.AllowedScriptLocations is empty)\n\n");
+      return;
+   }
+
+   bool libraryLocked = false;
+   bool destroyCompiledScript = false;
+   bool compilationFailed = false;
+   NXSL_Library *scriptLibrary = nullptr;
+   NXSL_Program *compiledScript = nullptr;
+
+   StringList tokens = String::split(locations, wcslen(locations), L",", true);
+   for(int i = 0; (i < tokens.size()) && (compiledScript == nullptr) && !compilationFailed; i++)
+   {
+      const wchar_t *token = tokens.get(i);
+      if (*token == 0)
+         continue;
+
+      if (!wcscmp(token, L"@library"))
+      {
+         scriptLibrary = GetServerScriptLibrary();
+         scriptLibrary->lock();
+         compiledScript = scriptLibrary->findNxslProgram(scriptName);
+         if (compiledScript != nullptr)
+         {
+            libraryLocked = true;
+         }
+         else
+         {
+            scriptLibrary->unlock();
+            scriptLibrary = nullptr;
+         }
+         continue;
+      }
+
+      bool isAbsolute = (token[0] == L'/') || (token[0] == L'\\') ||
+         (iswalpha(token[0]) && (token[1] == L':'));
+      if (!isAbsolute)
+      {
+         ConsolePrintf(console, L"WARNING: Ignoring non-absolute location \"%s\"\n", token);
+         continue;
+      }
+
+      wchar_t fullPath[MAX_PATH];
+      wchar_t lastChar = token[wcslen(token) - 1];
+      nx_swprintf(fullPath, MAX_PATH, L"%s%s%s", token,
+         ((lastChar == L'/') || (lastChar == L'\\')) ? L"" : FS_PATH_SEPARATOR_W, fileName);
+
+      char *script = LoadFileAsUTF8String(fullPath);
+      if (script == nullptr)
+         continue;
+
+      NXSL_CompilationDiagnostic diag;
+      NXSL_ServerEnv env;
+      wchar_t *wscript = WideStringFromUTF8String(script);
+      compiledScript = NXSLCompile(wscript, &env, &diag);
+      MemFree(wscript);
+      MemFree(script);
+      if (compiledScript != nullptr)
+      {
+         destroyCompiledScript = true;
+      }
+      else
+      {
+         ConsolePrintf(console, L"ERROR: Script compilation error: %s\n\n", diag.errorText.cstr());
+         compilationFailed = true;
+      }
+   }
+
+   if (compiledScript == nullptr)
+   {
+      if (!compilationFailed)
+         ConsolePrintf(console, L"ERROR: Script \"%s\" not found\n\n", scriptName);
+      return;
+   }
+
+   NXSL_ServerEnv *pEnv = new NXSL_ServerEnv;
+   pEnv->setConsole(console);
+
+   NXSL_VM *vm = new NXSL_VM(pEnv);
+   if (vm->load(compiledScript))
+   {
+      if (libraryLocked)
+      {
+         scriptLibrary->unlock();
+         libraryLocked = false;
+      }
+
+      StringList *cmdLine = ParseCommandLine(args);
+      ObjectRefArray<NXSL_Value> argv(cmdLine->size());
+      for(int i = 0; i < cmdLine->size(); i++)
+         argv.add(vm->createValue(cmdLine->get(i)));
+      delete cmdLine;
+
+      if (vm->run(argv))
+      {
+         ConsolePrintf(console, L"INFO: Script finished with return value %s\n\n", vm->getResult()->getValueAsCString());
+      }
+      else
+      {
+         ConsolePrintf(console, L"ERROR: Script finished with error: %s\n\n", vm->getErrorText());
+      }
+   }
+   else
+   {
+      ConsolePrintf(console, L"ERROR: VM creation failed: %s\n\n", vm->getErrorText());
+   }
+   delete vm;
+   if (destroyCompiledScript)
+      delete compiledScript;
+   if (libraryLocked)
+      scriptLibrary->unlock();
+}
+
+/**
  * Process command entered from command line in standalone mode
  * Return CMD_EXIT_CLOSE_SESSION if command was "exit" and CMD_EXIT_SHUTDOWN if command was "down"
  */
@@ -1834,77 +1980,7 @@ int ProcessConsoleCommand(const wchar_t *command, ServerConsole *console)
    else if (IsCommand(_T("EXEC"), szBuffer, 3))
    {
       pArg = ExtractWord(pArg, szBuffer);
-
-      bool libraryLocked = true;
-      bool destroyCompiledScript = false;
-      NXSL_Library *scriptLibrary = GetServerScriptLibrary();
-      scriptLibrary->lock();
-
-      NXSL_Program *compiledScript = scriptLibrary->findNxslProgram(szBuffer);
-      if (compiledScript == nullptr)
-      {
-         scriptLibrary->unlock();
-         libraryLocked = false;
-         destroyCompiledScript = true;
-         char *script;
-         if ((script = LoadFileAsUTF8String(szBuffer)) != nullptr)
-         {
-            NXSL_CompilationDiagnostic diag;
-            NXSL_ServerEnv env;
-            wchar_t *wscript = WideStringFromUTF8String(script);
-            compiledScript = NXSLCompile(wscript, &env, &diag);
-            MemFree(wscript);
-            MemFree(script);
-            if (compiledScript == nullptr)
-            {
-               ConsolePrintf(console, L"ERROR: Script compilation error: %s\n\n", diag.errorText.cstr());
-            }
-         }
-         else
-         {
-            ConsolePrintf(console, L"ERROR: Script \"%s\" not found\n\n", szBuffer);
-         }
-      }
-
-      if (compiledScript != nullptr)
-      {
-         NXSL_ServerEnv *pEnv = new NXSL_ServerEnv;
-         pEnv->setConsole(console);
-
-         NXSL_VM *vm = new NXSL_VM(pEnv);
-         if (vm->load(compiledScript))
-         {
-            if (libraryLocked)
-            {
-               scriptLibrary->unlock();
-               libraryLocked = false;
-            }
-
-            StringList *cmdLine = ParseCommandLine(pArg);
-            ObjectRefArray<NXSL_Value> argv(cmdLine->size());
-            for(int i = 0; i < cmdLine->size(); i++)
-               argv.add(vm->createValue(cmdLine->get(i)));
-            delete cmdLine;
-
-            if (vm->run(argv))
-            {
-               ConsolePrintf(console, _T("INFO: Script finished with return value %s\n\n"), vm->getResult()->getValueAsCString());
-            }
-            else
-            {
-               ConsolePrintf(console, _T("ERROR: Script finished with error: %s\n\n"), vm->getErrorText());
-            }
-         }
-         else
-         {
-            ConsolePrintf(console, _T("ERROR: VM creation failed: %s\n\n"), vm->getErrorText());
-         }
-         delete vm;
-         if (destroyCompiledScript)
-            delete compiledScript;
-      }
-      if (libraryLocked)
-         scriptLibrary->unlock();
+      ExecuteScriptFromConsole(console, szBuffer, pArg);
    }
    else if (IsCommand(_T("SYNC"), szBuffer, 3))
    {

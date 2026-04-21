@@ -25,6 +25,19 @@
 #include <nxtools.h>
 
 /**
+ * Upgrade from 62.3 to 62.4
+ */
+static bool H_UpgradeFromV3()
+{
+   CHK_EXEC(CreateConfigParam(L"DebugConsole.AllowedScriptLocations",
+            L"@library",
+            L"Ordered, comma-separated list of locations searched by the debug console \"exec\" command. Use @library for the server script library or an absolute directory path (non-recursive). Empty value disables \"exec\".",
+            nullptr, 'S', true, false, false, false));
+   CHK_EXEC(SetMinorSchemaVersion(4));
+   return true;
+}
+
+/**
  * Upgrade from 62.2 to 62.3
  */
 static bool H_UpgradeFromV2()
@@ -87,6 +100,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 3,  62, 4,  H_UpgradeFromV3  },
    { 2,  62, 3,  H_UpgradeFromV2  },
    { 1,  62, 2,  H_UpgradeFromV1  },
    { 0,  62, 1,  H_UpgradeFromV0  },
