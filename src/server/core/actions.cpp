@@ -552,22 +552,26 @@ static void ForwardEvent(ServerActionExecutionContext *context)
 /**
  * Execute NXSL script
  */
-static bool ExecuteActionScript(const TCHAR *script, const Event *event)
+static bool ExecuteActionScript(const wchar_t *script, const Event *event)
 {
-   TCHAR name[1024];
-   _tcslcpy(name, script, 1024);
-   Trim(name);
+   wchar_t name[256];
+   wcslcpy(name, script, 256);
+   TrimW(name);
 
    // Can be in form parameter(arg1, arg2, ... argN)
-   TCHAR *p = _tcschr(name, _T('('));
+   wchar_t *p = wcschr(name, L'(');
    if (p != nullptr)
    {
-      size_t l = _tcslen(name) - 1;
-      if (name[l] != _T(')'))
-         return false;
+      size_t l = wcslen(name) - 1;
+      if (name[l] != L')')
+         return false;  // Interpret argument parsing error as load failure
       name[l] = 0;
       *p = 0;
    }
+
+   // Entry point can be given in form script.entry_point or script/entry_point
+   char entryPoint[MAX_IDENTIFIER_LENGTH];
+   ExtractScriptEntryPoint(name, entryPoint);
 
    bool success = false;
 	ScriptVMHandle vm = CreateServerScriptVM(name, FindObjectById(event->getSourceId()));
@@ -582,7 +586,7 @@ static bool ExecuteActionScript(const TCHAR *script, const Event *event)
          for(int i = 0; i < event->getParametersCount(); i++)
             args.add(vm->createValue(event->getParameter(i)));
 
-         if (vm->run(args))
+         if (vm->run(args, (entryPoint[0] != 0) ? entryPoint : nullptr))
          {
             nxlog_debug_tag(DEBUG_TAG, 4, _T("ExecuteActionScript: script %s successfully executed"), name);
             success = true;
