@@ -2,6 +2,7 @@
 *.aps
 *.bak
 *.cbp
+*.class
 *.iml
 *.ipr
 *.iws
