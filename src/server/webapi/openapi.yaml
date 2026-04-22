@@ -931,6 +931,156 @@ paths:
         - BearerAuth: []
       tags:
         - AI Saved Prompts
+  /v1/alarm-categories:
+    get:
+      operationId: listAlarmCategories
+      tags:
+        - Alarm Categories
+      summary: Get all alarm categories
+      description: Retrieve the list of all configured alarm categories. Requires EPP system access right.
+      responses:
+        '200':
+          description: List of alarm categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlarmCategory'
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+      security:
+        - BearerAuth: []
+    post:
+      operationId: createAlarmCategory
+      tags:
+        - Alarm Categories
+      summary: Create a new alarm category
+      description: Create a new alarm category. Requires EPP system access right.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlarmCategoryCreateUpdate'
+      responses:
+        '201':
+          description: Alarm category created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmCategory'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+  /v1/alarm-categories/{category-id}:
+    get:
+      operationId: getAlarmCategory
+      tags:
+        - Alarm Categories
+      summary: Get alarm category details
+      description: Retrieve details of a specific alarm category. Requires EPP system access right.
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Alarm category ID.
+      responses:
+        '200':
+          description: Alarm category details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmCategory'
+        '400':
+          description: Invalid category ID.
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Alarm category not found.
+      security:
+        - BearerAuth: []
+    put:
+      operationId: updateAlarmCategory
+      tags:
+        - Alarm Categories
+      summary: Update an alarm category
+      description: Update an existing alarm category. Requires EPP system access right.
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Alarm category ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlarmCategoryCreateUpdate'
+      responses:
+        '200':
+          description: Alarm category updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlarmCategory'
+        '400':
+          description: Invalid request (missing or empty name).
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Alarm category not found.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
+    delete:
+      operationId: deleteAlarmCategory
+      tags:
+        - Alarm Categories
+      summary: Delete an alarm category
+      description: Delete an alarm category. Requires EPP system access right. Returns 409 if the category is referenced by any event processing policy rule.
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Alarm category ID.
+      responses:
+        '204':
+          description: Alarm category deleted successfully.
+        '400':
+          description: Invalid category ID.
+        '401':
+          description: Unauthorized.
+        '403':
+          description: Access denied.
+        '404':
+          description: Alarm category not found.
+        '409':
+          description: Alarm category is in use by one or more event processing policy rules.
+        '500':
+          description: Internal server error.
+      security:
+        - BearerAuth: []
   /v1/alarms:
     get:
       operationId: listAlarms
@@ -5855,6 +6005,39 @@ components:
         queueSize:
           type: integer
           description: Current message queue size
+    AlarmCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique alarm category identifier.
+        name:
+          type: string
+          description: Alarm category name.
+        description:
+          type: string
+          description: Alarm category description.
+        accessControl:
+          type: array
+          description: User/group IDs allowed to see alarms in this category. Group IDs have the high bit set.
+          items:
+            type: integer
+    AlarmCategoryCreateUpdate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Alarm category name (cannot be empty).
+        description:
+          type: string
+          description: Alarm category description.
+        accessControl:
+          type: array
+          description: User/group IDs allowed to see alarms in this category. Group IDs have the high bit set.
+          items:
+            type: integer
     Alarm:
       type: object
       properties:

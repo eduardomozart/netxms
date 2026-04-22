@@ -175,8 +175,10 @@ public:
 
    void fillMessage(NXCPMessage *msg, uint32_t baseId) const;
    void modifyFromMessage(const NXCPMessage& msg);
+   void modifyFromJson(json_t *json);
    void updateDescription(const TCHAR *description) { MemFree(m_description); m_description = MemCopyString(description); }
    bool saveToDatabase() const;
+   json_t *toJson() const;
 };
 
 /**
@@ -284,12 +286,15 @@ uint32_t UnlinkHelpdeskIssueByHDRef(const TCHAR *hdref, GenericClientSession *se
  */
 void GetAlarmCategories(NXCPMessage *msg);
 uint32_t UpdateAlarmCategory(const NXCPMessage& request, uint32_t *returnId);
-uint32_t DeleteAlarmCategory(uint32_t id);
+uint32_t NXCORE_EXPORTABLE DeleteAlarmCategory(uint32_t id);
 bool CheckAlarmCategoryAccess(uint32_t userId, uint32_t categoryId);
 void LoadAlarmCategories();
 AlarmCategory *GetAlarmCategory(uint32_t id);
 uint32_t UpdateAlarmCategoryDescription(const TCHAR *name, const TCHAR *description);
 uint32_t CreateAlarmCategory(const TCHAR *name, const TCHAR *description);
+json_t NXCORE_EXPORTABLE *GetAlarmCategoriesAsJson();
+json_t NXCORE_EXPORTABLE *GetAlarmCategoryAsJson(uint32_t id);
+uint32_t NXCORE_EXPORTABLE ModifyAlarmCategoryFromJson(uint32_t id, json_t *json, uint32_t *returnId);
 
 /**
  * Alarm summary emails

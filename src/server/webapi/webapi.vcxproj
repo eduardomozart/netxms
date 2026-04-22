@@ -328,6 +328,7 @@
     <ClCompile Include="2fa.cpp" />
     <ClCompile Include="actions.cpp" />
     <ClCompile Include="ai.cpp" />
+    <ClCompile Include="alarm_categories.cpp" />
     <ClCompile Include="alarms.cpp" />
     <ClCompile Include="conn_history.cpp" />
     <ClCompile Include="datacoll.cpp" />

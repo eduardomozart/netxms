@@ -103,6 +103,57 @@ void AlarmCategory::modifyFromMessage(const NXCPMessage& msg)
 }
 
 /**
+ * Modify category from JSON document
+ */
+void AlarmCategory::modifyFromJson(json_t *json)
+{
+   json_t *jsonName = json_object_get(json, "name");
+   if (json_is_string(jsonName))
+   {
+      MemFree(m_name);
+      m_name = WideStringFromUTF8String(json_string_value(jsonName));
+   }
+
+   json_t *jsonDescription = json_object_get(json, "description");
+   if (json_is_string(jsonDescription))
+   {
+      MemFree(m_description);
+      m_description = WideStringFromUTF8String(json_string_value(jsonDescription));
+   }
+   else if (json_is_null(jsonDescription))
+   {
+      MemFree(m_description);
+      m_description = nullptr;
+   }
+
+   json_t *jsonAcl = json_object_get(json, "accessControl");
+   if (json_is_array(jsonAcl))
+   {
+      m_acl.clear();
+      size_t count = json_array_size(jsonAcl);
+      for(size_t i = 0; i < count; i++)
+      {
+         json_t *element = json_array_get(jsonAcl, i);
+         if (json_is_integer(element))
+            m_acl.add(static_cast<uint32_t>(json_integer_value(element)));
+      }
+   }
+}
+
+/**
+ * Serialize alarm category to JSON
+ */
+json_t *AlarmCategory::toJson() const
+{
+   json_t *root = json_object();
+   json_object_set_new(root, "id", json_integer(m_id));
+   json_object_set_new(root, "name", json_string_w(CHECK_NULL_EX(m_name)));
+   json_object_set_new(root, "description", json_string_w(CHECK_NULL_EX(m_description)));
+   json_object_set_new(root, "accessControl", json_integer_array(m_acl));
+   return root;
+}
+
+/**
  * Save category to database
  */
 bool AlarmCategory::saveToDatabase() const
@@ -432,4 +483,74 @@ uint32_t CreateAlarmCategory(const TCHAR *name, const TCHAR *description)
 
    s_lock.unlock();
    return id;
+}
+
+/**
+ * Get all alarm categories as JSON array
+ */
+json_t NXCORE_EXPORTABLE *GetAlarmCategoriesAsJson()
+{
+   json_t *output = json_array();
+   s_lock.readLock();
+   Iterator<AlarmCategory> it = s_categories.begin();
+   while(it.hasNext())
+      json_array_append_new(output, it.next()->toJson());
+   s_lock.unlock();
+   return output;
+}
+
+/**
+ * Get single alarm category as JSON object, or nullptr if not found
+ */
+json_t NXCORE_EXPORTABLE *GetAlarmCategoryAsJson(uint32_t id)
+{
+   s_lock.readLock();
+   AlarmCategory *c = s_categories.get(id);
+   json_t *output = (c != nullptr) ? c->toJson() : nullptr;
+   s_lock.unlock();
+   return output;
+}
+
+/**
+ * Create or update alarm category from JSON document.
+ * If id is 0, a new category will be created and its ID returned via *returnId.
+ */
+uint32_t NXCORE_EXPORTABLE ModifyAlarmCategoryFromJson(uint32_t id, json_t *json, uint32_t *returnId)
+{
+   json_t *jsonName = json_object_get(json, "name");
+   if (!json_is_string(jsonName) || (*json_string_value(jsonName) == 0))
+      return RCC_CATEGORY_NAME_EMPTY;
+
+   AlarmCategory *category;
+   s_lock.writeLock();
+   if (id == 0)
+   {
+      id = CreateUniqueId(IDG_ALARM_CATEGORY);
+      category = new AlarmCategory(id);
+      s_categories.set(id, category);
+   }
+   else
+   {
+      category = s_categories.get(id);
+      if (category == nullptr)
+      {
+         s_lock.unlock();
+         return RCC_INVALID_OBJECT_ID;
+      }
+   }
+   *returnId = id;
+   category->modifyFromJson(json);
+   uint32_t rcc = category->saveToDatabase() ? RCC_SUCCESS : RCC_DB_FAILURE;
+
+   if (rcc == RCC_SUCCESS)
+   {
+      NXCPMessage msg;
+      msg.setCode(CMD_ALARM_CATEGORY_UPDATE);
+      msg.setField(VID_NOTIFICATION_CODE, static_cast<uint16_t>(NX_NOTIFY_ALARM_CATEGORY_UPDATED));
+      category->fillMessage(&msg, VID_ELEMENT_LIST_BASE);
+      NotifyClientSessions(msg);
+   }
+
+   s_lock.unlock();
+   return rcc;
 }

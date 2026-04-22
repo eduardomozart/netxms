@@ -68,6 +68,11 @@ int H_ServerActionCreate(Context *context);
 int H_ServerActionUpdate(Context *context);
 int H_ServerActionDelete(Context *context);
 int H_AlarmAcknowledge(Context *context);
+int H_AlarmCategories(Context *context);
+int H_AlarmCategoryCreate(Context *context);
+int H_AlarmCategoryDelete(Context *context);
+int H_AlarmCategoryDetails(Context *context);
+int H_AlarmCategoryUpdate(Context *context);
 int H_AlarmDetails(Context *context);
 int H_AlarmResolve(Context *context);
 int H_AlarmTerminate(Context *context);
@@ -248,6 +253,15 @@ static bool InitModule(Config *config)
       .build();
    RouteBuilder("v1/ai/skills-and-functions")
       .GET(H_AiSkillsAndFunctions)
+      .build();
+   RouteBuilder("v1/alarm-categories")
+      .GET(H_AlarmCategories)
+      .POST(H_AlarmCategoryCreate)
+      .build();
+   RouteBuilder("v1/alarm-categories/:category-id")
+      .GET(H_AlarmCategoryDetails)
+      .PUT(H_AlarmCategoryUpdate)
+      .DELETE(H_AlarmCategoryDelete)
       .build();
    RouteBuilder("v1/alarms")
       .GET(H_Alarms)
