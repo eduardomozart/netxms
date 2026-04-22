@@ -25,7 +25,7 @@ INSERT INTO metadata (var_name,var_value)
 
 #if defined(DB_MYSQL) || defined(DB_POSTGRESQL) || defined(DB_MSSQL)
 INSERT INTO metadata (var_name,var_value)
-	VALUES ('IDataIndexCreationCommand_0','CREATE INDEX idx_idata_%d_timestamp_id ON idata_%d(idata_timestamp,item_id)');
+	VALUES ('IDataIndexCreationCommand_0','CREATE INDEX idx_idata_%u_timestamp_id ON idata_%u(idata_timestamp,item_id)');
 #endif
 
 INSERT INTO metadata (var_name,var_value)

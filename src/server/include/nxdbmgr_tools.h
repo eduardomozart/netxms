@@ -109,6 +109,8 @@ bool LIBNXDBMGR_EXPORTABLE CreateLibraryScript(uint32_t id, const TCHAR *guid, c
 
 void LIBNXDBMGR_EXPORTABLE DecodeSQLString(TCHAR *str);
 
+bool LIBNXDBMGR_EXPORTABLE IsIndexExists(const wchar_t *tableName, const wchar_t *indexName);
+
 // Check tools
 void LIBNXDBMGR_EXPORTABLE StartStage(const TCHAR *pszMsg, int workTotal = 1);
 void LIBNXDBMGR_EXPORTABLE SetStageWorkTotal(int workTotal);

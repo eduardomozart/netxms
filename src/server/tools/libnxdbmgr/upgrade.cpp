@@ -485,3 +485,32 @@ bool LIBNXDBMGR_EXPORTABLE ConvertColumnToInt64(const wchar_t *table, const wcha
       query.append(L" NOT NULL");
    return SQLQuery(query);
 }
+
+/**
+ * Check whether an index exists on the given table. Only supports MySQL, PostgreSQL, MSSQL.
+ */
+bool LIBNXDBMGR_EXPORTABLE IsIndexExists(const wchar_t *tableName, const wchar_t *indexName)
+{
+   wchar_t query[512];
+   switch (g_dbSyntax)
+   {
+      case DB_SYNTAX_MSSQL:
+         nx_swprintf(query, 512, L"SELECT 1 FROM sys.indexes WHERE name='%s' AND object_id=OBJECT_ID('%s')", indexName, tableName);
+         break;
+      case DB_SYNTAX_MYSQL:
+         nx_swprintf(query, 512, L"SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='%s' AND INDEX_NAME='%s'", tableName, indexName);
+         break;
+      case DB_SYNTAX_PGSQL:
+         nx_swprintf(query, 512, L"SELECT 1 FROM pg_indexes WHERE schemaname=current_schema() AND tablename='%s' AND indexname='%s'", tableName, indexName);
+         break;
+      default:
+         return false;
+   }
+
+   DB_RESULT hResult = SQLSelect(query);
+   if (hResult == nullptr)
+      return false;
+   bool exists = DBGetNumRows(hResult) > 0;
+   DBFreeResult(hResult);
+   return exists;
+}

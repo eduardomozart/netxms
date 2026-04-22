@@ -24,11 +24,52 @@
 #include <nxevent.h>
 
 /**
- * Upgrade from 61.35 to 62.0
+ * Upgrade from 61.36 to 62.0
+ */
+static bool H_UpgradeFromV36()
+{
+   CHK_EXEC(SetMajorSchemaVersion(62, 0));
+   return true;
+}
+
+/**
+ * Upgrade from 61.35 to 61.36
  */
 static bool H_UpgradeFromV35()
 {
-   CHK_EXEC(SetMajorSchemaVersion(62, 0));
+   // Per-DCI idata tables created after the 6.0 upgrade have only
+   // PRIMARY KEY(item_id, idata_timestamp), which cannot serve queries
+   // filtering/sorting by idata_timestamp alone. Restore the secondary
+   // (idata_timestamp, item_id) index for MySQL, PostgreSQL (non-TSDB),
+   // and MSSQL, and backfill it on existing idata_* tables.
+   if ((g_dbSyntax == DB_SYNTAX_MYSQL) || (g_dbSyntax == DB_SYNTAX_PGSQL) || (g_dbSyntax == DB_SYNTAX_MSSQL))
+   {
+      CHK_EXEC(DBMgrMetaDataWriteStr(L"IDataIndexCreationCommand_0", L"CREATE INDEX idx_idata_%u_timestamp_id ON idata_%u(idata_timestamp,item_id)"));
+
+      IntegerArray<uint32_t> targets = GetDataCollectionTargets();
+      for(int i = 0; i < targets.size(); i++)
+      {
+         uint32_t id = targets.get(i);
+         wchar_t tableName[64], indexName[64];
+         nx_swprintf(tableName, 64, L"idata_%u", id);
+         nx_swprintf(indexName, 64, L"idx_idata_%u_timestamp_id", id);
+
+         if (DBIsTableExist(g_dbHandle, tableName) != DBIsTableExist_Found)
+            continue;
+
+         // Skip if the index already exists (e.g. on pre-6.0 PostgreSQL tables, which
+         // already have this exact index). Attempting CREATE INDEX here would fail and
+         // on PostgreSQL would poison the entire upgrade transaction.
+         if (IsIndexExists(tableName, indexName))
+            continue;
+
+         wchar_t query[256];
+         nx_swprintf(query, 256, L"CREATE INDEX %s ON %s(idata_timestamp,item_id)", indexName, tableName);
+         WriteToTerminalEx(L"Indexing table \x1b[1m%s\x1b[0m...\n", tableName);
+         CHK_EXEC(SQLQuery(query));
+      }
+   }
+   CHK_EXEC(SetMinorSchemaVersion(36));
    return true;
 }
 
@@ -976,7 +1017,8 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
-   { 35, 62, 0,  H_UpgradeFromV35 },
+   { 36, 62, 0,  H_UpgradeFromV36 },
+   { 35, 61, 36, H_UpgradeFromV35 },
    { 34, 61, 35, H_UpgradeFromV34 },
    { 33, 61, 34, H_UpgradeFromV33 },
    { 32, 61, 33, H_UpgradeFromV32 },
