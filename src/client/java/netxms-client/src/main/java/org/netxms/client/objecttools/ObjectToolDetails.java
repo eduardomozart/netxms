@@ -68,7 +68,7 @@ public class ObjectToolDetails extends ObjectTool
 		imageData = null;
       remotePort = 0;
       remoteHost = null;
-      applicableClasses = (type == TYPE_URL) ? APPLICABLE_ALL_VALID : APPLICABLE_NODE;
+      applicableClasses = APPLICABLE_NODE;
 		inputFields = new HashMap<String, InputField>();
 
 		createDisplayName();
