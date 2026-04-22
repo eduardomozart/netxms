@@ -76,6 +76,8 @@ public class EventMonitorElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), EventMonitorConfig.class);
+         if (config == null)
+            config = new EventMonitorConfig();
       }
       catch(Exception e)
       {

@@ -100,6 +100,8 @@ public class PortViewElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), PortViewConfig.class);
+         if (config == null)
+            config = new PortViewConfig();
       }
       catch(Exception e)
       {

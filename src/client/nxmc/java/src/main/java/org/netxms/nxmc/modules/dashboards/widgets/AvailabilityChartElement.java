@@ -81,6 +81,8 @@ public class AvailabilityChartElement extends ElementWidget
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), AvailabilityChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new AvailabilityChartConfig();
       }
       catch(Exception e)
       {

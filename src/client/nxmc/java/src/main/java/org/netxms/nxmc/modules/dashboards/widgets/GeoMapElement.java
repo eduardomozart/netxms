@@ -48,6 +48,8 @@ public class GeoMapElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), GeoMapConfig.class);
+         if (config == null)
+            config = new GeoMapConfig();
       }
       catch(Exception e)
       {

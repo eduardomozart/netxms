@@ -48,6 +48,8 @@ public class WebPageElement extends ElementWidget
 		try
 		{
          config = new Gson().fromJson(element.getData(), WebPageConfig.class);
+         if (config == null)
+            config = new WebPageConfig();
 		}
 		catch(Exception e)
 		{

@@ -91,11 +91,13 @@ public class StatusIndicatorElement extends ElementWidget
 		try
 		{
          config = new Gson().fromJson(element.getData(), StatusIndicatorConfig.class);
+         if (config == null)
+            config = new StatusIndicatorConfig();
 		}
 		catch(final Exception e)
 		{
          logger.error("Cannot parse dashboard element configuration", e);
-         logger.debug("Original XML:\n" + element.getData());
+         logger.debug("Original JSON:\n" + element.getData());
 			config = new StatusIndicatorConfig();
 		}
 

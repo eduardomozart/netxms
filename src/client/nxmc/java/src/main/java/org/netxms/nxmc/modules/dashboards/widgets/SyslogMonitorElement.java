@@ -62,6 +62,8 @@ public class SyslogMonitorElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), SyslogMonitorConfig.class);
+         if (config == null)
+            config = new SyslogMonitorConfig();
       }
       catch(Exception e)
       {

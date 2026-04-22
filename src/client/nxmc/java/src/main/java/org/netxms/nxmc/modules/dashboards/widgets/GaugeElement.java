@@ -54,6 +54,8 @@ public class GaugeElement extends ComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), GaugeConfig.class);
+         if (elementConfig == null)
+            elementConfig = new GaugeConfig();
       }
       catch(Exception e)
       {

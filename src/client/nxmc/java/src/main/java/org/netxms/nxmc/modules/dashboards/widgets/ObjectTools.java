@@ -69,6 +69,8 @@ public class ObjectTools extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), ObjectToolsConfig.class);
+         if (config == null)
+            config = new ObjectToolsConfig();
       }
       catch(Exception e)
       {

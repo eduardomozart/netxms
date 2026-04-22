@@ -61,6 +61,8 @@ public class TableValueElement extends ElementWidget
 		try
 		{
          config = new Gson().fromJson(element.getData(), TableValueConfig.class);
+         if (config == null)
+            config = new TableValueConfig();
 		}
 		catch(Exception e)
 		{

@@ -49,6 +49,8 @@ public class PieChartElement extends ComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), PieChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new PieChartConfig();
       }
       catch(Exception e)
       {

@@ -53,6 +53,8 @@ public class NetworkMapElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), NetworkMapConfig.class);
+         if (config == null)
+            config = new NetworkMapConfig();
       }
       catch(Exception e)
       {

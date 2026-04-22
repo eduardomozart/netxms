@@ -61,6 +61,8 @@ public class FileMonitorElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), FileMonitorConfig.class);
+         if (config == null)
+            config = new FileMonitorConfig();
       }
       catch(Exception e)
       {
