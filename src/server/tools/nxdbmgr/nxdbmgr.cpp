@@ -925,9 +925,13 @@ stop_search:
          wchar_t shareDir[MAX_PATH];
          GetNetXMSDirectory(nxDirShare, shareDir);
 
+         const char *dbType = argv[optind + 1];
+         if (!strcmp(dbType, "mariadb"))
+            dbType = "mysql";
+
          StringBuffer initFile = shareDir;
          initFile.append(FS_PATH_SEPARATOR _T("sql") FS_PATH_SEPARATOR _T("dbinit_"));
-         initFile.appendMBString(argv[optind + 1]);
+         initFile.appendMBString(dbType);
          initFile.append(_T(".sql"));
 
          char *initFileMB = MBStringFromWideStringSysLocale(initFile);
