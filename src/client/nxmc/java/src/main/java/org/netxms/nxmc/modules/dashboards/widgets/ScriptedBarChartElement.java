@@ -49,6 +49,8 @@ public class ScriptedBarChartElement extends ScriptedComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), ScriptedBarChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new ScriptedBarChartConfig();
       }
       catch(Exception e)
       {

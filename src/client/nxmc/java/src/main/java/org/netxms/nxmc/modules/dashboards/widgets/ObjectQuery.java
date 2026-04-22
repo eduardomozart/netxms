@@ -91,6 +91,8 @@ public class ObjectQuery extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), ObjectDetailsConfig.class);
+         if (config == null)
+            config = new ObjectDetailsConfig();
       }
       catch(Exception e)
       {

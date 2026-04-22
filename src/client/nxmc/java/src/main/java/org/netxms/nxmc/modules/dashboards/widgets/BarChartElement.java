@@ -51,6 +51,8 @@ public class BarChartElement extends ComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), BarChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new BarChartConfig();
       }
       catch(Exception e)
       {

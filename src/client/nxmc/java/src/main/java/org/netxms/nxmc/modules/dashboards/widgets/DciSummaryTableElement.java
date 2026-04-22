@@ -48,6 +48,8 @@ public class DciSummaryTableElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), DciSummaryTableConfig.class);
+         if (config == null)
+            config = new DciSummaryTableConfig();
       }
       catch(Exception e)
       {

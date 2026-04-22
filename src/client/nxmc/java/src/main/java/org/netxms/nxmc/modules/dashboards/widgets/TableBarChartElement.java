@@ -47,6 +47,8 @@ public class TableBarChartElement extends TableComparisonChartElement
 		try
 		{
          config = new Gson().fromJson(element.getData(), TableBarChartConfig.class);
+         if (config == null)
+            config = new TableBarChartConfig();
 		}
 		catch(Exception e)
 		{

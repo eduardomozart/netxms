@@ -50,6 +50,8 @@ public class ScriptedPieChartElement extends ScriptedComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), ScriptedPieChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new ScriptedPieChartConfig();
       }
       catch(Exception e)
       {

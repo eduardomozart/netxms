@@ -51,6 +51,8 @@ public class StatusMapElement extends ElementWidget
 		try
 		{
          config = new Gson().fromJson(element.getData(), StatusMapConfig.class);
+         if (config == null)
+            config = new StatusMapConfig();
 		}
 		catch(Exception e)
 		{

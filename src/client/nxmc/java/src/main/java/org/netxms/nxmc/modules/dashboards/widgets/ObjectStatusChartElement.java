@@ -59,6 +59,8 @@ public class ObjectStatusChartElement extends ComparisonChartElement
       try
       {
          elementConfig = new Gson().fromJson(element.getData(), ObjectStatusChartConfig.class);
+         if (elementConfig == null)
+            elementConfig = new ObjectStatusChartConfig();
       }
       catch(Exception e)
       {

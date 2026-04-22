@@ -315,6 +315,8 @@ public class ElementWidget extends DashboardComposite implements ControlListener
 		try
 		{
          layout = new Gson().fromJson(xml, DashboardElementLayout.class);
+         if (layout == null)
+            layout = new DashboardElementLayout();
 		}
 		catch(Exception e)
 		{

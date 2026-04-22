@@ -62,6 +62,8 @@ public class SnmpTrapMonitorElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), SnmpTrapMonitorConfig.class);
+         if (config == null)
+            config = new SnmpTrapMonitorConfig();
       }
       catch(Exception e)
       {

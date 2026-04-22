@@ -84,6 +84,8 @@ public class RackDiagramElement extends ElementWidget implements ISelectionProvi
       try
       {
          config = new Gson().fromJson(element.getData(), RackDiagramConfig.class);
+         if (config == null)
+            config = new RackDiagramConfig();
       }
       catch(Exception e)
       {

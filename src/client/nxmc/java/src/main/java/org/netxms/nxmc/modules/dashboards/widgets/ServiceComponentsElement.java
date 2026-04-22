@@ -67,6 +67,8 @@ public class ServiceComponentsElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), ServiceComponentsConfig.class);
+         if (config == null)
+            config = new ServiceComponentsConfig();
       }
       catch(Exception e)
       {

@@ -47,6 +47,8 @@ public class TablePieChartElement extends TableComparisonChartElement
 		try
 		{
          config = new Gson().fromJson(element.getData(), TablePieChartConfig.class);
+         if (config == null)
+            config = new TablePieChartConfig();
 		}
 		catch(Exception e)
 		{

@@ -51,6 +51,8 @@ public class AlarmViewerElement extends ElementWidget
       try
       {
          config = new Gson().fromJson(element.getData(), AlarmViewerConfig.class);
+         if (config == null)
+            config = new AlarmViewerConfig();
       }
       catch(Exception e)
       {

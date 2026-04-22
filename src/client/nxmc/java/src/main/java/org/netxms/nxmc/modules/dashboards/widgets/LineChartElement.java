@@ -91,6 +91,8 @@ public class LineChartElement extends ElementWidget implements HistoricalChartOw
       try
       {
          config = new Gson().fromJson(element.getData(), LineChartConfig.class);
+         if (config == null)
+            config = new LineChartConfig();
       }
       catch(Exception e)
       {
