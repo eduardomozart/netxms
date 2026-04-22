@@ -781,6 +781,37 @@ NXSL_METHOD_DEFINITION(NetObj, setNameOnMap)
 }
 
 /**
+ * setPostalAddress(country, region, city, district, streetAddress, postcode)
+ *
+ * Each argument must be a string or null. Null or empty values clear the corresponding field.
+ */
+NXSL_METHOD_DEFINITION(NetObj, setPostalAddress)
+{
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, static_cast<shared_ptr<NetObj>*>(object->getData())->get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   for(int i = 0; i < 6; i++)
+   {
+      if (!argv[i]->isString() && !argv[i]->isNull())
+         return NXSL_ERR_NOT_STRING;
+   }
+
+   PostalAddress addr(
+      argv[0]->isNull() ? nullptr : argv[0]->getValueAsCString(),
+      argv[1]->isNull() ? nullptr : argv[1]->getValueAsCString(),
+      argv[2]->isNull() ? nullptr : argv[2]->getValueAsCString(),
+      argv[3]->isNull() ? nullptr : argv[3]->getValueAsCString(),
+      argv[4]->isNull() ? nullptr : argv[4]->getValueAsCString(),
+      argv[5]->isNull() ? nullptr : argv[5]->getValueAsCString());
+   static_cast<shared_ptr<NetObj>*>(object->getData())->get()->setPostalAddress(addr);
+   *result = vm->createValue();
+   return NXSL_ERR_SUCCESS;
+}
+
+/**
  * NetObj::setStatusCalculation(type, ...)
  */
 NXSL_METHOD_DEFINITION(NetObj, setStatusCalculation)
@@ -1017,6 +1048,7 @@ NXSL_NetObjClass::NXSL_NetObjClass() : NXSL_Class()
    NXSL_REGISTER_METHOD(NetObj, setGeoLocation, 1);
    NXSL_REGISTER_METHOD(NetObj, setMapImage, 1);
    NXSL_REGISTER_METHOD(NetObj, setNameOnMap, 1);
+   NXSL_REGISTER_METHOD(NetObj, setPostalAddress, 6);
    NXSL_REGISTER_METHOD(NetObj, setStatusCalculation, -1);
    NXSL_REGISTER_METHOD(NetObj, setStatusPropagation, -1);
    NXSL_REGISTER_METHOD(NetObj, unbind, 1);
