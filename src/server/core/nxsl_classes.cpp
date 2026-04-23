@@ -3635,6 +3635,63 @@ NXSL_METHOD_DEFINITION(Interface, clearPeer)
 }
 
 /**
+ * Interface::setPeer(peerInterface) method
+ */
+NXSL_METHOD_DEFINITION(Interface, setPeer)
+{
+   Interface *localInterface = static_cast<shared_ptr<Interface>*>(object->getData())->get();
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, localInterface))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   shared_ptr<Interface> peerInterface;
+   if (argv[0]->isObject(L"Interface"))
+   {
+      peerInterface = *static_cast<shared_ptr<Interface>*>(argv[0]->getValueAsObject()->getData());
+   }
+   else if (argv[0]->isInteger())
+   {
+      peerInterface = static_pointer_cast<Interface>(FindObjectById(argv[0]->getValueAsUInt32(), OBJECT_INTERFACE));
+   }
+   else
+   {
+      return NXSL_ERR_NOT_OBJECT;
+   }
+
+   if ((peerInterface == nullptr) || (peerInterface.get() == localInterface))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if (!vm->validateAccess(NXSL_AC_OBJECT, OBJECT_ACCESS_MODIFY, peerInterface.get()))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   shared_ptr<Node> peerParent = peerInterface->getParentNode();
+   shared_ptr<Node> localParent = localInterface->getParentNode();
+   if ((peerParent == nullptr) || (localParent == nullptr))
+   {
+      *result = vm->createValue(false);
+      return 0;
+   }
+
+   if ((localInterface->getPeerInterfaceId() != 0) && (localInterface->getPeerInterfaceId() != peerInterface->getId()))
+      ClearPeer(localInterface->getPeerInterfaceId());
+   if ((peerInterface->getPeerInterfaceId() != 0) && (peerInterface->getPeerInterfaceId() != localInterface->getId()))
+      ClearPeer(peerInterface->getPeerInterfaceId());
+
+   localInterface->setPeer(peerParent.get(), peerInterface.get(), LL_PROTO_MANUAL, false);
+   peerInterface->setPeer(localParent.get(), localInterface, LL_PROTO_MANUAL, false);
+   *result = vm->createValue(true);
+   return 0;
+}
+
+/**
  * Interface::enableAgentStatusPolling(enabled) method
  */
 NXSL_METHOD_DEFINITION(Interface, enableAgentStatusPolling)
@@ -3767,6 +3824,7 @@ NXSL_InterfaceClass::NXSL_InterfaceClass() : NXSL_NetObjClass()
    NXSL_REGISTER_METHOD(Interface, setExcludeFromTopology, 1);
    NXSL_REGISTER_METHOD(Interface, setExpectedState, 1);
    NXSL_REGISTER_METHOD(Interface, setIncludeInIcmpPoll, 1);
+   NXSL_REGISTER_METHOD(Interface, setPeer, 1);
    NXSL_REGISTER_METHOD(Interface, setPollCountForStatusChange, 1);
 }
 
