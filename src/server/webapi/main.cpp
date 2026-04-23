@@ -329,11 +329,13 @@ static bool InitModule(Config *config)
    RouteBuilder("v1/image-library")
       .GET(H_ImageLibrary)
       .POST(H_ImageLibraryCreate)
+      .acceptImage()
       .build();
    RouteBuilder("v1/image-library/:guid")
       .GET(H_ImageLibraryDetails)
       .PUT(H_ImageLibraryUpdate)
       .DELETE(H_ImageLibraryDelete)
+      .acceptImage()
       .build();
    RouteBuilder("v1/image-library/:guid/data")
       .GET(H_ImageLibraryData)

@@ -37,6 +37,7 @@ struct Route
    MHD_UpgradeHandler upgradeHandler;
    bool auth;
    bool acceptProtobuf;
+   bool acceptImage;
    char scope[32];
 };
 
@@ -95,6 +96,7 @@ void RouteBuilder::build()
       s_root->upgradeHandler = m_upgradeHandler;
       s_root->auth = m_auth;
       s_root->acceptProtobuf = m_acceptProtobuf;
+      s_root->acceptImage = m_acceptImage;
       strlcpy(s_root->scope, m_scope, sizeof(s_root->scope));
       return;
    }
@@ -147,6 +149,7 @@ void RouteBuilder::build()
    r->upgradeHandler = m_upgradeHandler;
    r->auth = m_auth;
    r->acceptProtobuf = m_acceptProtobuf;
+   r->acceptImage = m_acceptImage;
    strlcpy(r->scope, m_scope, sizeof(r->scope));
 }
 
@@ -231,6 +234,11 @@ Context *RouteRequest(MHD_Connection *connection, const char *path, const char *
       {
          validContentType = (contentType != nullptr) &&
             (!strcmp(contentType, "application/x-protobuf") || !strncmp(contentType, "application/x-protobuf;", 23));
+      }
+      if (!validContentType && curr->acceptImage)
+      {
+         validContentType = (contentType != nullptr) &&
+            (!strcmp(contentType, "image/svg+xml") || !strcmp(contentType, "image/png") || !strcmp(contentType, "image/jpeg"));
       }
       if (!validContentType)
       {
