@@ -1655,6 +1655,68 @@ static bool IsTableEmpty(const wchar_t *tableName)
 }
 
 /**
+ * Frozen pre-V62 variant of CreateIDataTable. Reads the table-creation
+ * template from metadata, matching the exact behavior that was in effect
+ * at the time of the V60 upgrade. The global CreateIDataTable was
+ * reimplemented in code (issue #3204); historical upgrade paths must
+ * keep using the original metadata-driven behavior to avoid schema drift.
+ */
+static bool CreateIDataTable_V60(uint32_t objectId)
+{
+   wchar_t query[256], queryTemplate[256];
+   DBMgrMetaDataReadStr(L"IDataTableCreationCommand", queryTemplate, 255, L"");
+   nx_swprintf(query, 256, queryTemplate, objectId);
+   if (!SQLQuery(query))
+      return false;
+
+   for(int i = 0; i < 10; i++)
+   {
+      nx_swprintf(query, 256, L"IDataIndexCreationCommand_%d", i);
+      DBMgrMetaDataReadStr(query, queryTemplate, 255, L"");
+      if (queryTemplate[0] != 0)
+      {
+         nx_swprintf(query, 256, queryTemplate, objectId, objectId);
+         if (!SQLQuery(query))
+            return false;
+      }
+   }
+   return true;
+}
+
+/**
+ * Frozen pre-V62 variant of CreateTDataTable. See CreateIDataTable_V60.
+ */
+static bool CreateTDataTable_V60(uint32_t objectId)
+{
+   wchar_t query[256], queryTemplate[256];
+
+   for(int i = 0; i < 10; i++)
+   {
+      nx_swprintf(query, 256, L"TDataTableCreationCommand_%d", i);
+      DBMgrMetaDataReadStr(query, queryTemplate, 255, L"");
+      if (queryTemplate[0] != 0)
+      {
+         nx_swprintf(query, 256, queryTemplate, objectId, objectId);
+         if (!SQLQuery(query))
+            return false;
+      }
+   }
+
+   for(int i = 0; i < 10; i++)
+   {
+      nx_swprintf(query, 256, L"TDataIndexCreationCommand_%d", i);
+      DBMgrMetaDataReadStr(query, queryTemplate, 255, L"");
+      if (queryTemplate[0] != 0)
+      {
+         nx_swprintf(query, 256, queryTemplate, objectId, objectId);
+         if (!SQLQuery(query))
+            return false;
+      }
+   }
+   return true;
+}
+
+/**
  * Add primary key for data tables for objects selected by given query
  */
 static bool ConvertDataTables(const wchar_t *query, bool dataTablesWithPK)
@@ -1685,7 +1747,7 @@ static bool ConvertDataTables(const wchar_t *query, bool dataTablesWithPK)
             nx_swprintf(newName, 64, L"idata_v5_%u", id);
             DBRenameTable(g_dbHandle, table, newName);
          }
-         CHK_EXEC_NO_SP(CreateIDataTable(id));
+         CHK_EXEC_NO_SP(CreateIDataTable_V60(id));
       }
 
       if (IsDataTableExist(L"tdata_%u", id))
@@ -1704,7 +1766,7 @@ static bool ConvertDataTables(const wchar_t *query, bool dataTablesWithPK)
             nx_swprintf(newName, 64, L"tdata_v5_%u", id);
             DBRenameTable(g_dbHandle, table, newName);
          }
-         CHK_EXEC_NO_SP(CreateTDataTable(id));
+         CHK_EXEC_NO_SP(CreateTDataTable_V60(id));
       }
    }
    DBFreeResult(hResult);

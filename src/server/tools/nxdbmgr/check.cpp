@@ -21,6 +21,7 @@
 **/
 
 #include "nxdbmgr.h"
+#include <dci_table_creation.h>
 
 /**
  * Check data tables for given object class
@@ -826,51 +827,16 @@ static void CheckEPP()
  */
 bool CreateIDataTable(uint32_t objectId)
 {
-   TCHAR query[256], queryTemplate[256];
-   DBMgrMetaDataReadStr(_T("IDataTableCreationCommand"), queryTemplate, 255, _T(""));
-   _sntprintf(query, 256, queryTemplate, objectId);
-   if (!SQLQuery(query))
-		return false;
-
-   for(int i = 0; i < 10; i++)
+   wchar_t query[512];
+   for(int i = 0; i < DCI_TABLE_CREATION_SLOT_COUNT; i++)
    {
-      _sntprintf(query, 256, _T("IDataIndexCreationCommand_%d"), i);
-      DBMgrMetaDataReadStr(query, queryTemplate, 255, _T(""));
-      if (queryTemplate[0] != 0)
+      if (BuildIDataCreationQuery(g_dbSyntax, objectId, i, query, 512))
       {
-         _sntprintf(query, 256, queryTemplate, objectId, objectId);
          if (!SQLQuery(query))
-				return false;
+            return false;
       }
    }
-
-	return true;
-}
-
-/**
- * Create tdata_xx table - pre V281 version
- */
-bool CreateTDataTable_preV281(uint32_t objectId)
-{
-   TCHAR query[256], queryTemplate[256];
-   DBMgrMetaDataReadStr(_T("TDataTableCreationCommand"), queryTemplate, 255, _T(""));
-   _sntprintf(query, 256, queryTemplate, objectId);
-   if (!SQLQuery(query))
-		return false;
-
-   for(int i = 0; i < 10; i++)
-   {
-      _sntprintf(query, 256, _T("TDataIndexCreationCommand_%d"), i);
-      DBMgrMetaDataReadStr(query, queryTemplate, 255, _T(""));
-      if (queryTemplate[0] != 0)
-      {
-         _sntprintf(query, 256, queryTemplate, objectId, objectId);
-         if (!SQLQuery(query))
-				return false;
-      }
-   }
-
-	return true;
+   return true;
 }
 
 /**
@@ -878,33 +844,16 @@ bool CreateTDataTable_preV281(uint32_t objectId)
  */
 bool CreateTDataTable(uint32_t objectId)
 {
-   TCHAR query[256], queryTemplate[256];
-
-   for(int i = 0; i < 10; i++)
+   wchar_t query[512];
+   for(int i = 0; i < DCI_TABLE_CREATION_SLOT_COUNT; i++)
    {
-      _sntprintf(query, 256, _T("TDataTableCreationCommand_%d"), i);
-      DBMgrMetaDataReadStr(query, queryTemplate, 255, _T(""));
-      if (queryTemplate[0] != 0)
+      if (BuildTDataCreationQuery(g_dbSyntax, objectId, i, query, 512))
       {
-         _sntprintf(query, 256, queryTemplate, objectId, objectId);
          if (!SQLQuery(query))
-		      return false;
+            return false;
       }
    }
-
-   for(int i = 0; i < 10; i++)
-   {
-      _sntprintf(query, 256, _T("TDataIndexCreationCommand_%d"), i);
-      DBMgrMetaDataReadStr(query, queryTemplate, 255, _T(""));
-      if (queryTemplate[0] != 0)
-      {
-         _sntprintf(query, 256, queryTemplate, objectId, objectId);
-         if (!SQLQuery(query))
-				return false;
-      }
-   }
-
-	return true;
+   return true;
 }
 
 /**

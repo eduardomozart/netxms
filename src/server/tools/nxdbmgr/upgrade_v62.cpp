@@ -25,6 +25,26 @@
 #include <nxtools.h>
 
 /**
+ * Upgrade from 62.6 to 62.7
+ */
+static bool H_UpgradeFromV6()
+{
+   // Per-object idata/tdata table and index creation statements are now
+   // emitted from code (see src/server/include/dci_table_creation.h),
+   // not read from metadata rows. Drop the now-unused template rows.
+   static const wchar_t *batch =
+      L"DELETE FROM metadata WHERE var_name='IDataTableCreationCommand'\n"
+      L"DELETE FROM metadata WHERE var_name LIKE 'IDataIndexCreationCommand_%'\n"
+      L"DELETE FROM metadata WHERE var_name LIKE 'TDataTableCreationCommand_%'\n"
+      L"DELETE FROM metadata WHERE var_name LIKE 'TDataIndexCreationCommand_%'\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+
+   CHK_EXEC(SetMinorSchemaVersion(7));
+   return true;
+}
+
+/**
  * Upgrade from 62.5 to 62.6
  */
 static bool H_UpgradeFromV5()
@@ -201,6 +221,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 6,  62, 7,  H_UpgradeFromV6  },
    { 5,  62, 6,  H_UpgradeFromV5  },
    { 4,  62, 5,  H_UpgradeFromV4  },
    { 3,  62, 4,  H_UpgradeFromV3  },

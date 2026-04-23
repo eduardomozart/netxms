@@ -23,6 +23,7 @@
 #include "nxcore.h"
 #include <netxms-regex.h>
 #include <agent_tunnel.h>
+#include <dci_table_creation.h>
 
 #if WITH_PRIVATE_EXTENSIONS
 #include <nxlicensing.h>
@@ -263,45 +264,21 @@ void NetObjInsert(const shared_ptr<NetObj>& object, bool newObject, bool importe
       // Create tables for storing data collection values
       if (object->isDataCollectionTarget() && !(g_flags & AF_SINGLE_TABLE_PERF_DATA))
       {
-         TCHAR query[256], queryTemplate[256];
+         wchar_t query[512];
+         uint32_t objectId = object->getId();
 
          DB_HANDLE hdb = DBConnectionPoolAcquireConnection();
 
-         MetaDataReadStr(_T("IDataTableCreationCommand"), queryTemplate, 255, _T(""));
-         _sntprintf(query, sizeof(query) / sizeof(TCHAR), queryTemplate, object->getId());
-         DBQuery(hdb, query);
-
-         for(int i = 0; i < 10; i++)
+         for(int i = 0; i < DCI_TABLE_CREATION_SLOT_COUNT; i++)
          {
-            _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("IDataIndexCreationCommand_%d"), i);
-            MetaDataReadStr(query, queryTemplate, 255, _T(""));
-            if (queryTemplate[0] != 0)
-            {
-               _sntprintf(query, sizeof(query) / sizeof(TCHAR), queryTemplate, object->getId(), object->getId());
+            if (BuildIDataCreationQuery(g_dbSyntax, objectId, i, query, 512))
                DBQuery(hdb, query);
-            }
          }
 
-         for(int i = 0; i < 10; i++)
+         for(int i = 0; i < DCI_TABLE_CREATION_SLOT_COUNT; i++)
          {
-            _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("TDataTableCreationCommand_%d"), i);
-            MetaDataReadStr(query, queryTemplate, 255, _T(""));
-            if (queryTemplate[0] != 0)
-            {
-               _sntprintf(query, sizeof(query) / sizeof(TCHAR), queryTemplate, object->getId(), object->getId());
+            if (BuildTDataCreationQuery(g_dbSyntax, objectId, i, query, 512))
                DBQuery(hdb, query);
-            }
-         }
-
-         for(int i = 0; i < 10; i++)
-         {
-            _sntprintf(query, sizeof(query) / sizeof(TCHAR), _T("TDataIndexCreationCommand_%d"), i);
-            MetaDataReadStr(query, queryTemplate, 255, _T(""));
-            if (queryTemplate[0] != 0)
-            {
-               _sntprintf(query, sizeof(query) / sizeof(TCHAR), queryTemplate, object->getId(), object->getId());
-               DBQuery(hdb, query);
-            }
          }
 
          DBConnectionPoolReleaseConnection(hdb);

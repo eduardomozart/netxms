@@ -22,6 +22,7 @@
 
 #include "nxdbmgr.h"
 #include "sqlite3.h"
+#include <dci_table_creation.h>
 
 /**
  * Tables to export
@@ -205,15 +206,6 @@ static bool ExportTable(sqlite3 *db, const TCHAR *name)
 static int GetSchemaVersionCB(void *arg, int cols, char **data, char **names)
 {
 	*((int *)arg) = strtol(data[0], nullptr, 10);
-	return 0;
-}
-
-/**
- * Callback for getting idata_xx table creation query
- */
-static int GetIDataQueryCB(void *arg, int cols, char **data, char **names)
-{
-	strlcpy((char *)arg, data[0], MAX_DB_STRING);
 	return 0;
 }
 
@@ -404,36 +396,27 @@ static bool ExportPerfDataTable(sqlite3 *db, const wchar_t *name, bool tdata, ui
 }
 
 /**
+ * Run a per-object DDL statement against the SQLite export database.
+ */
+static bool RunExportDDL(sqlite3 *db, const wchar_t *query)
+{
+   char *queryUTF8 = UTF8StringFromWideString(query);
+   char *errmsg;
+   int rc = sqlite3_exec(db, queryUTF8, nullptr, nullptr, &errmsg);
+   if (rc != SQLITE_OK)
+   {
+      WriteToTerminalEx(_T("\x1b[31;1mERROR:\x1b[0m SQLite query failed: %hs (%hs)\n"), queryUTF8, errmsg);
+      sqlite3_free(errmsg);
+   }
+   MemFree(queryUTF8);
+   return rc == SQLITE_OK;
+}
+
+/**
  * Export multi-table performance data
  */
 static bool ExportPerfData(sqlite3 *db, const StringList& excludedTables)
 {
-   char queryTemplate[11][MAX_DB_STRING];
-   memset(queryTemplate, 0, sizeof(queryTemplate));
-
-   char *errmsg;
-   if (sqlite3_exec(db, "SELECT var_value FROM metadata WHERE var_name='IDataTableCreationCommand'",
-                    GetIDataQueryCB, queryTemplate[0], &errmsg) != SQLITE_OK)
-   {
-      WriteToTerminalEx(_T("\x1b[31;1mERROR:\x1b[0m SQLite query failed (%hs)\n"), errmsg);
-      sqlite3_free(errmsg);
-      return false;
-   }
-
-   for(int i = 0; i < 10; i++)
-   {
-      char query[256];
-      sprintf(query, "SELECT var_value FROM metadata WHERE var_name='TDataTableCreationCommand_%d'", i);
-      if (sqlite3_exec(db, query, GetIDataQueryCB, queryTemplate[i + 1], &errmsg) != SQLITE_OK)
-      {
-         WriteToTerminalEx(_T("\x1b[31;1mERROR:\x1b[0m SQLite query failed (%hs)\n"), errmsg);
-         sqlite3_free(errmsg);
-         return false;
-      }
-      if (queryTemplate[i + 1][0] == 0)
-         break;
-   }
-
    IntegerArray<uint32_t> targets = GetDataCollectionTargets();
    bool singleTable = (DBMgrMetaDataReadInt32(_T("SingeTablePerfData"), 0) != 0);
 
@@ -443,18 +426,21 @@ static bool ExportPerfData(sqlite3 *db, const StringList& excludedTables)
 
       if (!g_skipDataSchemaMigration)
       {
-         for(int j = 0; j < 11; j++)
+         wchar_t query[512];
+         for(int j = 0; j < DCI_TABLE_CREATION_SLOT_COUNT; j++)
          {
-            if (queryTemplate[j][0] == 0)
-               break;
-
-            char query[1024];
-            snprintf(query, 1024, queryTemplate[j], id, id);
-            if (sqlite3_exec(db, query, nullptr, nullptr, &errmsg) != SQLITE_OK)
+            if (BuildIDataCreationQuery(DB_SYNTAX_SQLITE, id, j, query, 512))
             {
-               WriteToTerminalEx(_T("\x1b[31;1mERROR:\x1b[0m SQLite query failed: %hs (%hs)\n"), query, errmsg);
-               sqlite3_free(errmsg);
-               return false;
+               if (!RunExportDDL(db, query))
+                  return false;
+            }
+         }
+         for(int j = 0; j < DCI_TABLE_CREATION_SLOT_COUNT; j++)
+         {
+            if (BuildTDataCreationQuery(DB_SYNTAX_SQLITE, id, j, query, 512))
+            {
+               if (!RunExportDDL(db, query))
+                  return false;
             }
          }
       }
