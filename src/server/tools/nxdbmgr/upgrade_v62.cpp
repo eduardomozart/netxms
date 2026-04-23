@@ -25,6 +25,62 @@
 #include <nxtools.h>
 
 /**
+ * Upgrade from 62.5 to 62.6
+ */
+static bool H_UpgradeFromV5()
+{
+   static const wchar_t *batch =
+      L"ALTER TABLE items ADD aggregation_mode char(1)\n"
+      L"ALTER TABLE items ADD hourly_retention integer\n"
+      L"ALTER TABLE items ADD daily_retention integer\n"
+      L"ALTER TABLE items ADD aggregation_watermark $SQL:INT64\n"
+      L"UPDATE items SET aggregation_mode='0'\n"
+      L"<END>";
+   CHK_EXEC(SQLBatch(batch));
+   CHK_EXEC(DBSetNotNullConstraint(g_dbHandle, L"items", L"aggregation_mode"));
+
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.Enabled",
+            L"0",
+            L"Master switch for DCI data aggregation. When enabled, the server rolls up raw DCI values into hourly and daily aggregates for eligible items.",
+            nullptr, 'B', true, true, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.DefaultHourlyRetentionTime",
+            L"365",
+            L"Default retention time for hourly DCI aggregates. Individual DCIs can override this setting.",
+            L"days", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.DefaultDailyRetentionTime",
+            L"1825",
+            L"Default retention time for daily DCI aggregates. Individual DCIs can override this setting.",
+            L"days", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.HourlyCloseWindow",
+            L"300",
+            L"Lag in seconds before a closed hour is rolled up into the hourly aggregate, giving late samples time to arrive.",
+            L"seconds", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.DailyCloseWindow",
+            L"1800",
+            L"Lag in seconds before a closed day is rolled up into the daily aggregate, giving late samples time to arrive.",
+            L"seconds", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.BackfillOnEnable",
+            L"1",
+            L"When enabling aggregation, initialize per-DCI watermarks to the earliest retained raw timestamp so existing history is backfilled on the next rollup pass.",
+            nullptr, 'B', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.MaxAutoSelectPoints",
+            L"5000",
+            L"Upper bound on the number of points returned by auto-selected aggregate tier when serving DCI history queries.",
+            nullptr, 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.TSDB.RefreshStartOffset",
+            L"30",
+            L"TimescaleDB continuous aggregate refresh lookback window. Caps the outage length that can be recovered via late-arriving data on TSDB backends.",
+            L"days", 'I', true, false, false, false));
+   CHK_EXEC(CreateConfigParam(L"DataCollection.Aggregation.TSDB.RefreshScheduleInterval",
+            L"600",
+            L"TimescaleDB continuous aggregate refresh cadence.",
+            L"seconds", 'I', true, false, false, false));
+
+   CHK_EXEC(SetMinorSchemaVersion(6));
+   return true;
+}
+
+/**
  * Upgrade from 62.4 to 62.5
  */
 static bool H_UpgradeFromV4()
@@ -145,6 +201,7 @@ static struct
    int nextMinor;
    bool (*upgradeProc)();
 } s_dbUpgradeMap[] = {
+   { 5,  62, 6,  H_UpgradeFromV5  },
    { 4,  62, 5,  H_UpgradeFromV4  },
    { 3,  62, 4,  H_UpgradeFromV3  },
    { 2,  62, 3,  H_UpgradeFromV2  },

@@ -129,6 +129,9 @@
     <ClCompile Include="dbwrite.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dcagg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="dc_nxsl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

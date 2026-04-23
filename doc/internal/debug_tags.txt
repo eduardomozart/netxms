@@ -54,6 +54,7 @@ db.writer	DB background writers
 
 dc.*            Data collection
 dc.agent.cache	Agent side cache
+dc.aggregation	DCI data aggregation (hourly/daily rollups)
 dc.config	Data collection configuration
 dc.modbus       Modbus data collection
 dc.scheduler	Data collection scheduler

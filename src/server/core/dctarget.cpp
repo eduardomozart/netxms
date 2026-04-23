@@ -107,6 +107,16 @@ bool DataCollectionTarget::deleteFromDatabase(DB_HANDLE hdb)
          _sntprintf(query, 256, _T("DROP TABLE tdata_v5_%u"), m_id);
          QueueSQLRequest(query);
       }
+      if (m_runtimeFlags & ODF_HAS_IDATA_1H_TABLE)
+      {
+         _sntprintf(query, 256, _T("DROP TABLE idata_1h_%u"), m_id);
+         QueueSQLRequest(query);
+      }
+      if (m_runtimeFlags & ODF_HAS_IDATA_1D_TABLE)
+      {
+         _sntprintf(query, 256, _T("DROP TABLE idata_1d_%u"), m_id);
+         QueueSQLRequest(query);
+      }
    }
 
    if (success)

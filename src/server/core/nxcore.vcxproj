@@ -471,6 +471,7 @@
     <ClCompile Include="dashboard.cpp" />
     <ClCompile Include="datacoll.cpp" />
     <ClCompile Include="dbwrite.cpp" />
+    <ClCompile Include="dcagg.cpp" />
     <ClCompile Include="dcitem.cpp" />
     <ClCompile Include="dcithreshold.cpp" />
     <ClCompile Include="dcivalue.cpp" />

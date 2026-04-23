@@ -133,6 +133,8 @@ void ExecuteReport(const shared_ptr<ScheduledTaskParameters>& parameters);
 void ExpandCommentMacrosTask(const shared_ptr<ScheduledTaskParameters> &parameters);
 void ScheduledFileUpload(const shared_ptr<ScheduledTaskParameters>& parameters);
 void RegenerateAnomalyProfiles(const shared_ptr<ScheduledTaskParameters>& parameters);
+void HourlyDataAggregationRollup(const shared_ptr<ScheduledTaskParameters>& parameters);
+void DailyDataAggregationRollup(const shared_ptr<ScheduledTaskParameters>& parameters);
 
 void InitCountryList();
 void InitCurrencyList();
@@ -1589,6 +1591,8 @@ retry_db_lock:
 
    RegisterSchedulerTaskHandler(_T("Agent.DeployPackage"), ExecuteScheduledPackageDeployment, SYSTEM_ACCESS_MANAGE_PACKAGES);
    RegisterSchedulerTaskHandler(_T("Agent.ExecuteCommand"), ExecuteScheduledAgentCommand, SYSTEM_ACCESS_SCHEDULE_SCRIPT);
+   RegisterSchedulerTaskHandler(L"DataCollection.Aggregation.HourlyRollup", HourlyDataAggregationRollup, 0);
+   RegisterSchedulerTaskHandler(L"DataCollection.Aggregation.DailyRollup", DailyDataAggregationRollup, 0);
    RegisterSchedulerTaskHandler(_T("DataCollection.RemoveTemplate"), DataCollectionTarget::removeTemplate, 0);
    RegisterSchedulerTaskHandler(_T("Dummy"), DummyScheduledTaskExecutor, SYSTEM_ACCESS_USER_SCHEDULED_TASKS);
    RegisterSchedulerTaskHandler(_T("Execute.Action"), ExecuteScheduledAction, SYSTEM_ACCESS_SCHEDULE_SCRIPT);
@@ -1614,6 +1618,10 @@ retry_db_lock:
    // Initialize anomaly detection subsystem
    RegisterSchedulerTaskHandler(L"System.RegenerateAnomalyProfiles", RegenerateAnomalyProfiles, 0);
    AddUniqueRecurrentScheduledTask(L"System.RegenerateAnomalyProfiles", L"0 12 * * *", L"", nullptr, 0, 0, SYSTEM_ACCESS_FULL, L"Regenerate DCI anomaly profiles", nullptr, true);
+
+   // DCI data aggregation rollups (handlers exit immediately while master switch is disabled)
+   AddUniqueRecurrentScheduledTask(L"DataCollection.Aggregation.HourlyRollup", L"5 * * * *", L"", nullptr, 0, 0, SYSTEM_ACCESS_FULL, L"DCI hourly data aggregation rollup", nullptr, true);
+   AddUniqueRecurrentScheduledTask(L"DataCollection.Aggregation.DailyRollup", L"30 0 * * *", L"", nullptr, 0, 0, SYSTEM_ACCESS_FULL, L"DCI daily data aggregation rollup", nullptr, true);
 
    // Send summary emails
    if (ConfigReadBoolean(_T("Alarms.SummaryEmail.Enable"), false))

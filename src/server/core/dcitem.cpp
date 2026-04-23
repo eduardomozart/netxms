@@ -167,6 +167,10 @@ DCItem::DCItem(const DCItem *src, bool shadowCopy, bool copyThresholds) : DCObje
    m_allThresholdsRearmEvent = src->m_allThresholdsRearmEvent;
    m_sampleSaveInterval = src->m_sampleSaveInterval;
    m_sampleSaveCounter = shadowCopy ? src->m_sampleSaveCounter : 0;
+   m_aggregationMode = src->m_aggregationMode;
+   m_hourlyRetention = src->m_hourlyRetention;
+   m_dailyRetention = src->m_dailyRetention;
+   m_aggregationWatermark = shadowCopy ? src->m_aggregationWatermark : 0;
 
    // Copy thresholds
 	if (copyThresholds && (src->getThresholdCount() > 0))
@@ -195,7 +199,8 @@ DCItem::DCItem(const DCItem *src, bool shadowCopy, bool copyThresholds) : DCObje
  *    instance_retention_time,grace_period_start,related_object,polling_schedule_type,
  *    retention_type,polling_interval_src,retention_time_src,snmp_version,state_flags,
  *    all_rearmed_event,transformed_datatype,user_tag,thresholds_disable_end_time,snmp_context,
- *    anomaly_profile,anomaly_profile_timestamp,ai_hint
+ *    anomaly_profile,anomaly_profile_timestamp,ai_hint,
+ *    aggregation_mode,hourly_retention,daily_retention,aggregation_watermark
  */
 DCItem::DCItem(DB_HANDLE hdb, DB_STATEMENT *preparedStatements, DB_RESULT hResult, int row, const shared_ptr<DataCollectionOwner>& owner, bool useStartupDelay) : DCObject(owner)
 {
@@ -259,6 +264,10 @@ DCItem::DCItem(DB_HANDLE hdb, DB_STATEMENT *preparedStatements, DB_RESULT hResul
    m_recentAverage = std::nan("");
    m_aiHint = DBGetFieldAsSharedString(hResult, row, 46);
    m_anomalyDetectedAI = false;
+   m_aggregationMode = static_cast<BYTE>(DBGetFieldULong(hResult, row, 47));
+   m_hourlyRetention = DBGetFieldInt32(hResult, row, 48);
+   m_dailyRetention = DBGetFieldInt32(hResult, row, 49);
+   m_aggregationWatermark = DBGetFieldInt64(hResult, row, 50);
 
    int effectivePollingInterval = getEffectivePollingInterval();
    m_startTime = (useStartupDelay && (effectivePollingInterval >= 10)) ? time(nullptr) + rand() % (effectivePollingInterval / 2) : 0;
@@ -323,6 +332,10 @@ DCItem::DCItem(uint32_t id, const TCHAR *name, int source, int dataType, BYTE sc
 	m_allThresholdsRearmEvent = 0;
 	m_sampleSaveInterval = 1;
 	m_sampleSaveCounter = 0;
+	m_aggregationMode = DCI_AGGREGATION_INHERIT;
+	m_hourlyRetention = 0;
+	m_dailyRetention = 0;
+	m_aggregationWatermark = 0;
 
    updateCacheSizeInternal(false);
 }
@@ -354,6 +367,10 @@ DCItem::DCItem(ConfigEntry *config, const shared_ptr<DataCollectionOwner>& owner
    m_allThresholdsRearmEvent = config->getSubEntryValueAsUInt(_T("allThresholdsRearmEvent"));
    m_sampleSaveInterval = config->getSubEntryValueAsInt(_T("sampleSaveInterval"), 0, 1);
    m_sampleSaveCounter = 0;
+   m_aggregationMode = static_cast<BYTE>(config->getSubEntryValueAsInt(_T("aggregationMode"), 0, DCI_AGGREGATION_INHERIT));
+   m_hourlyRetention = config->getSubEntryValueAsInt(_T("hourlyRetention"));
+   m_dailyRetention = config->getSubEntryValueAsInt(_T("dailyRetention"));
+   m_aggregationWatermark = 0;
    _tcslcpy(m_predictionEngine, config->getSubEntryValue(_T("predictionEngine"), 0, _T("")), MAX_NPE_NAME_LEN);
 
    // for compatibility with old format
@@ -407,6 +424,10 @@ DCItem::DCItem(json_t *json, const shared_ptr<DataCollectionOwner>& owner) : DCO
    m_allThresholdsRearmEvent = json_object_get_int32(json, "allThresholdsRearmEvent");
    m_sampleSaveInterval = json_object_get_int32(json, "sampleSaveInterval", 1);
    m_sampleSaveCounter = 0;
+   m_aggregationMode = static_cast<BYTE>(json_object_get_int32(json, "aggregationMode", DCI_AGGREGATION_INHERIT));
+   m_hourlyRetention = json_object_get_int32(json, "hourlyRetention");
+   m_dailyRetention = json_object_get_int32(json, "dailyRetention");
+   m_aggregationWatermark = 0;
 
    String predictionEngine = json_object_get_string(json, "predictionEngine", _T(""));
    _tcslcpy(m_predictionEngine, predictionEngine, MAX_NPE_NAME_LEN);
@@ -540,7 +561,8 @@ bool DCItem::saveToDatabase(DB_HANDLE hdb)
       L"grace_period_start", L"related_object", L"polling_interval_src", L"retention_time_src",
       L"polling_schedule_type", L"retention_type", L"snmp_version", L"state_flags", L"all_rearmed_event",
       L"transformed_datatype", L"user_tag", L"thresholds_disable_end_time", L"snmp_context",
-      L"anomaly_profile", L"anomaly_profile_timestamp", L"ai_hint", nullptr
+      L"anomaly_profile", L"anomaly_profile_timestamp", L"ai_hint",
+      L"aggregation_mode", L"hourly_retention", L"daily_retention", L"aggregation_watermark", nullptr
    };
 
 	DB_STATEMENT hStmt = DBPrepareMerge(hdb, L"items", L"item_id", m_id, columns);
@@ -601,7 +623,14 @@ bool DCItem::saveToDatabase(DB_HANDLE hdb)
    DBBind(hStmt, 45, DB_SQLTYPE_TEXT, m_anomalyProfile, DB_BIND_STATIC);
    DBBind(hStmt, 46, DB_SQLTYPE_BIGINT, static_cast<int64_t>(m_anomalyProfileTimestamp));
    DBBind(hStmt, 47, DB_SQLTYPE_VARCHAR, m_aiHint, DB_BIND_STATIC, 2000);
-   DBBind(hStmt, 48, DB_SQLTYPE_INTEGER, m_id);
+   TCHAR am[2];
+   am[0] = m_aggregationMode + '0';
+   am[1] = 0;
+   DBBind(hStmt, 48, DB_SQLTYPE_VARCHAR, am, DB_BIND_STATIC);
+   DBBind(hStmt, 49, DB_SQLTYPE_INTEGER, m_hourlyRetention);
+   DBBind(hStmt, 50, DB_SQLTYPE_INTEGER, m_dailyRetention);
+   DBBind(hStmt, 51, DB_SQLTYPE_BIGINT, m_aggregationWatermark);
+   DBBind(hStmt, 52, DB_SQLTYPE_INTEGER, m_id);
 
    bool success = DBExecute(hStmt);
 	DBFreeStatement(hStmt);
@@ -658,6 +687,41 @@ bool DCItem::saveToDatabase(DB_HANDLE hdb)
 
    unlock();
 	return success ? DCObject::saveToDatabase(hdb) : false;
+}
+
+/**
+ * Check if this DCI is eligible for data aggregation (any tier).
+ * Does NOT consult the global DataCollection.Aggregation.Enabled switch -
+ * callers are expected to evaluate that separately when the mode is inherited.
+ *
+ * Eligibility criteria (per issue #419 design):
+ *   - Numeric data type (min/max/avg are undefined for strings/null)
+ *   - Effective collection interval not coarser than bucket/2 of the daily tier
+ *     (>12h interval means raw is already at daily granularity or coarser)
+ *   - Per-DCI aggregation mode is not DCI_AGGREGATION_DISABLED
+ */
+bool DCItem::isAggregationEligible() const
+{
+   if (m_aggregationMode == DCI_AGGREGATION_DISABLED)
+      return false;
+
+   int dataType = getTransformedDataType();
+   switch(dataType)
+   {
+      case DCI_DT_INT:
+      case DCI_DT_UINT:
+      case DCI_DT_INT64:
+      case DCI_DT_UINT64:
+      case DCI_DT_FLOAT:
+      case DCI_DT_COUNTER32:
+      case DCI_DT_COUNTER64:
+         break;
+      default:
+         return false;
+   }
+
+   // Daily tier requires collection interval <= 12 hours (43200 s) for non-degenerate aggregates
+   return getEffectivePollingInterval() <= 43200;
 }
 
 /**

@@ -279,6 +279,16 @@ enum DCObjectRetentionType
    DC_RETENTION_NONE = 2
 };
 
+/**
+ * DCI aggregation mode (per-item override of global aggregation enable)
+ */
+enum DCItemAggregationMode
+{
+   DCI_AGGREGATION_INHERIT = 0,   // Follow global DataCollection.Aggregation.Enabled
+   DCI_AGGREGATION_ENABLED = 1,   // Force-enabled for this DCI
+   DCI_AGGREGATION_DISABLED = 2   // Force-disabled for this DCI
+};
+
 #ifdef _WIN32
 template class NXCORE_TEMPLATE_EXPORTABLE weak_ptr<DataCollectionOwner>;
 template class NXCORE_TEMPLATE_EXPORTABLE weak_ptr<DCObject>;
@@ -564,6 +574,10 @@ protected:
    uint32_t m_allThresholdsRearmEvent; // Event to be generated when all thresholds are rearmed
    int32_t m_sampleSaveInterval;       // Save every N-th sample (1 = save all)
    int32_t m_sampleSaveCounter;        // Runtime counter for nth sample logic (not persisted)
+   BYTE m_aggregationMode;             // DCItemAggregationMode: inherit, enabled or disabled
+   int32_t m_hourlyRetention;          // Per-DCI hourly aggregate retention override (days), 0 = use default
+   int32_t m_dailyRetention;           // Per-DCI daily aggregate retention override (days), 0 = use default
+   int64_t m_aggregationWatermark;     // Earliest bucket start (ms) not yet rolled up; non-TSDB only
 
    bool transform(ItemValue &value, int64_t elapsedTime);
    void checkThresholds(ItemValue &value, const shared_ptr<DCObject>& originalDci);
@@ -640,6 +654,12 @@ public:
 	bool hasAnomalyProfile() const { return m_anomalyProfile != nullptr; }
 	time_t getAnomalyProfileTimestamp() const { return m_anomalyProfileTimestamp; }
 	SharedString getAIHint() const { return GetAttributeWithLock(m_aiHint, m_mutex); }
+
+	BYTE getAggregationMode() const { return m_aggregationMode; }
+	int32_t getHourlyRetention() const { return m_hourlyRetention; }
+	int32_t getDailyRetention() const { return m_dailyRetention; }
+	int64_t getAggregationWatermark() const { return m_aggregationWatermark; }
+	bool isAggregationEligible() const;
 
 	void setAnomalyProfile(json_t *profile);
 	bool saveAnomalyProfileToDatabase();
@@ -1129,6 +1149,11 @@ void AddScriptDependencies(StringSet *dependencies, const NXSL_Program *script);
 void MigrateRecentV5Data();
 void StartV5DataMigration();
 void StopV5DataMigration();
+
+/**
+ * DCI data aggregation
+ */
+bool CreateAggregateTables(DB_HANDLE hdb, uint32_t objectId);
 
 /**
  * Get database-specific expression for converting v5 second-precision timestamp to milliseconds.
