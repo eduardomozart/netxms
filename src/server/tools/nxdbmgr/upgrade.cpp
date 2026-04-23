@@ -26,7 +26,6 @@
 /**
  * Externals
  */
-bool MajorSchemaUpgrade_V0();
 bool MajorSchemaUpgrade_V21();
 bool MajorSchemaUpgrade_V22();
 bool MajorSchemaUpgrade_V30();
@@ -150,7 +149,6 @@ static struct
    bool (* upgradeProc)();
 } s_dbUpgradeMap[] =
 {
-   { 0, MajorSchemaUpgrade_V0 },
    { 21, MajorSchemaUpgrade_V21 },
    { 22, MajorSchemaUpgrade_V22 },
    { 30, MajorSchemaUpgrade_V30 },
@@ -194,6 +192,15 @@ void UpgradeDatabase()
 	   WriteToTerminal(L"Unable to determine database schema version\n");
 	   return;
 	}
+
+   if (major == 0)
+   {
+      WriteToTerminal(
+         L"Your database has pre-2.1 schema (major version 0), which is no longer supported by this tool.\n"
+         L"Install NetXMS 6.1 first, run `nxdbmgr upgrade` there to bring the schema to a supported version,\n"
+         L"then upgrade to the current NetXMS version.\n");
+      return;
+   }
 
    if ((major == DB_SCHEMA_VERSION_MAJOR) && (minor == DB_SCHEMA_VERSION_MINOR))
    {

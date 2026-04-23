@@ -56,7 +56,6 @@ bool ConvertDataTables();
 void MigrateDatabase(const wchar_t *sourceConfig, wchar_t *destConfFields, const StringList& excludedTables, const StringList& includedTables, bool ignoreDataMigrationErrors);
 void UpgradeDatabase();
 void UnlockDatabase();
-void ReindexIData();
 
 bool ExecSQLBatch(const char *pszFile, bool showOutput);
 bool ValidateDatabase(bool allowLock = false);

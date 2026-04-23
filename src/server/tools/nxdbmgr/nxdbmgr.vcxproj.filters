@@ -42,9 +42,6 @@
     <ClCompile Include="nxdbmgr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="reindex.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="resetadmin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -61,9 +58,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="upgrade.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="upgrade_v0.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="upgrade_v21.cpp">

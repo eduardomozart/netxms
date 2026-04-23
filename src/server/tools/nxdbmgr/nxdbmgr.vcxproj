@@ -362,7 +362,6 @@
     <ClCompile Include="mm.cpp" />
     <ClCompile Include="modules.cpp" />
     <ClCompile Include="nxdbmgr.cpp" />
-    <ClCompile Include="reindex.cpp" />
     <ClCompile Include="resetadmin.cpp" />
     <ClCompile Include="resetmonitoring.cpp" />
     <ClCompile Include="tables.cpp" />
@@ -371,7 +370,6 @@
     <ClCompile Include="usermgmt.cpp" />
     <ClCompile Include="upgrade.cpp" />
     <ClCompile Include="upgrade_online.cpp" />
-    <ClCompile Include="upgrade_v0.cpp" />
     <ClCompile Include="upgrade_v21.cpp" />
     <ClCompile Include="upgrade_v22.cpp" />
     <ClCompile Include="upgrade_v30.cpp" />
