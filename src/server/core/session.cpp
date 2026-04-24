@@ -2721,7 +2721,7 @@ void ClientSession::validate2FAResponse(const NXCPMessage& request)
       {
          // RADIUS Access-Challenge response: re-authenticate with RADIUS using State + OTP
          int radResult = RadiusChallengeResponse(m_loginInfo->loginName, userResponse, &m_loginInfo->radiusChallenge);
-         if (radResult == 0) // RADIUS_RESULT_OK
+         if (radResult == RADIUS_RESULT_OK)
          {
             uint32_t rcc = finalizeLogin(request, &response);
             response.setField(VID_RCC, rcc);
