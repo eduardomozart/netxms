@@ -72,7 +72,12 @@ public class TwoFactorResponseDialog extends Dialog
    protected void configureShell(Shell newShell)
    {
       super.configureShell(newShell);
-      newShell.setText(i18n.tr("Two-factor Authentication"));
+      // Use challenge text as window title when available (e.g. RADIUS Reply-Message),
+      // otherwise use the default two-factor authentication title.
+      if ((challenge != null) && !challenge.isEmpty())
+         newShell.setText(challenge);
+      else
+         newShell.setText(i18n.tr("Two-factor Authentication"));
    }
 
    /**
