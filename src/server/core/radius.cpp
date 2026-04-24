@@ -622,7 +622,7 @@ static void ParseChallengeAttributes(const BYTE *data, int length, RADIUSChallen
          break;
       if ((type == PW_REPLY_MESSAGE) && (attrLen > 2))
       {
-         int msgLen = std::min(static_cast<int>(attrLen - 2), static_cast<int>(sizeof(cd->replyMessage) - 1));
+         int msgLen = std::min(static_cast<int>(attrLen - 2), static_cast<int>(sizeof(cd->replyMessage)) - 1);
          memcpy(cd->replyMessage, p + 2, msgLen);
          cd->replyMessage[msgLen] = 0;
       }
