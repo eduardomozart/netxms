@@ -637,7 +637,17 @@ static int result_recv(const InetAddress& host, WORD udp_port, char *buffer, int
 
 	host.toString(szHostName);
 	nxlog_debug_tag(DEBUG_TAG, 3, _T("RADIUS packet from host %s code=%d, id=%d, length=%d"), szHostName, auth->code, auth->id, totallen);
-	return (auth->code == PW_AUTHENTICATION_REJECT) ? 1 : 0;
+	switch(auth->code)
+	{
+	  case PW_AUTHENTICATION_ACK:     // 2
+	     return 0;                    // OK
+	  case PW_AUTHENTICATION_REJECT:  // 3
+	     return 1;                    // rejected credentials
+	  case PW_ACCESS_CHALLENGE:       // 11
+	     return 2;                    // challenge not supported => FAIL-CLOSED
+	  default:
+	     return 8;                    // unexpected response => FAIL-CLOSED
+	}
 }
 
 /**
