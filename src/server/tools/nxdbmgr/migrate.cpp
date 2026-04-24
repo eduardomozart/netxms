@@ -98,26 +98,26 @@ static void UpdateProgress(int slot, const TCHAR *table, int rows, bool done)
    if (s_interactiveOutput && s_numWorkerSlots > 1)
    {
       int linesUp = s_numWorkerSlots - slot;
-      _tprintf(_T("\033[%dA\r\033[2K[%d] "), linesUp, slot + 1);
+      WriteToTerminalEx(_T("\033[%dA\r\033[2K[%d] "), linesUp, slot + 1);
       if (done)
-         _tprintf(_T("Migrated \x1b[1m%s\x1b[0m (%d rows)"), table, rows);
+         WriteToTerminalEx(_T("Migrated \x1b[1m%s\x1b[0m (%d rows)"), table, rows);
       else
-         _tprintf(_T("Migrating \x1b[1m%s\x1b[0m %d rows"), table, rows);
-      _tprintf(_T("\033[%dB\r"), linesUp);
+         WriteToTerminalEx(_T("Migrating \x1b[1m%s\x1b[0m %d rows"), table, rows);
+      WriteToTerminalEx(_T("\033[%dB\r"), linesUp);
       fflush(stdout);
    }
    else if (s_numWorkerSlots > 1)
    {
       // Non-interactive multi-threaded: one line per completed table
       if (done)
-         _tprintf(_T("Migrating %s... done (%d rows)\n"), table, rows);
+         WriteToTerminalEx(_T("Migrating %s... done (%d rows)\n"), table, rows);
    }
    else
    {
       // Single-threaded: simple counter
       if (!done)
       {
-         _tprintf(_T("%8d\r"), rows);
+         WriteToTerminalEx(_T("%8d\r"), rows);
          fflush(stdout);
       }
    }
@@ -135,7 +135,7 @@ static void InitializeProgressDisplay()
    if (s_interactiveOutput)
    {
       for (int i = 0; i < s_numWorkerSlots; i++)
-         _tprintf(_T("[%d] Idle\n"), i + 1);
+         WriteToTerminalEx(_T("[%d] Idle\n"), i + 1);
    }
 }
 
@@ -339,7 +339,7 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
 
    if (!DBBegin(hDest))
    {
-      _tprintf(_T("ERROR: unable to start transaction in target database\n"));
+      WriteToTerminal(L"ERROR: unable to start transaction in target database\n");
       return false;
    }
 
@@ -378,7 +378,7 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
       }
       else
       {
-         _tprintf(_T("ERROR: unable to read data from source table (%s)\n"), errorText);
+         WriteToTerminalEx(L"ERROR: unable to read data from source table (%s)\n", errorText);
          DBRollback(hDest);
          return false;
       }
@@ -534,7 +534,7 @@ static bool MigrateTable(const wchar_t *table, DB_HANDLE hSource, DB_HANDLE hDes
       }
       else
       {
-         _tprintf(_T("ERROR: cannot prepare INSERT statement (%s)\n"), errorText);
+         WriteToTerminalEx(L"ERROR: cannot prepare INSERT statement (%s)\n", errorText);
          DBRollback(hDest);
       }
    }
