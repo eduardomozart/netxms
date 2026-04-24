@@ -33,6 +33,7 @@ public class LoginCredentials
    private final String password;
    private final Certificate certificate;
    private final Signature signature;
+   private final String casServiceUrl;
 
    /**
     * Create credentials for password authentication.
@@ -49,6 +50,7 @@ public class LoginCredentials
       this.password = password;
       this.certificate = null;
       this.signature = null;
+      this.casServiceUrl = null;
    }
 
    /**
@@ -67,6 +69,7 @@ public class LoginCredentials
       this.password = null;
       this.certificate = certificate;
       this.signature = signature;
+      this.casServiceUrl = null;
    }
 
    /**
@@ -80,6 +83,21 @@ public class LoginCredentials
       this.password = null;
       this.certificate = null;
       this.signature = null;
+      this.casServiceUrl = null;
+   }
+
+   /**
+    * Private constructor for SSO/CAS ticket authentication.
+    */
+   private LoginCredentials(String server, String loginName, String ticket, String serviceUrl)
+   {
+      this.server = server;
+      this.loginName = loginName;
+      this.authMethod = AuthenticationType.SSO_TICKET;
+      this.password = ticket;
+      this.certificate = null;
+      this.signature = null;
+      this.casServiceUrl = serviceUrl;
    }
 
    /**
@@ -92,6 +110,20 @@ public class LoginCredentials
    public static LoginCredentials forToken(String server, String token)
    {
       return new LoginCredentials(server, token);
+   }
+
+   /**
+    * Create credentials for CAS/SSO ticket authentication.
+    *
+    * @param server server address
+    * @param loginName login name (may be empty; CAS server will provide it)
+    * @param ticket CAS Service Ticket (ST-...)
+    * @param serviceUrl CAS service URL used during browser redirect (may be null to use server-configured value)
+    * @return login credentials
+    */
+   public static LoginCredentials forSSOTicket(String server, String loginName, String ticket, String serviceUrl)
+   {
+      return new LoginCredentials(server, loginName, ticket, serviceUrl);
    }
 
    /**
@@ -152,5 +184,15 @@ public class LoginCredentials
    public Signature getSignature()
    {
       return signature;
+   }
+
+   /**
+    * Get CAS service URL. Returns null if not a CAS/SSO ticket authentication or no explicit service URL was set.
+    *
+    * @return CAS service URL or null
+    */
+   public String getCasServiceUrl()
+   {
+      return casServiceUrl;
    }
 }

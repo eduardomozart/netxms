@@ -1711,6 +1711,7 @@ typedef struct
 #define VID_NUM_DISABLED_EXTRAS     ((uint32_t)977)
 #define VID_ITEM_TYPE               ((uint32_t)978)
 #define VID_TOOL_APPLICABLE_CLASSES ((uint32_t)979)
+#define VID_CAS_SERVICE_URL         ((uint32_t)980)
 
 // Base values for EPP optimistic concurrency
 #define VID_DELETED_RULE_LIST_BASE  ((uint32_t)0x7A000000)

@@ -2455,6 +2455,27 @@ public class NXCSession
 		 Signature signature, TwoFactorAuthenticationCallback twoFactorAuthenticationCallback)
 		 throws NXCException, IOException, IllegalStateException
    {
+      login(authType, login, password, certificate, signature, null, twoFactorAuthenticationCallback);
+   }
+
+   /**
+    * Login to server with optional CAS service URL (for SSO_TICKET authentication).
+    *
+    * @param authType authentication type
+    * @param login login name
+    * @param password password (or CAS service ticket when authType is SSO_TICKET)
+    * @param certificate user's certificate
+    * @param signature user's digital signature
+    * @param casServiceUrl CAS service URL used during browser redirect; sent to server for ticket validation (may be null)
+    * @param twoFactorAuthenticationCallback callback for handling two-factor authentication if requested by server
+    * @throws IOException if socket I/O error occurs
+    * @throws NXCException if NetXMS server returns an error or operation was timed out
+    * @throws IllegalStateException if the state is illegal
+    */
+   public void login(AuthenticationType authType, String login, String password, Certificate certificate,
+		 Signature signature, String casServiceUrl, TwoFactorAuthenticationCallback twoFactorAuthenticationCallback)
+		 throws NXCException, IOException, IllegalStateException
+   {
       if (!connected)
          throw new IllegalStateException("Session not connected");
 
@@ -2471,6 +2492,10 @@ public class NXCSession
       if ((authType == AuthenticationType.PASSWORD) || (authType == AuthenticationType.SSO_TICKET))
       {
          request.setField(NXCPCodes.VID_PASSWORD, password);
+         if ((authType == AuthenticationType.SSO_TICKET) && (casServiceUrl != null) && !casServiceUrl.isEmpty())
+         {
+            request.setField(NXCPCodes.VID_CAS_SERVICE_URL, casServiceUrl);
+         }
       }
       else if (authType == AuthenticationType.CERTIFICATE)
       {

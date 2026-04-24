@@ -2416,7 +2416,9 @@ uint32_t ClientSession::authenticateUserBySSOTicket(const NXCPMessage& request, 
    char ticket[1024];
    request.getFieldAsMBString(VID_PASSWORD, ticket, 1024);
    request.getFieldAsString(VID_LOGIN_NAME, loginInfo->loginName, MAX_USER_NAME);
-   if (CASAuthenticate(ticket, loginInfo->loginName))
+   char serviceUrl[MAX_CONFIG_VALUE_LENGTH] = "";
+   request.getFieldAsMBString(VID_CAS_SERVICE_URL, serviceUrl, MAX_CONFIG_VALUE_LENGTH);
+   if (CASAuthenticate(ticket, loginInfo->loginName, (serviceUrl[0] != 0) ? serviceUrl : nullptr))
    {
       debugPrintf(5, _T("SSO ticket %hs is valid, login name %s"), ticket, loginInfo->loginName);
       rcc = AuthenticateUser(loginInfo->loginName, nullptr, 0, nullptr, nullptr, &m_userId, &m_systemAccessRights,
