@@ -68,7 +68,6 @@ public class LoginJob implements IRunnableWithProgress
    private Signature signature;
    private String clientAddress;
    private int twoFactorTimeout = 0;
-   private boolean skipTwoFactor = false;
 
    /**
     * Create login job with specified credentials.
@@ -100,19 +99,6 @@ public class LoginJob implements IRunnableWithProgress
    public void setTwoFactorTimeout(int seconds)
    {
       this.twoFactorTimeout = seconds;
-   }
-
-   /**
-    * When set to true, any two-factor authentication challenge will be silently cancelled instead of
-    * showing the response dialog. This is used for automatic (cookie-based) re-login on page reload
-    * so that a RADIUS Access-Challenge does not surface the 2FA dialog unexpectedly; the cancelled
-    * login causes the caller to fall back to the interactive login dialog.
-    *
-    * @param skip true to skip two-factor authentication dialogs
-    */
-   public void setSkipTwoFactor(boolean skip)
-   {
-      this.skipTwoFactor = skip;
    }
 
    /**
@@ -184,8 +170,6 @@ public class LoginJob implements IRunnableWithProgress
             @Override
             public String getUserResponse(final String challenge, final String qrLabel, final boolean trustedDevicesAllowed)
             {
-               if (skipTwoFactor)
-                  return null;
                final String[] response = new String[1];
                int challengeTimeout = session.getChallengeTimeout();
                int dialogTimeout = (challengeTimeout > 0 && (twoFactorTimeout == 0 || challengeTimeout < twoFactorTimeout)) ? challengeTimeout : twoFactorTimeout;
