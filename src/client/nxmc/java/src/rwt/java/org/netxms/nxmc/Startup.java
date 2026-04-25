@@ -430,6 +430,7 @@ public class Startup implements EntryPoint, StartupParameters
 
       while(!success)
       {
+         boolean isAutoConnect = autoConnect;
          if (autoConnect)
          {
             // Build credentials directly from parsed params
@@ -451,6 +452,7 @@ public class Startup implements EntryPoint, StartupParameters
 
          LoginJob job = new LoginJob(display, credentials, ignoreProtocolVersion, enableCompression);
          job.setTwoFactorTimeout(appProperties.getPropertyAsInteger("twoFactorTimeout", 0));
+         job.setSkipTwoFactor(isAutoConnect);
 
          LoginProgressDialog monitorDialog = new LoginProgressDialog(appProperties);
          try
