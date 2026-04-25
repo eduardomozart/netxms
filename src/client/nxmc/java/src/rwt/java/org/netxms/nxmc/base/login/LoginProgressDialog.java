@@ -71,7 +71,7 @@ public class LoginProgressDialog extends Dialog implements IRunnableContext
    protected void configureShell(Shell shell)
    {
       super.configureShell(shell);
-      shell.setText(BrandingManager.getProductName());
+      shell.setText(BrandingManager.getProductName() + " - " + i18n.tr("Connecting"));
       shell.setMaximized(true);
       shell.setFullScreen(true);
    }
