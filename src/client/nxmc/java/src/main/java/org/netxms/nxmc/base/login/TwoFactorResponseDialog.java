@@ -25,6 +25,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.netxms.nxmc.base.widgets.LabeledText;
@@ -138,7 +139,25 @@ public class TwoFactorResponseDialog extends Dialog
 
       if (timeoutSeconds > 0)
       {
-         parent.getDisplay().timerExec(timeoutSeconds * 1000, this::cancelPressed);
+         final Shell dialogShell = parent.getShell();
+         final Display display = parent.getDisplay();
+         Thread timer = new Thread(() -> {
+            try
+            {
+               Thread.sleep(timeoutSeconds * 1000L);
+               display.asyncExec(() -> {
+                  if ((dialogShell != null) && !dialogShell.isDisposed())
+                     cancelPressed();
+               });
+            }
+            catch(InterruptedException e)
+            {
+               // Dialog was closed before timeout, nothing to do
+            }
+         }, "2FA-Timeout");
+         timer.setDaemon(true);
+         timer.start();
+         dialogShell.addDisposeListener(e -> timer.interrupt());
       }
 
       responseText.setFocus();
