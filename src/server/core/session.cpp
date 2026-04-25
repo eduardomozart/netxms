@@ -2679,6 +2679,9 @@ void ClientSession::prepare2FAChallenge(const NXCPMessage& request)
          utf8_to_wchar(m_loginInfo->radiusChallenge.replyMessage, -1, replyMsg, 1024);
          replyMsg[1023] = 0;
          response.setField(VID_CHALLENGE, replyMsg);
+         uint32_t radiusTimeout = static_cast<uint32_t>(ConfigReadInt(_T("RADIUS.Timeout"), 3));
+         if (radiusTimeout > 0)
+            response.setField(VID_TIMEOUT, radiusTimeout);
          response.setField(VID_RCC, RCC_SUCCESS);
          debugPrintf(4, _T("RADIUS challenge prepared for user %s (reply-message: \"%s\")"),
                m_loginInfo->loginName, replyMsg);
