@@ -2726,17 +2726,30 @@ void ClientSession::validate2FAResponse(const NXCPMessage& request)
          int radResult = RadiusChallengeResponse(m_loginInfo->loginName, userResponse, &m_loginInfo->radiusChallenge);
          if (radResult == RADIUS_RESULT_OK)
          {
-            uint32_t rcc = finalizeLogin(request, &response);
-            response.setField(VID_RCC, rcc);
-            if (rcc != RCC_SUCCESS)
+            // Fetch effective system rights and re-check account status before finalizing.
+            // (m_systemAccessRights is not set by the challenge path in AuthenticateUser.)
+            uint32_t lookupRcc = RCC_SUCCESS;
+            if (!ValidateUserId(m_userId, m_loginInfo->loginName, &m_systemAccessRights, &lookupRcc))
             {
-               writeAuditLog(AUDIT_SECURITY, false, 0, _T("User \"%s\" RADIUS challenge-response succeeded but finalize login failed with error code %d (client info: %s)"),
-                     m_loginInfo->loginName, rcc, m_clientInfo);
+               writeAuditLog(AUDIT_SECURITY, false, 0, _T("User \"%s\" RADIUS challenge-response succeeded but account validation failed with error code %d (client info: %s)"),
+                     m_loginInfo->loginName, lookupRcc, m_clientInfo);
+               response.setField(VID_RCC, lookupRcc);
+               m_userId = INVALID_INDEX;
             }
             else
             {
-               writeAuditLog(AUDIT_SECURITY, true, 0, _T("User \"%s\" successfully authenticated via RADIUS challenge-response (client info: %s)"),
-                     m_loginInfo->loginName, m_clientInfo);
+               uint32_t rcc = finalizeLogin(request, &response);
+               response.setField(VID_RCC, rcc);
+               if (rcc != RCC_SUCCESS)
+               {
+                  writeAuditLog(AUDIT_SECURITY, false, 0, _T("User \"%s\" RADIUS challenge-response succeeded but finalize login failed with error code %d (client info: %s)"),
+                        m_loginInfo->loginName, rcc, m_clientInfo);
+               }
+               else
+               {
+                  writeAuditLog(AUDIT_SECURITY, true, 0, _T("User \"%s\" successfully authenticated via RADIUS challenge-response (client info: %s)"),
+                        m_loginInfo->loginName, m_clientInfo);
+               }
             }
          }
          else
