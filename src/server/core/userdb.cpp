@@ -498,6 +498,12 @@ uint32_t AuthenticateUser(const TCHAR *login, const TCHAR *password, size_t sigL
                   int radResult = RadiusAuthEx(login, password, radiusChallengeData);
                   if (radResult == RADIUS_RESULT_CHALLENGE)
                   {
+                     if (user->isDisabled())
+                     {
+                        nxlog_debug_tag(DEBUG_TAG, 4, _T("User \"%s\" is disabled - denying RADIUS challenge"), user->getName());
+                        delete user;
+                        return RCC_ACCOUNT_DISABLED;
+                     }
                      // Challenge received - set user ID for audit log and return intermediate state
                      *pdwId = user->getId();
                      delete user;
