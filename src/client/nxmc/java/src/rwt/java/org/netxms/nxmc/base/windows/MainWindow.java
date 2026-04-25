@@ -176,7 +176,7 @@ public class MainWindow extends Window implements MessageAreaHolder
       super.configureShell(shell);
 
       final NXCSession session = Registry.getSession();
-      shell.setText(String.format(i18n.tr("%s - %s"), BrandingManager.getClientProductName(), session.getUserName() + "@" + session.getServerAddress()));
+      shell.setText(BrandingManager.getProductName());
 
       final SessionListener sessionListener = (n) -> processSessionNotification(n);
       session.addListener(sessionListener);

@@ -25,10 +25,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-import org.netxms.nxmc.BrandingManager;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.base.widgets.PasswordInputField;
 import org.netxms.nxmc.base.widgets.QRLabel;
@@ -47,9 +45,6 @@ public class TwoFactorResponseDialog extends Dialog
    private String qrText;
    private boolean trustedDevicesAllowed;
    private int timeoutSeconds;
-   private int remainingSeconds;
-   private Display countdownDisplay;
-   private Label countdownLabel;
    private String response;
    private boolean trustedDevice;
    private LabeledText responseText;
@@ -71,7 +66,6 @@ public class TwoFactorResponseDialog extends Dialog
       this.qrText = qrText;
       this.trustedDevicesAllowed = trustedDevicesAllowed;
       this.timeoutSeconds = timeoutSeconds;
-      this.remainingSeconds = timeoutSeconds;
    }
 
    /**
@@ -81,7 +75,7 @@ public class TwoFactorResponseDialog extends Dialog
    protected void configureShell(Shell newShell)
    {
       super.configureShell(newShell);
-      newShell.setText(BrandingManager.getProductName());
+      newShell.setText(i18n.tr("Two-factor Authentication"));
    }
 
    /**
@@ -144,36 +138,11 @@ public class TwoFactorResponseDialog extends Dialog
 
       if (timeoutSeconds > 0)
       {
-         countdownLabel = new Label(dialogArea, SWT.NONE);
-         countdownLabel.setText(i18n.tr("{0}s", remainingSeconds));
-         countdownLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-         countdownDisplay = parent.getDisplay();
-         scheduleCountdown();
+         parent.getDisplay().timerExec(timeoutSeconds * 1000, this::cancelPressed);
       }
 
       responseText.setFocus();
       return dialogArea;
-   }
-
-   /**
-    * Schedule the next countdown tick using Display.timerExec().
-    */
-   private void scheduleCountdown()
-   {
-      countdownDisplay.timerExec(1000, () -> {
-         if ((countdownLabel == null) || countdownLabel.isDisposed())
-            return;
-         remainingSeconds--;
-         if (remainingSeconds <= 0)
-         {
-            cancelPressed();
-         }
-         else
-         {
-            countdownLabel.setText(i18n.tr("{0}s", remainingSeconds));
-            scheduleCountdown();
-         }
-      });
    }
 
    /**
