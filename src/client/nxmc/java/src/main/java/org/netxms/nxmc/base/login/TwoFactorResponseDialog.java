@@ -72,12 +72,7 @@ public class TwoFactorResponseDialog extends Dialog
    protected void configureShell(Shell newShell)
    {
       super.configureShell(newShell);
-      // Use challenge text as window title when available (e.g. RADIUS Reply-Message),
-      // otherwise use the default two-factor authentication title.
-      if ((challenge != null) && !challenge.isEmpty())
-         newShell.setText(challenge);
-      else
-         newShell.setText(i18n.tr("Two-factor Authentication"));
+      newShell.setText(i18n.tr("Two-factor Authentication"));
    }
 
    /**
@@ -117,11 +112,11 @@ public class TwoFactorResponseDialog extends Dialog
 
       if ((challenge != null) && !challenge.isEmpty())
       {
-         LabeledText challengeText = new LabeledText(dialogArea, SWT.NONE);
-         challengeText.setLabel(i18n.tr("Challenge"));
-         challengeText.setText(challenge);
-         challengeText.getTextControl().setEditable(false);
-         challengeText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+         Label challengeLabel = new Label(dialogArea, SWT.WRAP);
+         challengeLabel.setText(challenge);
+         GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+         gd.widthHint = 400;
+         challengeLabel.setLayoutData(gd);
       }
 
       responseText = new LabeledText(dialogArea, SWT.NONE);
