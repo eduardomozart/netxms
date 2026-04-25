@@ -99,7 +99,7 @@ public class LoginDialog extends Dialog
    protected void configureShell(Shell shell)
    {
       super.configureShell(shell);
-      shell.setText(BrandingManager.getProductName());
+      shell.setText(BrandingManager.getProductName() + " - " + i18n.tr("Connect to Server"));
       shell.setMaximized(true);
       shell.setFullScreen(true);
    }
