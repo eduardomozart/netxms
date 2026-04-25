@@ -25,8 +25,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.netxms.nxmc.BrandingManager;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.base.widgets.PasswordInputField;
 import org.netxms.nxmc.base.widgets.QRLabel;
@@ -44,6 +46,10 @@ public class TwoFactorResponseDialog extends Dialog
    private String challenge;
    private String qrText;
    private boolean trustedDevicesAllowed;
+   private int timeoutSeconds;
+   private int remainingSeconds;
+   private Display countdownDisplay;
+   private Label countdownLabel;
    private String response;
    private boolean trustedDevice;
    private LabeledText responseText;
@@ -56,13 +62,16 @@ public class TwoFactorResponseDialog extends Dialog
     * @param challenge challenge provided by server
     * @param qrText text to be displayed as QR code
     * @param trustedDevicesAllowed true if server allows trusted devices
+    * @param timeoutSeconds auto-cancel timeout in seconds (0 = no timeout)
     */
-   public TwoFactorResponseDialog(Shell parentShell, String challenge, String qrText, boolean trustedDevicesAllowed)
+   public TwoFactorResponseDialog(Shell parentShell, String challenge, String qrText, boolean trustedDevicesAllowed, int timeoutSeconds)
    {
       super(parentShell);
       this.challenge = challenge;
       this.qrText = qrText;
       this.trustedDevicesAllowed = trustedDevicesAllowed;
+      this.timeoutSeconds = timeoutSeconds;
+      this.remainingSeconds = timeoutSeconds;
    }
 
    /**
@@ -72,7 +81,7 @@ public class TwoFactorResponseDialog extends Dialog
    protected void configureShell(Shell newShell)
    {
       super.configureShell(newShell);
-      newShell.setText(i18n.tr("Two-factor Authentication"));
+      newShell.setText(BrandingManager.getProductName());
    }
 
    /**
@@ -133,8 +142,38 @@ public class TwoFactorResponseDialog extends Dialog
          checkTrustedDevice.setText(i18n.tr("&Don't ask again on this computer"));
       }
 
+      if (timeoutSeconds > 0)
+      {
+         countdownLabel = new Label(dialogArea, SWT.NONE);
+         countdownLabel.setText(i18n.tr("{0}s", remainingSeconds));
+         countdownLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
+         countdownDisplay = parent.getDisplay();
+         scheduleCountdown();
+      }
+
       responseText.setFocus();
       return dialogArea;
+   }
+
+   /**
+    * Schedule the next countdown tick using Display.timerExec().
+    */
+   private void scheduleCountdown()
+   {
+      countdownDisplay.timerExec(1000, () -> {
+         if ((countdownLabel == null) || countdownLabel.isDisposed())
+            return;
+         remainingSeconds--;
+         if (remainingSeconds <= 0)
+         {
+            cancelPressed();
+         }
+         else
+         {
+            countdownLabel.setText(i18n.tr("{0}s", remainingSeconds));
+            scheduleCountdown();
+         }
+      });
    }
 
    /**
