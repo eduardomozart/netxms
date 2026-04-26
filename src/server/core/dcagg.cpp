@@ -357,7 +357,7 @@ static int64_t RollupHourlyForDCI(DB_HANDLE hdb, DataCollectionTarget *target, D
    for(int i = 0; i < rows; i++)
    {
       int64_t bucketStart = DBGetFieldInt64(hResult, i, 0);
-      int32_t sampleCount = DBGetFieldLong(hResult, i, 5);
+      int32_t sampleCount = DBGetFieldLong(hResult, i, 4);
       if (sampleCount <= 0)
          continue;   // Skip empty buckets (leaves chart gap)
 
