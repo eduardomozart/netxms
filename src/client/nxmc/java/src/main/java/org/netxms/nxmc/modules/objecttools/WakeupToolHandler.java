@@ -65,7 +65,7 @@ public class WakeupToolHandler implements ObjectToolHandler
    public void execute(AbstractNode node, ObjectTool tool, Map<String, String> inputValues, ViewPlacement viewPlacement)
    {
       final NXCSession session = Registry.getSession();
-      new Job(i18n.tr("Sendiong wakeup packet to node"), null, viewPlacement.getMessageAreaHolder()) {
+      new Job(i18n.tr("Sending wakeup packet to node"), null, viewPlacement.getMessageAreaHolder()) {
          @Override
          protected void run(IProgressMonitor monitor) throws Exception
          {
