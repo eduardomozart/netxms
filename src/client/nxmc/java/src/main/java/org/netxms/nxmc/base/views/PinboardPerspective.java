@@ -34,8 +34,9 @@ import org.slf4j.LoggerFactory;
  */
 public class PinboardPerspective extends Perspective
 {
-   private static final Logger logger = LoggerFactory.getLogger(PinboardPerspective.class);
 
+   private static final Logger logger = LoggerFactory.getLogger(PinboardPerspective.class);
+   
    /**
     * @param name
     * @param image
