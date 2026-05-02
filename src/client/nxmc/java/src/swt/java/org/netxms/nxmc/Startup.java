@@ -134,16 +134,16 @@ public class Startup
 
       PreferenceStore.open(stateDir.getAbsolutePath());
 
-      String language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       for(String s : args)
       {
          if (s.startsWith("-language="))
          {
-            language = s.substring(10);
+            String language = s.substring(10);
+            logger.info("Language override from command line: " + language);
+            Locale.setDefault(Locale.forLanguageTag(language));
+            break;
          }
       }
-      logger.info("Language: " + language);
-      Locale.setDefault(Locale.forLanguageTag(language));
 
       DateFormatFactory.updateFromPreferences();
       SharedIcons.init();
