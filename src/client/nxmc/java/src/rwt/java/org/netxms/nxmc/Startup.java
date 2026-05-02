@@ -151,7 +151,9 @@ public class Startup implements EntryPoint, StartupParameters
       logger.info("Registered themes: " + sb.toString());
 
       PreferenceStore.open(stateDir.getAbsolutePath());
-      String language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+      String language = getParameter("lang");
+      if ((language == null) || language.isEmpty())
+         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
       RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
 
