@@ -25,12 +25,15 @@ import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.datacollection.views.GraphBrowser;
 import org.netxms.nxmc.modules.datacollection.views.HistoricalGraphView;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * Predefined graphs perspective
  */
 public class GraphsPerspective extends Perspective
 {
+   private static final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
+
    private Object currentSelection = null;
 
    /**
@@ -38,7 +41,7 @@ public class GraphsPerspective extends Perspective
     */
    public GraphsPerspective()
    {
-      super("graphs", LocalizationHelper.getI18n(GraphsPerspective.class).tr("Graphs"), "icons/perspectives/graphs.svg");
+      super("graphs", i18n.tr("Graphs"), "icons/perspectives/graphs.svg");
    }
 
    /**
@@ -47,7 +50,7 @@ public class GraphsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(GraphsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

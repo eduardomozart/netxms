@@ -20,15 +20,18 @@ package org.netxms.nxmc.modules.objects;
 
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Maps" perspective
  */
 public class MapsPerspective extends ObjectsPerspective
 {
+   private static final I18n i18n = LocalizationHelper.getI18n(MapsPerspective.class);
+
    public MapsPerspective()
    {
-      super("objects.maps", LocalizationHelper.getI18n(MapsPerspective.class).tr("Maps"), "icons/perspectives/maps.svg", SubtreeType.MAPS, null);
+      super("objects.maps", i18n.tr("Maps"), "icons/perspectives/maps.svg", SubtreeType.MAPS, null);
    }
 
    /**
@@ -37,7 +40,7 @@ public class MapsPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(MapsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

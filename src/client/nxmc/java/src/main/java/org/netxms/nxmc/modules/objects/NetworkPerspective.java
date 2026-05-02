@@ -27,17 +27,20 @@ import org.netxms.client.objects.VPNConnector;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.objects.views.ObjectBrowser;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Network" perspective
  */
 public class NetworkPerspective extends ObjectsPerspective
 {
+   private static final I18n i18n = LocalizationHelper.getI18n(NetworkPerspective.class);
+
    private static final Set<Integer> classFilterNetwork = ObjectBrowser.calculateClassFilter(SubtreeType.NETWORK);
 
    public NetworkPerspective()
    {
-      super("objects.network", LocalizationHelper.getI18n(NetworkPerspective.class).tr("Network"), "icons/perspectives/network.svg", SubtreeType.NETWORK,
+      super("objects.network", i18n.tr("Network"), "icons/perspectives/network.svg", SubtreeType.NETWORK,
             (AbstractObject o) -> {
                if ((o instanceof Interface) || (o instanceof VPNConnector))
                   return false;
@@ -63,7 +66,7 @@ public class NetworkPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(NetworkPerspective.class).tr("Objects");
+      return i18n.tr("Objects");
    }
 
    /**
