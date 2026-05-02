@@ -34,7 +34,7 @@ public class InfrastructurePerspective extends ObjectsPerspective
     */
    public InfrastructurePerspective()
    {
-      super("objects.infrastructure", LocalizationHelper.getI18n(InfrastructurePerspective.class).tr("Infrastructure"), "icons/perspectives/infrastructure.svg", 
+      super("objects.infrastructure", () -> LocalizationHelper.getI18n(InfrastructurePerspective.class).tr("Infrastructure"), "icons/perspectives/infrastructure.svg",
             SubtreeType.INFRASTRUCTURE, new InfrastructureObjectFilter());
    }
 

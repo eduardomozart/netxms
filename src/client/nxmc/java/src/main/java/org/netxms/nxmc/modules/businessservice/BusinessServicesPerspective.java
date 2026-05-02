@@ -33,7 +33,7 @@ public class BusinessServicesPerspective extends ObjectsPerspective
 
    public BusinessServicesPerspective()
    {
-      super("objects.business-services", LocalizationHelper.getI18n(BusinessServicesPerspective.class).tr("Business Services"), "icons/perspectives/business-services.svg", SubtreeType.BUSINESS_SERVICES, null);
+      super("objects.business-services", () -> LocalizationHelper.getI18n(BusinessServicesPerspective.class).tr("Business Services"), "icons/perspectives/business-services.svg", SubtreeType.BUSINESS_SERVICES, null);
    }
 
    /**

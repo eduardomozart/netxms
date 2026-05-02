@@ -36,7 +36,7 @@ public class AlarmsPerspective extends Perspective
     */
    public AlarmsPerspective()
    {
-      super("alarms", LocalizationHelper.getI18n(AlarmsPerspective.class).tr("Alarms"), "icons/perspectives/alarms.svg");
+      super("alarms", () -> LocalizationHelper.getI18n(AlarmsPerspective.class).tr("Alarms"), "icons/perspectives/alarms.svg");
    }
 
    /**

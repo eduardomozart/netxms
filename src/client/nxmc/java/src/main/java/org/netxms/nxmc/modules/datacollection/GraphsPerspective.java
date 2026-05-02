@@ -41,7 +41,7 @@ public class GraphsPerspective extends Perspective
     */
    public GraphsPerspective()
    {
-      super("graphs", LocalizationHelper.getI18n(GraphsPerspective.class).tr("Graphs"), "icons/perspectives/graphs.svg");
+      super("graphs", () -> LocalizationHelper.getI18n(GraphsPerspective.class).tr("Graphs"), "icons/perspectives/graphs.svg");
    }
 
    /**
