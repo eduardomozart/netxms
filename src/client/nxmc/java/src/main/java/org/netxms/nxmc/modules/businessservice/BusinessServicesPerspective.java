@@ -25,7 +25,7 @@ import org.netxms.nxmc.modules.objects.SubtreeType;
 import org.xnap.commons.i18n.I18n;
 
 /**
- * "Dashboards" perspective
+ * "Business Services" perspective
  */
 public class BusinessServicesPerspective extends ObjectsPerspective
 {
