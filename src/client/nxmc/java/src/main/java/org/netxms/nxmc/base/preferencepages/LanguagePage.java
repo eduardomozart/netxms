@@ -162,7 +162,6 @@ public class LanguagePage extends PropertyPage
          return false;
 
       settings.set("nxmc.language", languages[index].code);
-
       return true;
    }
 
