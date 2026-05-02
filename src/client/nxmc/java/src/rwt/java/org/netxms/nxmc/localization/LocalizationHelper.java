@@ -43,14 +43,10 @@ public final class LocalizationHelper
     */
    public static I18n getI18n(Class<?> c)
    {
-      // Do NOT use I18nFactory here: its global cache is keyed by class alone (ignoring locale),
-      // so once a class is cached under one locale it would be returned for all subsequent
-      // sessions regardless of their locale.  Creating a fresh I18n per call is cheap because
-      // Java's ResourceBundle.getBundle() is already JVM-level cached.
       Locale locale = RWT.getLocale();
       if (locale == null)
          locale = Locale.getDefault();
-      return new I18n(c, locale, I18nFactory.FALLBACK);
+      return I18nFactory.getI18n(c, locale, I18nFactory.FALLBACK);
    }
 
    /**
