@@ -43,7 +43,28 @@ public final class LocalizationHelper
     */
    public static I18n getI18n(Class<?> c)
    {
-      return I18nFactory.getI18n(c, RWT.getLocale(), I18nFactory.FALLBACK);
+      // Do NOT use I18nFactory here: its global cache is keyed by class alone (ignoring locale),
+      // so once a class is cached under one locale it would be returned for all subsequent
+      // sessions regardless of their locale.  Creating a fresh I18n per call is cheap because
+      // Java's ResourceBundle.getBundle() is already JVM-level cached.
+      Locale locale = RWT.getLocale();
+      if (locale == null)
+         locale = Locale.getDefault();
+      return new I18n(c, locale, I18nFactory.FALLBACK);
+   }
+
+   /**
+    * Convert a language code (e.g. {@code "pt_BR"} or {@code "pt-BR"}) to a
+    * {@link Locale}.  Language codes stored in preferences use underscores as
+    * separator, but {@link Locale#forLanguageTag(String)} requires the BCP 47
+    * hyphen separator, so we normalise before parsing.
+    *
+    * @param languageCode language code in any supported format
+    * @return the corresponding locale
+    */
+   public static Locale localeFromLanguageCode(String languageCode)
+   {
+      return Locale.forLanguageTag(languageCode.replace('_', '-'));
    }
 
    /**

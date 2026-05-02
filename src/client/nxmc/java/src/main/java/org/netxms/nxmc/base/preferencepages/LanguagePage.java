@@ -45,6 +45,9 @@ import org.xnap.commons.i18n.I18n;
  */
 public class LanguagePage extends PropertyPage
 {
+   /** Server-side user attribute that stores the language preference. */
+   public static final String LANGUAGE_ATTRIBUTE = ".nxmc.language";
+
    private final I18n i18n = LocalizationHelper.getI18n(LanguagePage.class);
 
    /**
@@ -174,7 +177,7 @@ public class LanguagePage extends PropertyPage
             @Override
             protected void run(IProgressMonitor monitor) throws Exception
             {
-               session.setAttributeForCurrentUser(".nxmc.language", lang);
+               session.setAttributeForCurrentUser(LANGUAGE_ATTRIBUTE, lang);
             }
 
             @Override
