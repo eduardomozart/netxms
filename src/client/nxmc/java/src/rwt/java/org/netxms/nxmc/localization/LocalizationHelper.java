@@ -50,6 +50,20 @@ public final class LocalizationHelper
    }
 
    /**
+    * Convert a language code (e.g. {@code "pt_BR"} or {@code "pt-BR"}) to a
+    * {@link Locale}.  Language codes stored in preferences use underscores as
+    * separator, but {@link Locale#forLanguageTag(String)} requires the BCP 47
+    * hyphen separator, so we normalise before parsing.
+    *
+    * @param languageCode language code in any supported format
+    * @return the corresponding locale
+    */
+   public static Locale localeFromLanguageCode(String languageCode)
+   {
+      return Locale.forLanguageTag(languageCode.replace('_', '-'));
+   }
+
+   /**
     * Get user's locale.
     *
     * @return user's locale
