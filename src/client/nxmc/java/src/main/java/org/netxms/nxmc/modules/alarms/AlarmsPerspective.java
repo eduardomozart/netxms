@@ -45,7 +45,7 @@ public class AlarmsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Monitoring");
+      return LocalizationHelper.getI18n(AlarmsPerspective.class).tr("Monitoring");
    }
 
    /**

@@ -42,7 +42,7 @@ public class AssetsPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Objects");
+      return LocalizationHelper.getI18n(AssetsPerspective.class).tr("Objects");
    }
 
    /**

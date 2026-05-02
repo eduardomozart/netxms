@@ -60,7 +60,7 @@ public class MonitorPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Analysis");
+      return LocalizationHelper.getI18n(MonitorPerspective.class).tr("Analysis");
    }
 
    /**

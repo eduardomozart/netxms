@@ -62,7 +62,7 @@ public class ToolsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Administration");
+      return LocalizationHelper.getI18n(ToolsPerspective.class).tr("Administration");
    }
 
    /**

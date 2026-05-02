@@ -42,7 +42,7 @@ public class BusinessServicesPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Business");
+      return LocalizationHelper.getI18n(BusinessServicesPerspective.class).tr("Business");
    }
 
    /**
