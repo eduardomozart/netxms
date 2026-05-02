@@ -18052,7 +18052,7 @@ msgstr "Criar novo..."
 
 #: main/java/org/netxms/nxmc/modules/serverconfig/views/ServerVariables.java:162
 msgid "&Reset to default"
-msgstr "&Redefinir para o padrão"
+msgstr "&Restaurar padrões"
 
 #: main/java/org/netxms/nxmc/modules/serverconfig/views/ServerVariables.java:228
 msgid "Load server configuration variables"
