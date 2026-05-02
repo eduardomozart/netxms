@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ToolsPerspective extends Perspective
 {
-   public static final Logger logger = LoggerFactory.getLogger(ToolsPerspective.class);
+   private static final Logger logger = LoggerFactory.getLogger(ToolsPerspective.class);
 
    private List<ToolDescriptor> elements = new ArrayList<ToolDescriptor>();
 

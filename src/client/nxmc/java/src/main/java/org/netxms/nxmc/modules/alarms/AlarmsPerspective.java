@@ -29,7 +29,7 @@ import org.netxms.nxmc.modules.alarms.views.AlarmsView;
  */
 public class AlarmsPerspective extends Perspective
 {
-   public final I18n i18n = LocalizationHelper.getI18n(AlarmsPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(AlarmsPerspective.class);
 
    /**
     * Create alarm browser perspective
