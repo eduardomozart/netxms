@@ -86,8 +86,21 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
+      this(id, () -> name, imagePath, subtreeType, objectFilter);
+   }
+
+   /**
+    * Create new perspective with a lazily-evaluated display name. The supplier is called each time
+    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
+    * time.
+    *
+    * @param id perspective ID
+    * @param nameSupplier supplier that returns the perspective display name
+    * @param imagePath path to perspective SVG image resource
+    */
+   protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
+   {
       this.id = id;
-      this.name = name;
       this.imagePath = imagePath;
 
       navigationSelectionListener = new ISelectionChangedListener() {
@@ -99,7 +112,7 @@ public abstract class Perspective
       };
 
       configurePerspective(configuration);
-      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
+      logger.debug("Perspective \"" + getName() + "\" configuration: " + configuration);
    }
 
    /**
@@ -514,7 +527,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return name;
+      return nameSupplier.get();
    }
 
    /**
