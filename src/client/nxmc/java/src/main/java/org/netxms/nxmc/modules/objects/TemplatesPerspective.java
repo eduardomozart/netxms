@@ -25,6 +25,7 @@ import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.interfaces.NodeComponent;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Templates" perspective
