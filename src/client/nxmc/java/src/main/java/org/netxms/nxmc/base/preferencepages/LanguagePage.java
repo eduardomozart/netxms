@@ -18,6 +18,7 @@
  */
 package org.netxms.nxmc.base.preferencepages;
 
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -28,8 +29,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.netxms.client.NXCSession;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.base.jobs.Job;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.base.widgets.LabeledCombo;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -161,7 +164,27 @@ public class LanguagePage extends PropertyPage
       if (index == -1)
          return false;
 
-      settings.set("nxmc.language", languages[index].code);
+      final String lang = languages[index].code;
+      settings.set("nxmc.language", lang);
+
+      NXCSession session = Registry.getSession();
+      if (session != null)
+      {
+         new Job(i18n.tr("Updating language preference"), null) {
+            @Override
+            protected void run(IProgressMonitor monitor) throws Exception
+            {
+               session.setAttributeForCurrentUser(".nxmc.language", lang);
+            }
+
+            @Override
+            protected String getErrorMessage()
+            {
+               return i18n.tr("Cannot update language preference on server");
+            }
+         }.start();
+      }
+
       return true;
    }
 
