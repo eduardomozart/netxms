@@ -38,7 +38,7 @@ public class ReportingPerspective extends Perspective
     */
    public ReportingPerspective()
    {
-      super("reporting", LocalizationHelper.getI18n(ReportingPerspective.class).tr("Reporting"), "icons/perspectives/reporting.svg");
+      super("reporting", () -> LocalizationHelper.getI18n(ReportingPerspective.class).tr("Reporting"), "icons/perspectives/reporting.svg");
    }
 
    /**

@@ -54,7 +54,7 @@ public class General extends PropertyPage
     */
    public General(AlarmCategoryEditor editor)
    {
-      super(LocalizationHelper.getI18n(General.class).tr("General"));
+      super(() -> LocalizationHelper.getI18n(General.class).tr("General"));
       this.editor = editor;
       category = editor.getObjectAsItem();
    }
