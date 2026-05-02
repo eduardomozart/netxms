@@ -196,21 +196,6 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
    private Set<ISelectionChangedListener> selectionListeners = new HashSet<>();
 
    /**
-    * Create new object perspective. If object filter is provided, as top level objects will be selected objects that passed filter
-    * themselves and does not have accessible parents at all or none of their parents passed filter.
-    *
-    * @param id perspective ID
-    * @param name perspective name
-    * @param imagePath path to perspective SVG image resource
-    * @param subtreeType object subtree type
-    * @param objectFilter additional filter for top level objects (optional, can be null)
-    */
-   protected ObjectsPerspective(String id, String name, String imagePath, SubtreeType subtreeType, ObjectFilter objectFilter)
-   {
-      this(id, () -> name, imagePath, subtreeType, objectFilter);
-   }
-
-   /**
     * Create new object perspective with a lazily-evaluated display name.
     *
     * @param id perspective ID
