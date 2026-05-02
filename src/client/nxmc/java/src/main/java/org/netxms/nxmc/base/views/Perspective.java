@@ -84,7 +84,7 @@ public abstract class Perspective
     * @param name perspective display name
     * @param imagePath path to perspective SVG image resource
     */
-   protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
+   protected Perspective(String id, String name, String imagePath)
    {
       this.id = id;
       this.name = name;

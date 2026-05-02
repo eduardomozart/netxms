@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ToolsPerspective extends Perspective
 {
-   private static final Logger logger = LoggerFactory.getLogger(ToolsPerspective.class);
+   public static final Logger logger = LoggerFactory.getLogger(ToolsPerspective.class);
 
    private List<ToolDescriptor> elements = new ArrayList<ToolDescriptor>();
 
@@ -45,7 +45,7 @@ public class ToolsPerspective extends Perspective
     */
    public ToolsPerspective()
    {
-      super("tools", () -> i18n.tr("Tools"), "icons/perspectives/tools.svg");
+      super("tools", i18n.tr("Tools"), "icons/perspectives/tools.svg");
 
       ServiceLoader<ToolDescriptor> loader = ServiceLoader.load(ToolDescriptor.class, getClass().getClassLoader());
       for(ToolDescriptor e : loader)

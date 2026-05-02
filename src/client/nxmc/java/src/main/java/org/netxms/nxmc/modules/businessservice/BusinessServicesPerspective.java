@@ -20,9 +20,9 @@ package org.netxms.nxmc.modules.businessservice;
 
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.objects.ObjectsPerspective;
 import org.netxms.nxmc.modules.objects.SubtreeType;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Business Services" perspective

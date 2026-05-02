@@ -45,7 +45,7 @@ public class TemplatesPerspective extends ObjectsPerspective
     */
    public TemplatesPerspective()
    {
-      super("objects.templates", i18n.tr("Templates"), "icons/perspectives/templates.svg", SubtreeType.TEMPLATES,
+      super("objects.templates", i18n.tr("Templates"), "icons/perspectives/templates.svg", SubtreeType.TEMPLATES, 
             (o) -> {
                if ((o.getObjectClass() == AbstractObject.OBJECT_INTERFACE) || (o.getObjectClass() == AbstractObject.OBJECT_NETWORKSERVICE) ||
                      (o.getObjectClass() == AbstractObject.OBJECT_VPNCONNECTOR))

@@ -26,8 +26,8 @@ import org.netxms.client.objects.Node;
 import org.netxms.client.objects.VPNConnector;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.objects.views.ObjectBrowser;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Network" perspective
