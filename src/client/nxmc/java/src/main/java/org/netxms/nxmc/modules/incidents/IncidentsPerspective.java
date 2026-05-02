@@ -36,7 +36,7 @@ public class IncidentsPerspective extends Perspective
     */
    public IncidentsPerspective()
    {
-      super("incidents", () -> LocalizationHelper.getI18n(IncidentsPerspective.class).tr("Incidents"), "icons/perspectives/incidents.svg");
+      super("incidents", () -> i18n.tr("Incidents"), "icons/perspectives/incidents.svg");
    }
 
    /**
