@@ -18,12 +18,12 @@
  */
 package org.netxms.nxmc.base;
 
+import java.util.Locale;
 import org.eclipse.rap.rwt.RWT;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.base.preferencepages.LanguagePage;
-import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.services.LoginListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class LocaleLoginListener implements LoginListener
             // ProgressMonitorDialog event loop (not blocked), so no deadlock occurs.
             display.syncExec(() -> {
                PreferenceStore.getInstance(display).set(LanguagePage.LANGUAGE_PREFERENCE_KEY, lang);
-               RWT.setLocale(LocalizationHelper.localeFromLanguageCode(lang));
+               RWT.setLocale(Locale.forLanguageTag(lang.replace('_', '-')));
             });
          }
       }
