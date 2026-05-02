@@ -24,7 +24,7 @@ import org.netxms.nxmc.modules.objects.ObjectsPerspective;
 import org.netxms.nxmc.modules.objects.SubtreeType;
 
 /**
- * "Dashboards" perspective
+ * "Business Services" perspective
  */
 public class BusinessServicesPerspective extends ObjectsPerspective
 {

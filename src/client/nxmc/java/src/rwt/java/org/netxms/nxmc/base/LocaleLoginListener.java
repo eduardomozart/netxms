@@ -55,7 +55,7 @@ public class LocaleLoginListener implements LoginListener
             // the ModalContext background thread while the UI thread runs the
             // ProgressMonitorDialog event loop (not blocked), so no deadlock occurs.
             display.syncExec(() -> {
-               PreferenceStore.getInstance(display).set("nxmc.language", lang);
+               PreferenceStore.getInstance(display).set(LanguagePage.LANGUAGE_PREFERENCE_KEY, lang);
                RWT.setLocale(LocalizationHelper.localeFromLanguageCode(lang));
             });
          }

@@ -48,6 +48,9 @@ public class LanguagePage extends PropertyPage
    /** Server-side user attribute that stores the language preference. */
    public static final String LANGUAGE_ATTRIBUTE = ".nxmc.language";
 
+   /** Local preference store key for the language setting. */
+   public static final String LANGUAGE_PREFERENCE_KEY = "nxmc.language";
+
    private final I18n i18n = LocalizationHelper.getI18n(LanguagePage.class);
 
    /**
@@ -168,7 +171,7 @@ public class LanguagePage extends PropertyPage
          return false;
 
       final String lang = languages[index].code;
-      settings.set("nxmc.language", lang);
+      settings.set(LANGUAGE_PREFERENCE_KEY, lang);
 
       NXCSession session = Registry.getSession();
       if (session != null)

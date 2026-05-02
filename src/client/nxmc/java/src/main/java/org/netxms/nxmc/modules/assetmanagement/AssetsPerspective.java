@@ -24,7 +24,7 @@ import org.netxms.nxmc.modules.objects.ObjectsPerspective;
 import org.netxms.nxmc.modules.objects.SubtreeType;
 
 /**
- * "Dashboards" perspective
+ * "Assets" perspective
  */
 public class AssetsPerspective extends ObjectsPerspective
 {
