@@ -556,7 +556,7 @@ msgstr "Recorrente"
 
 #: main/java/org/netxms/nxmc/base/widgets/TimePeriodCompactSelector.java:148
 msgid "Presets"
-msgstr "Presetes"
+msgstr "Predefinições"
 
 #: main/java/org/netxms/nxmc/base/widgets/TimePeriodCompactSelector.java:201
 msgid "&Apply"
@@ -12196,7 +12196,7 @@ msgstr "&Registros"
 
 #: main/java/org/netxms/nxmc/modules/objects/ObjectMenuFactory.java:93
 msgid "Configuration (with reset)"
-msgstr "Configuração (com reset)"
+msgstr "Configuração (com redefinição)"
 
 #: main/java/org/netxms/nxmc/modules/objects/ObjectMenuFactory.java:95 main/java/org/netxms/nxmc/modules/objects/views/elements/PollStates.java:60
 #: main/java/org/netxms/nxmc/modules/objects/views/elements/Topology.java:106
@@ -18052,7 +18052,7 @@ msgstr "Criar novo..."
 
 #: main/java/org/netxms/nxmc/modules/serverconfig/views/ServerVariables.java:162
 msgid "&Reset to default"
-msgstr "&Resetar para padrão"
+msgstr "&Redefinir para o padrão"
 
 #: main/java/org/netxms/nxmc/modules/serverconfig/views/ServerVariables.java:228
 msgid "Load server configuration variables"
