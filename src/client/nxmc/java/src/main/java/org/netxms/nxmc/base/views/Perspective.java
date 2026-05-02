@@ -21,7 +21,6 @@ package org.netxms.nxmc.base.views;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Supplier;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -58,7 +57,7 @@ public abstract class Perspective
    private static Logger logger = LoggerFactory.getLogger(Perspective.class);
 
    private String id;
-   private Supplier<String> nameSupplier;
+   private String name;
    private String imagePath;
    private PerspectiveConfiguration configuration = new PerspectiveConfiguration();
    private Window window;
@@ -85,23 +84,10 @@ public abstract class Perspective
     * @param name perspective display name
     * @param imagePath path to perspective SVG image resource
     */
-   protected Perspective(String id, String name, String imagePath)
-   {
-      this(id, () -> name, imagePath);
-   }
-
-   /**
-    * Create new perspective with a lazily-evaluated display name. The supplier is called each time
-    * {@link #getName()} is invoked, allowing the name to reflect the current locale at call time.
-    *
-    * @param id perspective ID
-    * @param nameSupplier supplier that returns the perspective display name
-    * @param imagePath path to perspective SVG image resource
-    */
    protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
    {
       this.id = id;
-      this.nameSupplier = nameSupplier;
+      this.name = name;
       this.imagePath = imagePath;
 
       navigationSelectionListener = new ISelectionChangedListener() {
@@ -113,7 +99,7 @@ public abstract class Perspective
       };
 
       configurePerspective(configuration);
-      logger.debug("Perspective \"" + nameSupplier.get() + "\" configuration: " + configuration);
+      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
    }
 
    /**
@@ -528,7 +514,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return nameSupplier.get();
+      return name;
    }
 
    /**

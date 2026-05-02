@@ -41,7 +41,7 @@ public class GraphsPerspective extends Perspective
     */
    public GraphsPerspective()
    {
-      super("graphs", () -> i18n.tr("Graphs"), "icons/perspectives/graphs.svg");
+      super("graphs", i18n.tr("Graphs"), "icons/perspectives/graphs.svg");
    }
 
    /**

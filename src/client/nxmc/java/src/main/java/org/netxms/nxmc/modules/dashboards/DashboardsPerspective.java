@@ -33,7 +33,7 @@ public class DashboardsPerspective extends ObjectsPerspective
 
    public DashboardsPerspective()
    {
-      super("objects.dashboards", () -> i18n.tr("Dashboards"), "icons/perspectives/dashboards.svg", SubtreeType.DASHBOARDS, null);
+      super("objects.dashboards", i18n.tr("Dashboards"), "icons/perspectives/dashboards.svg", SubtreeType.DASHBOARDS, null);
    }
 
    /**

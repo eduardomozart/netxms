@@ -34,7 +34,7 @@ public class InfrastructurePerspective extends ObjectsPerspective
     */
    public InfrastructurePerspective()
    {
-      super("objects.infrastructure", () -> i18n.tr("Infrastructure"), "icons/perspectives/infrastructure.svg", 
+      super("objects.infrastructure", i18n.tr("Infrastructure"), "icons/perspectives/infrastructure.svg", 
             SubtreeType.INFRASTRUCTURE, new InfrastructureObjectFilter());
    }
 

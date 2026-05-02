@@ -33,7 +33,7 @@ public class AssetsPerspective extends ObjectsPerspective
 
    public AssetsPerspective()
    {
-      super("objects.assets", () -> i18n.tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
+      super("objects.assets", i18n.tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
    }
 
    /**
