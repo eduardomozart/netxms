@@ -29,14 +29,14 @@ import org.netxms.nxmc.modules.alarms.views.AlarmsView;
  */
 public class AlarmsPerspective extends Perspective
 {
-   private static final I18n i18n = LocalizationHelper.getI18n(AlarmsPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(AlarmsPerspective.class);
 
    /**
     * Create alarm browser perspective
     */
    public AlarmsPerspective()
    {
-      super("alarms", i18n.tr("Alarms"), "icons/perspectives/alarms.svg");
+      super("alarms", LocalizationHelper.getI18n(AlarmsPerspective.class)tr("Alarms"), "icons/perspectives/alarms.svg");
    }
 
    /**
