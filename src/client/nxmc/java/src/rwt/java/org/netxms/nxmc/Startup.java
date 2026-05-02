@@ -151,10 +151,15 @@ public class Startup implements EntryPoint, StartupParameters
       logger.info("Registered themes: " + sb.toString());
 
       PreferenceStore.open(stateDir.getAbsolutePath());
+      SystemSettings.open(stateDir);
+
+      // Use English for the login screen. The effective language (per-browser
+      // preference or system default) is applied after login, before MainWindow
+      // is created.
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
-      logger.info("Language: " + language);
+         language = "en";
+      logger.info("Login screen language: " + language);
       RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
 
       Registry.setStateDir(stateDir);
@@ -196,6 +201,27 @@ public class Startup implements EntryPoint, StartupParameters
          });
 
          kioskMode = Boolean.parseBoolean(getParameter("kiosk-mode"));
+
+         // Determine effective language and apply it before any main window
+         // widgets are created so that perspective names (resolved lazily via
+         // Supplier<String>) and all other UI elements use the correct locale.
+         //
+         // Priority: URL parameter > per-browser preference > system default.
+         // If the browser has no saved preference yet, seed it from the system
+         // default so the Language preference page shows the correct value.
+         String effectiveLanguage = getParameter("lang");
+         if ((effectiveLanguage == null) || effectiveLanguage.isEmpty())
+         {
+            effectiveLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", null);
+            if (effectiveLanguage == null)
+            {
+               effectiveLanguage = SystemSettings.get("nxmc.language", "en");
+               PreferenceStore.getInstance().set("nxmc.language", effectiveLanguage);
+            }
+         }
+         logger.info("Applying effective language after login: " + effectiveLanguage);
+         RWT.setLocale(LocalizationHelper.localeFromLanguageCode(effectiveLanguage));
+
          if (!kioskMode)
          {
             MainWindow w = new MainWindow();
