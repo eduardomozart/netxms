@@ -18,8 +18,13 @@
  */
 package org.netxms.nxmc.localization;
 
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.rap.rwt.RWT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xnap.commons.i18n.I18n;
 import org.xnap.commons.i18n.I18nFactory;
 
@@ -28,6 +33,14 @@ import org.xnap.commons.i18n.I18nFactory;
  */
 public final class LocalizationHelper
 {
+   private static final Logger logger = LoggerFactory.getLogger(LocalizationHelper.class);
+
+   /**
+    * Tracks locales that have already been checked for a translation bundle, to avoid
+    * repeating the same diagnostic log message on every {@link #getI18n} call.
+    */
+   private static final Set<String> checkedLocales = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
    /**
     * Prevent construction
     */
@@ -46,6 +59,23 @@ public final class LocalizationHelper
       Locale locale = RWT.getLocale();
       if (locale == null)
          locale = Locale.getDefault();
+
+      // Log once per unique locale string to help diagnose missing translation bundles.
+      if (checkedLocales.add(locale.toString()))
+      {
+         String bundleResource = "i18n/Messages_" + locale + ".class";
+         if (c.getClassLoader().getResource(bundleResource) != null)
+         {
+            logger.debug("Translation bundle found in classpath: {} (language={}, country={}, tag={})",
+                  bundleResource, locale.getLanguage(), locale.getCountry(), locale.toLanguageTag());
+         }
+         else
+         {
+            logger.warn("Translation bundle NOT found in classpath: {} (language={}, country={}, tag={})",
+                  bundleResource, locale.getLanguage(), locale.getCountry(), locale.toLanguageTag());
+         }
+      }
+
       return I18nFactory.getI18n(c, locale, I18nFactory.FALLBACK);
    }
 
@@ -60,7 +90,10 @@ public final class LocalizationHelper
     */
    public static Locale localeFromLanguageCode(String languageCode)
    {
-      return Locale.forLanguageTag(languageCode.replace('_', '-'));
+      Locale locale = Locale.forLanguageTag(languageCode.replace('_', '-'));
+      logger.debug("localeFromLanguageCode(\"{}\") -> language={}, country={}, toString={}, toLanguageTag={}",
+            languageCode, locale.getLanguage(), locale.getCountry(), locale, locale.toLanguageTag());
+      return locale;
    }
 
    /**
