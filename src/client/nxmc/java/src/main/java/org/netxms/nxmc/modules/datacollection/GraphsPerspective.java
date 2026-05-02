@@ -50,7 +50,7 @@ public class GraphsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Monitoring");
+      return LocalizationHelper.getI18n(GraphsPerspective.class).tr("Monitoring");
    }
 
    /**

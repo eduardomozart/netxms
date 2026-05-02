@@ -40,7 +40,7 @@ public class MapsPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Monitoring");
+      return LocalizationHelper.getI18n(MapsPerspective.class).tr("Monitoring");
    }
 
    /**
