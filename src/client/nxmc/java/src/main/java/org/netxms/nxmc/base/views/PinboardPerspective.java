@@ -28,7 +28,6 @@ import org.netxms.nxmc.keyboard.KeyStroke;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xnap.commons.i18n.I18n;
 
 /**
  * Pinboard perspective
@@ -37,8 +36,6 @@ public class PinboardPerspective extends Perspective
 {
    
    private static final Logger logger = LoggerFactory.getLogger(PinboardPerspective.class);
-
-   private final I18n i18n = LocalizationHelper.getI18n(PinboardPerspective.class);
 
    /**
     * @param name
