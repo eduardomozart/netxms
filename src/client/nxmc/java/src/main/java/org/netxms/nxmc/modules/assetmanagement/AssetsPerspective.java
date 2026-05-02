@@ -30,7 +30,7 @@ public class AssetsPerspective extends ObjectsPerspective
 {
    public AssetsPerspective()
    {
-      super("objects.assets", LocalizationHelper.getI18n(AssetsPerspective.class).tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
+      super("objects.assets", () -> LocalizationHelper.getI18n(AssetsPerspective.class).tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
    }
 
    /**
