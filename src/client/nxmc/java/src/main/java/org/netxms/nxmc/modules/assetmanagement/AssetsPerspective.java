@@ -29,11 +29,11 @@ import org.netxms.nxmc.modules.objects.SubtreeType;
  */
 public class AssetsPerspective extends ObjectsPerspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(AssetsPerspective.class);
+   private static final I18n i18n = LocalizationHelper.getI18n(AssetsPerspective.class);
 
    public AssetsPerspective()
    {
-      super("objects.assets", LocalizationHelper.getI18n(AssetsPerspective.class).tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
+      super("objects.assets", i18n.tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
    }
 
    /**

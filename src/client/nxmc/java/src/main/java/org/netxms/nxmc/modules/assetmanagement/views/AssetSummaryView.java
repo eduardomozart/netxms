@@ -60,7 +60,7 @@ import org.xnap.commons.i18n.I18n;
  */
 public class AssetSummaryView extends ObjectView
 {
-   private final I18n i18n = LocalizationHelper.getI18n(AssetSummaryView.class);
+   private static final I18n i18n = LocalizationHelper.getI18n(AssetSummaryView.class);
 
    private SortableTableViewer viewer;
    private AssetPropertyReader propertyReader;
@@ -73,7 +73,7 @@ public class AssetSummaryView extends ObjectView
     */
    public AssetSummaryView()
    {
-      super(LocalizationHelper.getI18n(AssetSummaryView.class).tr("Assets"), ResourceManager.getImageDescriptor("icons/object-views/asset.png"), "objects.assets", true);
+      super(i18n.tr("Assets"), ResourceManager.getImageDescriptor("icons/object-views/asset.png"), "objects.assets", true);
    }
 
    /**
