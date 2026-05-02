@@ -43,6 +43,7 @@ import org.netxms.nxmc.tools.ImageCache;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * Configuration perspective
@@ -50,6 +51,7 @@ import org.slf4j.LoggerFactory;
 public class ConfigurationPerspective extends Perspective
 {
    private static final Logger logger = LoggerFactory.getLogger(ConfigurationPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(ConfigurationPerspective.class);
 
    private List<ConfigurationPerspectiveElement> elements = new ArrayList<ConfigurationPerspectiveElement>();
    private ConfigurationPerspectiveElement previousSelectedElement = null;
@@ -60,7 +62,7 @@ public class ConfigurationPerspective extends Perspective
     */
    public ConfigurationPerspective()
    {
-      super("configuration", () -> LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Configuration"), "icons/perspectives/configuration.svg");
+      super("configuration", LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Configuration"), "icons/perspectives/configuration.svg");
 
       ServiceLoader<ConfigurationPerspectiveElement> loader = ServiceLoader.load(ConfigurationPerspectiveElement.class, getClass().getClassLoader());
       for(ConfigurationPerspectiveElement e : loader)
@@ -108,7 +110,7 @@ public class ConfigurationPerspective extends Perspective
    @Override
    protected void configureViews()
    {
-      navigationView = new NavigationView(LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Configuration"), null, "Configuration", true, false, false) {
+      navigationView = new NavigationView(i18n.tr("Configuration"), null, "Configuration", true, false, false) {
          private ImageCache imageCache;
          private TableViewer viewer;
 
@@ -194,7 +196,7 @@ public class ConfigurationPerspective extends Perspective
       ConfigurationView currentView = (ConfigurationView)getMainView();
       if ((currentView != null) && currentView.isModified())
       {
-         int choice = MessageDialogHelper.openQuestionWithCancel(getWindow().getShell(), LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Unsaved Changes"), currentView.getSaveOnExitPrompt());
+         int choice = MessageDialogHelper.openQuestionWithCancel(getWindow().getShell(), i18n.tr("Unsaved Changes"), currentView.getSaveOnExitPrompt());
          if (choice == MessageDialogHelper.CANCEL)
          {
             navigationView.setSelection(previousSelectedElement);
