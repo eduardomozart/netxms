@@ -25,7 +25,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import org.apache.commons.codec.binary.Base64;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -67,6 +66,7 @@ import org.netxms.nxmc.base.login.LoginCredentials;
 import org.netxms.nxmc.base.login.LoginDialog;
 import org.netxms.nxmc.base.login.LoginJob;
 import org.netxms.nxmc.base.login.LoginProgressDialog;
+import org.netxms.nxmc.base.preferencepages.LanguagePage;
 import org.netxms.nxmc.base.windows.MainWindow;
 import org.netxms.nxmc.base.windows.PopOutViewWindow;
 import org.netxms.nxmc.localization.DateFormatFactory;
@@ -155,9 +155,9 @@ public class Startup implements EntryPoint, StartupParameters
       PreferenceStore.open(stateDir.getAbsolutePath());
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+         language = PreferenceStore.getInstance().getAsString(LanguagePage.LANGUAGE_PREFERENCE_KEY, "en");
       logger.info("Language: " + language);
-      RWT.setLocale(Locale.forLanguageTag(language));
+      RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
 
       DateFormatFactory.createInstance();
       SharedIcons.init();
