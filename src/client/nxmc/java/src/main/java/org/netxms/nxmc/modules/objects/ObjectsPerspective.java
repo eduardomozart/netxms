@@ -197,7 +197,8 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
 
    /**
     * Create new object perspective with a lazily-evaluated display name.
-    *
+    * If object filter is provided, as top level objects will be selected objects that passed filter
+    * themselves and does not have accessible parents at all or none of their parents passed filter.
     * @param id perspective ID
     * @param nameSupplier supplier that returns the perspective display name
     * @param imagePath path to perspective SVG image resource
