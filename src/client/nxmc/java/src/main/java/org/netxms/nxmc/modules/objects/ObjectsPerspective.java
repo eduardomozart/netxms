@@ -207,7 +207,16 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
     */
    protected ObjectsPerspective(String id, String name, String imagePath, SubtreeType subtreeType, ObjectFilter objectFilter)
    {
-      this(id, () -> name, imagePath, subtreeType, objectFilter);
+      super(id, name, imagePath);
+      this.subtreeType = subtreeType;
+      this.objectFilter = objectFilter;
+      imageEditConfig = ResourceManager.getImage("icons/object-views/agent-config.png");
+      imageExecuteScript = ResourceManager.getImage("icons/object-views/script-executor.png");
+      imageTakeScreenshot = ResourceManager.getImage("icons/screenshot.png");
+      imageRemoteControl = ResourceManager.getImage("icons/object-views/remote-desktop.png");
+      imageManageViews = ResourceManager.getImage("icons/perspective-config.png");
+      imageOpenMibExplorer = ResourceManager.getImage("icons/object-views/mibexplorer.gif");
+      imageOpenAgentExplorer = ResourceManager.getImage("icons/object-views/agent-explorer.png");
    }
 
    /**

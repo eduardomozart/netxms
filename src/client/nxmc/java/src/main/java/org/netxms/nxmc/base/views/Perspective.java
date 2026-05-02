@@ -58,6 +58,7 @@ public abstract class Perspective
    private static Logger logger = LoggerFactory.getLogger(Perspective.class);
 
    private String id;
+   private String name;
    private Supplier<String> nameSupplier;
    private String imagePath;
    private PerspectiveConfiguration configuration = new PerspectiveConfiguration();
@@ -87,7 +88,21 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
-      this(id, () -> name, imagePath);
+      this.id = id;
+      this.name = name;
+      this.nameSupplier = null;
+      this.imagePath = imagePath;
+
+      navigationSelectionListener = new ISelectionChangedListener() {
+         @Override
+         public void selectionChanged(SelectionChangedEvent event)
+         {
+            navigationSelectionChanged(event.getStructuredSelection());
+         }
+      };
+
+      configurePerspective(configuration);
+      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
    }
 
    /**
@@ -102,6 +117,7 @@ public abstract class Perspective
    protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
    {
       this.id = id;
+      this.name = null;
       this.nameSupplier = nameSupplier;
       this.imagePath = imagePath;
 
@@ -529,7 +545,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return nameSupplier.get();
+      return (nameSupplier != null) ? nameSupplier.get() : name;
    }
 
    /**
