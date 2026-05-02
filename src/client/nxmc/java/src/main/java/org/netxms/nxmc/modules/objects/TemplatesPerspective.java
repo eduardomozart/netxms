@@ -32,13 +32,13 @@ import org.xnap.commons.i18n.I18n;
  */
 public class TemplatesPerspective extends ObjectsPerspective
 {
+   private final I18n i18n = LocalizationHelper.getI18n(TemplatesPerspective.class);
+
    private static final Set<Integer> classFilterTemplate = new HashSet<>(1);
    static
    {
       classFilterTemplate.add(AbstractObject.OBJECT_TEMPLATE);
    }
-
-   private final I18n i18n = LocalizationHelper.getI18n(TemplatesPerspective.class);
 
    /**
     * Create templates perspective
