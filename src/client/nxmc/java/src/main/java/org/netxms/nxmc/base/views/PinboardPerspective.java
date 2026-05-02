@@ -46,7 +46,7 @@ public class PinboardPerspective extends Perspective
     */
    public PinboardPerspective()
    {
-      super("pinboard", i18n.tr("Pinboard"), "icons/perspectives/pinboard.svg");
+      super("pinboard", LocalizationHelper.getI18n(PinboardPerspective.class).tr("Pinboard"), "icons/perspectives/pinboard.svg");
    }
 
    /**

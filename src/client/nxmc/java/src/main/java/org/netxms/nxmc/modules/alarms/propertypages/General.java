@@ -39,7 +39,7 @@ import org.xnap.commons.i18n.I18n;
  */
 public class General extends PropertyPage
 {
-   public static final I18n i18n = LocalizationHelper.getI18n(General.class);
+   private final I18n i18n = LocalizationHelper.getI18n(General.class);
 
    private Text textName;
    private Text textDescription;
@@ -54,7 +54,7 @@ public class General extends PropertyPage
     */
    public General(AlarmCategoryEditor editor)
    {
-      super(i18n.tr("General"));
+      super(LocalizationHelper.getI18n(General.class).tr("General"));
       this.editor = editor;
       category = editor.getObjectAsItem();
    }
