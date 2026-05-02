@@ -24,6 +24,7 @@ import java.util.ServiceLoader;
 import org.netxms.client.NXCSession;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.services.ToolDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,8 @@ public class ToolsPerspective extends Perspective
    private static final Logger logger = LoggerFactory.getLogger(ToolsPerspective.class);
 
    private List<ToolDescriptor> elements = new ArrayList<ToolDescriptor>();
+
+   private final I18n i18n = LocalizationHelper.getI18n(ToolsPerspective.class);
 
    /**
     * The constructor.
@@ -59,7 +62,7 @@ public class ToolsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(ToolsPerspective.class).tr("Administration");
+      return i18n.tr("Administration");
    }
 
    /**

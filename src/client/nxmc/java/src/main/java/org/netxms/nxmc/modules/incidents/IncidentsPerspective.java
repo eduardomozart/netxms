@@ -21,6 +21,7 @@ package org.netxms.nxmc.modules.incidents;
 import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.incidents.views.IncidentsView;
 
 /**
@@ -28,6 +29,8 @@ import org.netxms.nxmc.modules.incidents.views.IncidentsView;
  */
 public class IncidentsPerspective extends Perspective
 {
+   private final I18n i18n = LocalizationHelper.getI18n(IncidentsPerspective.class);
+
    /**
     * Create incidents perspective
     */
@@ -42,7 +45,7 @@ public class IncidentsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(IncidentsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

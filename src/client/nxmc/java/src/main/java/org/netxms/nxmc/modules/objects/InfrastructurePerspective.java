@@ -20,12 +20,15 @@ package org.netxms.nxmc.modules.objects;
 
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Infrastructure" perspective
  */
 public class InfrastructurePerspective extends ObjectsPerspective
 {
+   private final I18n i18n = LocalizationHelper.getI18n(InfrastructurePerspective.class);
+
    /**
     * Create "Infrastructure" perspective
     */
@@ -41,7 +44,7 @@ public class InfrastructurePerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(InfrastructurePerspective.class).tr("Objects");
+      return i18n.tr("Objects");
    }
 
    /**

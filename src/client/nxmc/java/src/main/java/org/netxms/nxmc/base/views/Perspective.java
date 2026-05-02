@@ -58,7 +58,6 @@ public abstract class Perspective
    private static Logger logger = LoggerFactory.getLogger(Perspective.class);
 
    private String id;
-   private String name;
    private Supplier<String> nameSupplier;
    private String imagePath;
    private PerspectiveConfiguration configuration = new PerspectiveConfiguration();
@@ -88,27 +87,12 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
-      this.id = id;
-      this.name = name;
-      this.nameSupplier = null;
-      this.imagePath = imagePath;
-
-      navigationSelectionListener = new ISelectionChangedListener() {
-         @Override
-         public void selectionChanged(SelectionChangedEvent event)
-         {
-            navigationSelectionChanged(event.getStructuredSelection());
-         }
-      };
-
-      configurePerspective(configuration);
-      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
+      this(id, () -> name, imagePath);
    }
 
    /**
     * Create new perspective with a lazily-evaluated display name. The supplier is called each time
-    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
-    * time (important for RWT where different users may have different locales).
+    * {@link #getName()} is invoked, allowing the name to reflect the current locale at call time.
     *
     * @param id perspective ID
     * @param nameSupplier supplier that returns the perspective display name
@@ -117,7 +101,6 @@ public abstract class Perspective
    protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
    {
       this.id = id;
-      this.name = null;
       this.nameSupplier = nameSupplier;
       this.imagePath = imagePath;
 
@@ -545,7 +528,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return (nameSupplier != null) ? nameSupplier.get() : name;
+      return nameSupplier.get();
    }
 
    /**

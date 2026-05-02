@@ -20,6 +20,7 @@ package org.netxms.nxmc.modules.dashboards;
 
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.objects.ObjectsPerspective;
 import org.netxms.nxmc.modules.objects.SubtreeType;
 
@@ -28,6 +29,8 @@ import org.netxms.nxmc.modules.objects.SubtreeType;
  */
 public class DashboardsPerspective extends ObjectsPerspective
 {
+   private final I18n i18n = LocalizationHelper.getI18n(DashboardsPerspective.class);
+
    public DashboardsPerspective()
    {
       super("objects.dashboards", () -> LocalizationHelper.getI18n(DashboardsPerspective.class).tr("Dashboards"), "icons/perspectives/dashboards.svg", SubtreeType.DASHBOARDS, null);
@@ -39,7 +42,7 @@ public class DashboardsPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(DashboardsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

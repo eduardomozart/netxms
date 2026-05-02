@@ -23,6 +23,7 @@ import org.netxms.client.datacollection.GraphDefinition;
 import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.datacollection.views.GraphBrowser;
 import org.netxms.nxmc.modules.datacollection.views.HistoricalGraphView;
 
@@ -32,6 +33,8 @@ import org.netxms.nxmc.modules.datacollection.views.HistoricalGraphView;
 public class GraphsPerspective extends Perspective
 {
    private Object currentSelection = null;
+
+   private final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
 
    /**
     * Create predefined graph perspective
@@ -47,7 +50,7 @@ public class GraphsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(GraphsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

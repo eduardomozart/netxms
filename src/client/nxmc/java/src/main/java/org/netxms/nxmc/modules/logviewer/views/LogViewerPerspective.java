@@ -23,6 +23,7 @@ import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.logviewer.LogDescriptorRegistry;
 import org.netxms.nxmc.services.LogDescriptor;
 import org.slf4j.Logger;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class LogViewerPerspective extends Perspective
 {
    private static final Logger logger = LoggerFactory.getLogger(LogViewerPerspective.class);
+
+   private final I18n i18n = LocalizationHelper.getI18n(LogViewerPerspective.class);
 
    /**
     * The constructor.
@@ -49,7 +52,7 @@ public class LogViewerPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(LogViewerPerspective.class).tr("Analysis");
+      return i18n.tr("Analysis");
    }
 
    /**

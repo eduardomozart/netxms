@@ -25,6 +25,7 @@ import org.netxms.client.objects.AbstractObject;
 import org.netxms.client.objects.interfaces.NodeComponent;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
+import org.xnap.commons.i18n.I18n;
 
 /**
  * "Templates" perspective
@@ -36,6 +37,8 @@ public class TemplatesPerspective extends ObjectsPerspective
    {
       classFilterTemplate.add(AbstractObject.OBJECT_TEMPLATE);
    }
+
+   private final I18n i18n = LocalizationHelper.getI18n(TemplatesPerspective.class);
 
    /**
     * Create templates perspective
@@ -61,7 +64,7 @@ public class TemplatesPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(TemplatesPerspective.class).tr("Objects");
+      return i18n.tr("Objects");
    }
 
    /**
