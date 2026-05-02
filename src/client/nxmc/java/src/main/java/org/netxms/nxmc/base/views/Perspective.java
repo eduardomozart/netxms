@@ -88,7 +88,7 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
-      this(id, () -> name, imagePath, subtreeType, objectFilter);
+      this(id, () -> name, imagePath);
    }
 
    /**
