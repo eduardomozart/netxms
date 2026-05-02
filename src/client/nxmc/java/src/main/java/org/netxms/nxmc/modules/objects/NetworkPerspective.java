@@ -34,13 +34,13 @@ import org.netxms.nxmc.modules.objects.views.ObjectBrowser;
  */
 public class NetworkPerspective extends ObjectsPerspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(NetworkPerspective.class);
+   public static final I18n i18n = LocalizationHelper.getI18n(NetworkPerspective.class);
 
    private static final Set<Integer> classFilterNetwork = ObjectBrowser.calculateClassFilter(SubtreeType.NETWORK);
 
    public NetworkPerspective()
    {
-      super("objects.network", LocalizationHelper.getI18n(NetworkPerspective.class).tr("Network"), "icons/perspectives/network.svg", SubtreeType.NETWORK,
+      super("objects.network", i18n.tr("Network"), "icons/perspectives/network.svg", SubtreeType.NETWORK,
             (AbstractObject o) -> {
                if ((o instanceof Interface) || (o instanceof VPNConnector))
                   return false;

@@ -34,14 +34,14 @@ public class GraphsPerspective extends Perspective
 {
    private Object currentSelection = null;
 
-   private final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
+   public static final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
 
    /**
     * Create predefined graph perspective
     */
    public GraphsPerspective()
    {
-      super("graphs", LocalizationHelper.getI18n(GraphsPerspective.class).tr("Graphs"), "icons/perspectives/graphs.svg");
+      super("graphs", i18n.tr("Graphs"), "icons/perspectives/graphs.svg");
    }
 
    /**

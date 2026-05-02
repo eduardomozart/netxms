@@ -29,11 +29,11 @@ import org.netxms.nxmc.modules.objects.SubtreeType;
  */
 public class BusinessServicesPerspective extends ObjectsPerspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(BusinessServicesPerspective.class);
+   public static final I18n i18n = LocalizationHelper.getI18n(BusinessServicesPerspective.class);
 
    public BusinessServicesPerspective()
    {
-      super("objects.business-services", LocalizationHelper.getI18n(BusinessServicesPerspective.class).tr("Business Services"), "icons/perspectives/business-services.svg", SubtreeType.BUSINESS_SERVICES, null);
+      super("objects.business-services", i18n.tr("Business Services"), "icons/perspectives/business-services.svg", SubtreeType.BUSINESS_SERVICES, null);
    }
 
    /**
