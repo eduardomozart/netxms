@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2026 Raden Solutions
+ * Copyright (C) 2003-2024 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,81 +18,53 @@
  */
 package org.netxms.nxmc;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.util.Base64;
-import java.util.Properties;
+import java.util.HashSet;
+import java.util.ServiceLoader;
+import java.util.Set;
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.widgets.Display;
-import org.netxms.client.NXCSession;
+import org.netxms.nxmc.services.PreferenceInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Local preference store - SWT (desktop) variant. A single process-wide instance
- * is held in a static field. All shared logic lives in {@link AbstractPreferenceStore}.
- *
- * In addition to server-side persistence, this variant maintains a local file at
- * {@code <stateDir>/nxmc.preferences} in plain Java {@link Properties} format. The
- * local file stores only the {@code Connect.*} keys (server address, login history,
- * per-server credentials, etc.) which are never synced to the server. All other
- * preferences are synced to the server via the {@code .nxmc.preferences} user
- * attribute and are never written to the local file.
- *
- * The local file is written once after a successful login via {@link #saveLocalFile()},
- * not on every individual property change.
+ * Local preference store
  */
-public class PreferenceStore extends AbstractPreferenceStore
+public class PreferenceStore extends Memento implements IPreferenceStore
 {
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
-
    private static PreferenceStore instance = null;
-   private static File localFile = null;
 
    /**
-    * Open preference store, loading any previously-persisted connection settings from
-    * {@code stateDir/nxmc.preferences}.
-    *
-    * @param stateDir application state directory (e.g. {@code ~/.nxmc4})
+    * Open local store
     */
-   protected static void open(File stateDir)
+   protected static void open(String stateDir)
    {
-      instance = new PreferenceStore();
-      initializeDefaults(instance);
-      if (stateDir != null)
+      instance = new PreferenceStore(new File(stateDir + File.separator + "nxmc.preferences"));
+      ServiceLoader<PreferenceInitializer> loader = ServiceLoader.load(PreferenceInitializer.class, PreferenceStore.class.getClassLoader());
+      for(PreferenceInitializer pi : loader)
       {
-         localFile = new File(stateDir, "nxmc.preferences");
-         if (localFile.isFile())
+         logger.debug("Calling preference initializer " + pi.toString());
+         try
          {
-            Properties loaded = new Properties();
-            try (InputStream in = Files.newInputStream(localFile.toPath()))
-            {
-               loaded.load(in);
-               instance.properties.putAll(loaded);
-               logger.debug("Local preferences loaded from {}", localFile.getAbsolutePath());
-            }
-            catch(IOException e)
-            {
-               logger.error("Failed to load local preferences from {}", localFile.getAbsolutePath(), e);
-            }
+            pi.initializeDefaultPreferences(instance);
+         }
+         catch(Exception e)
+         {
+            logger.error("Exception in preference initializer", e);
          }
       }
    }
 
    /**
-    * Open preference store without local file support.
-    */
-   protected static void open()
-   {
-      open(null);
-   }
-
-   /**
-    * Get instance of preference store.
-    *
+    * Get instance of preference store
+    * 
     * @return instance of preference store
     */
    public static PreferenceStore getInstance()
@@ -101,8 +73,8 @@ public class PreferenceStore extends AbstractPreferenceStore
    }
 
    /**
-    * Get instance of preference store (RAP compatibility version).
-    *
+    * Get instance of preference store (RAP compatibility version)
+    * 
     * @param display owning display (ignored)
     * @return instance of preference store
     */
@@ -111,77 +83,402 @@ public class PreferenceStore extends AbstractPreferenceStore
       return instance;
    }
 
-   /**
-    * Load preferences from server user attributes and attach session for future saves.
-    * Called once after successful login. The {@code Connect.*} keys already loaded from
-    * the local file are preserved across the server-side deserialisation.
-    *
-    * @param session active NXCSession
-    */
-   public static void loadFromServer(NXCSession session)
-   {
-      Properties connectKeys = new Properties();
-      for (String key : instance.properties.stringPropertyNames())
-      {
-         if (key.startsWith("Connect."))
-            connectKeys.setProperty(key, instance.properties.getProperty(key));
-      }
-      loadFromServer(instance, session);
-      instance.properties.putAll(connectKeys);
-   }
+   private File storeFile;
+   private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
 
    /**
-    * Persist the current {@code Connect.*} preferences to the local file in plain
-    * Java properties format. Only these keys are written; all other preferences are
-    * managed exclusively via server-side user attributes.
-    *
-    * Called once after a successful login rather than on every property change.
+    * Default constructor
     */
-   public static void saveLocalFile()
+   private PreferenceStore(File storeFile)
    {
-      if (localFile == null || instance == null)
-         return;
-      Properties connectProps = new Properties();
-      for (String key : instance.properties.stringPropertyNames())
+      super();
+      this.storeFile = storeFile;
+      if (storeFile.exists())
       {
-         if (key.startsWith("Connect."))
-            connectProps.setProperty(key, instance.properties.getProperty(key));
-      }
-      try (OutputStream out = Files.newOutputStream(localFile.toPath()))
-      {
-         connectProps.store(out, null);
-         logger.debug("Local preferences saved to {}", localFile.getAbsolutePath());
-      }
-      catch(IOException e)
-      {
-         logger.warn("Failed to save local preferences to {}", localFile.getAbsolutePath(), e);
+         FileReader reader = null;
+         try
+         {
+            reader = new FileReader(storeFile);
+            properties.load(reader);
+         }
+         catch(Exception e)
+         {
+            logger.error("Error reading local preferences from " + storeFile.getAbsolutePath(), e);
+         }
+         finally
+         {
+            if (reader != null)
+            {
+               try
+               {
+                  reader.close();
+               }
+               catch(IOException e)
+               {
+               }
+            }
+         }
       }
    }
 
    /**
-    * {@inheritDoc}
+    * Save preference store
+    */
+   private void save()
+   {
+      FileWriter writer = null;
+      try
+      {
+         writer = new FileWriter(storeFile);
+         properties.store(writer, "NXMC local preferences");
+      }
+      catch(Exception e)
+      {
+         logger.error("Error writing local preferences to " + storeFile.getAbsolutePath(), e);
+      }
+      finally
+      {
+         if (writer != null)
+         {
+            try
+            {
+               writer.close();
+            }
+            catch(IOException e)
+            {
+            }
+         }
+      }
+   }
+
+   /**
+    * Add property change listener.
     *
-    * Excludes {@code Connect.*} keys from the Base64 blob sent to the server so
-    * that connection-specific settings (server address, login history, etc.) are
-    * never stored in server-side user attributes.
+    * @param listener listener to add
+    */
+   public void addPropertyChangeListener(IPropertyChangeListener listener)
+   {
+      synchronized(changeListeners)
+      {
+         changeListeners.add(listener);
+      }
+   }
+
+   /**
+    * Remove property change listener.
+    *
+    * @param listener listener to remove
+    */
+   public void removePropertyChangeListener(IPropertyChangeListener listener)
+   {
+      synchronized(changeListeners)
+      {
+         changeListeners.remove(listener);
+      }
+   }
+
+   /**
+    * @see org.netxms.nxmc.Memento#onPropertyChange(java.lang.String, java.lang.String, java.lang.String)
     */
    @Override
-   protected String serialize()
+   protected void onPropertyChange(String property, String oldValue, String newValue)
    {
-      Properties serverProps = new Properties();
-      for (String key : properties.stringPropertyNames())
+      PropertyChangeEvent event = new PropertyChangeEvent(this, property, oldValue, newValue);
+      synchronized(changeListeners)
       {
-         if (!key.startsWith("Connect."))
-            serverProps.setProperty(key, properties.getProperty(key));
+         for(IPropertyChangeListener l : changeListeners)
+            l.propertyChange(event);
       }
-      try (ByteArrayOutputStream out = new ByteArrayOutputStream(8192))
+      save();
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#contains(java.lang.String)
+    */
+   @Override
+   public boolean contains(String name)
+   {
+      return properties.contains(name);
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#firePropertyChangeEvent(java.lang.String, java.lang.Object, java.lang.Object)
+    */
+   @Override
+   public void firePropertyChangeEvent(String name, Object oldValue, Object newValue)
+   {
+      onPropertyChange(name, (String)oldValue, (String)newValue);
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getBoolean(java.lang.String)
+    */
+   @Override
+   public boolean getBoolean(String name)
+   {
+      return getAsBoolean(name, false);
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultBoolean(java.lang.String)
+    */
+   @Override
+   public boolean getDefaultBoolean(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      return (v != null) ? Boolean.parseBoolean(v) : false;
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultDouble(java.lang.String)
+    */
+   @Override
+   public double getDefaultDouble(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      if (v == null)
+         return DOUBLE_DEFAULT_DEFAULT;
+      try
       {
-         serverProps.store(out, "");
-         return Base64.getEncoder().encodeToString(out.toByteArray());
+         return Double.parseDouble(v);
       }
-      catch(IOException e)
+      catch(NumberFormatException e)
       {
-         return null;
+         return DOUBLE_DEFAULT_DEFAULT;
       }
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultFloat(java.lang.String)
+    */
+   @Override
+   public float getDefaultFloat(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      if (v == null)
+         return FLOAT_DEFAULT_DEFAULT;
+      try
+      {
+         return Float.parseFloat(v);
+      }
+      catch(NumberFormatException e)
+      {
+         return FLOAT_DEFAULT_DEFAULT;
+      }
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultInt(java.lang.String)
+    */
+   @Override
+   public int getDefaultInt(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      if (v == null)
+         return INT_DEFAULT_DEFAULT;
+      try
+      {
+         return Integer.parseInt(v);
+      }
+      catch(NumberFormatException e)
+      {
+         return INT_DEFAULT_DEFAULT;
+      }
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultLong(java.lang.String)
+    */
+   @Override
+   public long getDefaultLong(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      if (v == null)
+         return LONG_DEFAULT_DEFAULT;
+      try
+      {
+         return Long.parseLong(v);
+      }
+      catch(NumberFormatException e)
+      {
+         return LONG_DEFAULT_DEFAULT;
+      }
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDefaultString(java.lang.String)
+    */
+   @Override
+   public String getDefaultString(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      if (v == null)
+         return "";
+      return v;
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getDouble(java.lang.String)
+    */
+   @Override
+   public double getDouble(String name)
+   {
+      return getAsDouble(name, DOUBLE_DEFAULT_DEFAULT);
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getFloat(java.lang.String)
+    */
+   @Override
+   public float getFloat(String name)
+   {
+      String v = properties.getProperty(name);
+      if (v == null)
+         return getDefaultFloat(name);
+      try
+      {
+         return Float.parseFloat(v);
+      }
+      catch(NumberFormatException e)
+      {
+         return getDefaultFloat(name);
+      }
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getInt(java.lang.String)
+    */
+   @Override
+   public int getInt(String name)
+   {
+      return getAsInteger(name, getDefaultInt(name));
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getLong(java.lang.String)
+    */
+   @Override
+   public long getLong(String name)
+   {
+      return getAsLong(name, getDefaultLong(name));
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#getString(java.lang.String)
+    */
+   @Override
+   public String getString(String name)
+   {
+      String value = getAsString(name);
+      return value == null ? "" : value;
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#isDefault(java.lang.String)
+    */
+   @Override
+   public boolean isDefault(String name)
+   {
+      String v = defaultValues.getProperty(name);
+      return v != null;
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#needsSaving()
+    */
+   @Override
+   public boolean needsSaving()
+   {
+      return false;
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#putValue(java.lang.String, java.lang.String)
+    */
+   @Override
+   public void putValue(String name, String value)
+   {
+      set(name, value);      
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setDefault(java.lang.String, double)
+    */
+   @Override
+   public void setDefault(String name, double value)
+   {
+      setDefault(name, value);
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setDefault(java.lang.String, float)
+    */
+   @Override
+   public void setDefault(String name, float value)
+   {
+      setDefault(name, value);      
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setToDefault(java.lang.String)
+    */
+   @Override
+   public void setToDefault(String name)
+   {
+      set(name, getDefaultString(name));
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, double)
+    */
+   @Override
+   public void setValue(String name, double value)
+   {
+      set(name, value);       
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, float)
+    */
+   @Override
+   public void setValue(String name, float value)
+   {
+      set(name, value); 
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, int)
+    */
+   @Override
+   public void setValue(String name, int value)
+   {
+      set(name, value); 
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, long)
+    */
+   @Override
+   public void setValue(String name, long value)
+   {
+      set(name, value); 
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, java.lang.String)
+    */
+   @Override
+   public void setValue(String name, String value)
+   {
+      set(name, value); 
+   }
+
+   /**
+    * @see org.eclipse.jface.preference.IPreferenceStore#setValue(java.lang.String, boolean)
+    */
+   @Override
+   public void setValue(String name, boolean value)
+   {
+      set(name, value); 
    }
 }

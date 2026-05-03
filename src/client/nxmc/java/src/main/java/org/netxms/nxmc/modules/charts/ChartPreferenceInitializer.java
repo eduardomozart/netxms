@@ -19,7 +19,7 @@
 package org.netxms.nxmc.modules.charts;
 
 import org.eclipse.swtchart.LineStyle;
-import org.netxms.nxmc.AbstractPreferenceStore;
+import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.services.PreferenceInitializer;
 
 /**
@@ -28,10 +28,10 @@ import org.netxms.nxmc.services.PreferenceInitializer;
 public class ChartPreferenceInitializer implements PreferenceInitializer
 {
    /**
-    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.AbstractPreferenceStore)
+    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.PreferenceStore)
     */
    @Override
-   public void initializeDefaultPreferences(AbstractPreferenceStore ps)
+   public void initializeDefaultPreferences(PreferenceStore ps)
    {
       ps.setDefault("Chart.Grid.X.Style", LineStyle.DOT.label);
       ps.setDefault("Chart.Grid.Y.Style", LineStyle.DOT.label);

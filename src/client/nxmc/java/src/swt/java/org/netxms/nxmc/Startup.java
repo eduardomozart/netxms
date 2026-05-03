@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2026 Raden Solutions
+ * Copyright (C) 2003-2025 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,6 @@ import org.netxms.nxmc.modules.snmp.shared.MibCache;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
-import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,9 +132,9 @@ public class Startup
       windowIcons[5] = ResourceManager.getImage(iconResourcePrefix + "16x16.png");
       Window.setDefaultImages(windowIcons);
 
-      PreferenceStore.open(stateDir);
+      PreferenceStore.open(stateDir.getAbsolutePath());
 
-      String language = null;
+      String language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       for(String s : args)
       {
          if (s.startsWith("-language="))
@@ -143,11 +142,10 @@ public class Startup
             language = s.substring(10);
          }
       }
-      if ((language == null) || language.isEmpty())
-         language = Locale.getDefault().toLanguageTag();
       logger.info("Language: " + language);
       Locale.setDefault(Locale.forLanguageTag(language));
 
+      DateFormatFactory.updateFromPreferences();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
@@ -184,17 +182,6 @@ public class Startup
       if (doLogin(display, args))
       {
          NXCSession session = Registry.getSession();
-         PreferenceStore.loadFromServer(session);
-         PreferenceStore.saveLocalFile();
-         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
-         if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
-         {
-            logger.info("Post-login language: " + postLoginLanguage);
-            Locale.setDefault(Locale.forLanguageTag(postLoginLanguage));
-         }
-         DateFormatFactory.updateFromPreferences();
-         ThemeEngine.reload();
-         StatusDisplayInfo.updateStatusColors();
          DataCollectionDisplayInfo.init();
          MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);

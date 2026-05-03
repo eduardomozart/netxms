@@ -18,7 +18,7 @@
  */
 package org.netxms.nxmc.services;
 
-import org.netxms.nxmc.AbstractPreferenceStore;
+import org.netxms.nxmc.PreferenceStore;
 
 /**
  * Preference initializer
@@ -30,5 +30,5 @@ public interface PreferenceInitializer
     *
     * @param ps preference store
     */
-   public void initializeDefaultPreferences(AbstractPreferenceStore ps);
+   public void initializeDefaultPreferences(PreferenceStore ps);
 }

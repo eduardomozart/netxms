@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2026 Raden Solutions
+ * Copyright (C) 2003-2025 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,6 @@ import org.netxms.nxmc.modules.objecttools.ObjectToolsCache;
 import org.netxms.nxmc.modules.snmp.shared.MibCache;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
-import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,14 +152,14 @@ public class Startup implements EntryPoint, StartupParameters
       }
       logger.info("Registered themes: " + sb.toString());
 
-      PreferenceStore.open();
-
+      PreferenceStore.open(stateDir.getAbsolutePath());
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = RWT.getRequest().getLocale().toLanguageTag();
+         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
       RWT.setLocale(Locale.forLanguageTag(language));
 
+      DateFormatFactory.createInstance();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
@@ -187,17 +186,6 @@ public class Startup implements EntryPoint, StartupParameters
             display.dispose();
             return 0;
          }
-
-         PreferenceStore.loadFromServer(Registry.getSession());
-         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
-         if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
-         {
-            logger.info("Post-login language: " + postLoginLanguage);
-            RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
-         }
-         DateFormatFactory.createInstance();
-         ThemeEngine.reload();
-         StatusDisplayInfo.updateColors();
 
          display.addListener(SWT.Dispose, (e) -> {
             logger.info("Main display disposed");

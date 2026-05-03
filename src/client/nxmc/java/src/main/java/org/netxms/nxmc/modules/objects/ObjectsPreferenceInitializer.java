@@ -18,7 +18,7 @@
  */
 package org.netxms.nxmc.modules.objects;
 
-import org.netxms.nxmc.AbstractPreferenceStore;
+import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.services.PreferenceInitializer;
 
 /**
@@ -27,10 +27,10 @@ import org.netxms.nxmc.services.PreferenceInitializer;
 public class ObjectsPreferenceInitializer implements PreferenceInitializer
 {
    /**
-    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.AbstractPreferenceStore)
+    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.PreferenceStore)
     */
    @Override
-   public void initializeDefaultPreferences(AbstractPreferenceStore ps)
+   public void initializeDefaultPreferences(PreferenceStore ps)
    {
       ps.setDefault("ObjectBrowser.filterAutoApply", true);
       ps.setDefault("ObjectBrowser.filterDelay", 300);

@@ -597,5 +597,4 @@ public class Memento
       {
       }
    }
-
 }
