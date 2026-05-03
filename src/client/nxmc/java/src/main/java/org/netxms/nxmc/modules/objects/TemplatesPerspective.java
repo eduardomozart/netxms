@@ -64,7 +64,7 @@ public class TemplatesPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Objects");
+      return LocalizationHelper.getI18n(TemplatesPerspective.class).tr("Objects");
    }
 
    /**

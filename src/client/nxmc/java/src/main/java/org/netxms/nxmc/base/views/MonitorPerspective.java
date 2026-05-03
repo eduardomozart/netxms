@@ -24,7 +24,6 @@ import java.util.ServiceLoader;
 import org.netxms.client.NXCSession;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.services.MonitorDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +36,6 @@ public class MonitorPerspective extends Perspective
    private static final Logger logger = LoggerFactory.getLogger(MonitorPerspective.class);
 
    private List<MonitorDescriptor> monitors = new ArrayList<MonitorDescriptor>();
-
-   private final I18n i18n = LocalizationHelper.getI18n(MonitorPerspective.class);
 
    /**
     * The constructor.
@@ -60,7 +57,7 @@ public class MonitorPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Analysis");
+      return LocalizationHelper.getI18n(MonitorPerspective.class).tr("Analysis");
    }
 
    /**
