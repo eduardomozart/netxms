@@ -20,8 +20,10 @@ package org.netxms.nxmc;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Properties;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
 import org.slf4j.Logger;
@@ -32,19 +34,21 @@ import org.slf4j.LoggerFactory;
  * is held in a static field. All shared logic lives in {@link AbstractPreferenceStore}.
  *
  * In addition to server-side persistence, this variant maintains a local file at
- * {@code <stateDir>/nxmc.preferences} so that machine-level settings (server address,
- * login history, etc.) are available on the login dialog before a server connection
- * has been established.
+ * {@code <stateDir>/nxmc.preferences} that stores only the {@code Connect.*} keys
+ * (server address, login history, per-server credentials, etc.) in plain Java
+ * {@link Properties} format. This keeps the file human-readable and scoped to the
+ * settings that are needed before a server connection has been established.
  */
 public class PreferenceStore extends AbstractPreferenceStore
 {
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
+   private static final String LOCAL_KEY_PREFIX = "Connect.";
 
    private static PreferenceStore instance = null;
    private static File localFile = null;
 
    /**
-    * Open preference store, loading any previously-persisted local settings from
+    * Open preference store, loading any previously-persisted connection settings from
     * {@code stateDir/nxmc.preferences}.
     *
     * @param stateDir application state directory (e.g. {@code ~/.nxmc4})
@@ -58,10 +62,11 @@ public class PreferenceStore extends AbstractPreferenceStore
          localFile = new File(stateDir, "nxmc.preferences");
          if (localFile.isFile())
          {
-            try
+            Properties loaded = new Properties();
+            try (InputStream in = Files.newInputStream(localFile.toPath()))
             {
-               String content = new String(Files.readAllBytes(localFile.toPath()), StandardCharsets.UTF_8).trim();
-               instance.deserialize(content);
+               loaded.load(in);
+               instance.properties.putAll(loaded);
                logger.debug("Local preferences loaded from {}", localFile.getAbsolutePath());
             }
             catch(IOException e)
@@ -103,30 +108,33 @@ public class PreferenceStore extends AbstractPreferenceStore
 
    /**
     * Load preferences from server user attributes and attach session for future saves.
-    * After merging the server data the local file is updated so that the merged state is
-    * available the next time the application starts (before login).
+    * Called once after successful login.
     *
     * @param session active NXCSession
     */
    public static void loadFromServer(NXCSession session)
    {
       loadFromServer(instance, session);
-      saveLocalFile();
    }
 
    /**
-    * Persist the current in-memory preferences to the local file.
+    * Persist the current {@code Connect.*} preferences to the local file in plain
+    * Java properties format. Only these keys are written so that the file stays
+    * human-readable and does not expose server-side user preferences.
     */
    private static void saveLocalFile()
    {
       if (localFile == null || instance == null)
          return;
-      String encoded = instance.serialize();
-      if (encoded == null)
-         return;
-      try
+      Properties connectProps = new Properties();
+      for (String key : instance.properties.stringPropertyNames())
       {
-         Files.write(localFile.toPath(), encoded.getBytes(StandardCharsets.UTF_8));
+         if (key.startsWith(LOCAL_KEY_PREFIX))
+            connectProps.setProperty(key, instance.properties.getProperty(key));
+      }
+      try (OutputStream out = Files.newOutputStream(localFile.toPath()))
+      {
+         connectProps.store(out, "NetXMS Management Console - local connection preferences");
          logger.debug("Local preferences saved to {}", localFile.getAbsolutePath());
       }
       catch(IOException e)
@@ -138,14 +146,15 @@ public class PreferenceStore extends AbstractPreferenceStore
    /**
     * {@inheritDoc}
     *
-    * Saves to the local file in addition to scheduling the server-side save so that
-    * login-dialog settings (server address, login name, etc.) are available before the
-    * next login.
+    * Saves the local file only when a {@code Connect.*} key changes so that
+    * login-dialog settings (server address, login name, etc.) are persisted
+    * without writing user-specific UI preferences to disk.
     */
    @Override
    protected void onPropertyChange(String property, String oldValue, String newValue)
    {
       super.onPropertyChange(property, oldValue, newValue);
-      saveLocalFile();
+      if (property.startsWith(LOCAL_KEY_PREFIX))
+         saveLocalFile();
    }
 }
