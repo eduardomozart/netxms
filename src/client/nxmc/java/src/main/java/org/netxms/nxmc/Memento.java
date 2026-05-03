@@ -44,11 +44,6 @@ public class Memento
    private static final Logger logger = LoggerFactory.getLogger(HistoricalGraphView.class);
 
    /**
-    * Server-side user attribute name used to persist preferences across sessions and devices.
-    */
-   protected static final String SERVER_ATTR_NAME = "nxmc.preferences";
-
-   /**
     * Build full property name for server-specific properties
     *
     * @param baseName base property name

@@ -98,7 +98,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
          return;
       try
       {
-         String encoded = session.getAttributeForCurrentUser(SERVER_ATTR_NAME);
+         String encoded = session.getAttributeForCurrentUser("nxmc.preferences");
          if ((encoded != null) && !encoded.isEmpty())
          {
             store.deserialize(encoded);
@@ -122,14 +122,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    private ScheduledFuture<?> pendingSave = null;
 
    /**
-    * Default constructor
-    */
-   private PreferenceStore()
-   {
-      super();
-   }
-
-   /**
     * Schedule a debounced write of preferences to server user attributes.
     */
    private synchronized void save()
@@ -143,7 +135,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
       pendingSave = saveScheduler.schedule(() -> {
          try
          {
-            session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
+            session.setAttributeForCurrentUser("nxmc.preferences", encoded);
          }
          catch(Exception e)
          {
