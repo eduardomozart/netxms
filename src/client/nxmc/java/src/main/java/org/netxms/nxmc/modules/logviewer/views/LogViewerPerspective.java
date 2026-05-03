@@ -52,7 +52,7 @@ public class LogViewerPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(LogViewerPerspective.class).tr("Analysis");
+      return i18n.tr("Analysis");
    }
 
    /**

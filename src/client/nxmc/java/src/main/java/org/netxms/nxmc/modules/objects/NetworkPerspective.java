@@ -66,7 +66,7 @@ public class NetworkPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(NetworkPerspective.class).tr("Objects");
+      return i18n.tr("Objects");
    }
 
    /**

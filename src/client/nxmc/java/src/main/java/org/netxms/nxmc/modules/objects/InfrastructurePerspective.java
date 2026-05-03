@@ -44,7 +44,7 @@ public class InfrastructurePerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(InfrastructurePerspective.class).tr("Objects");
+      return i18n.tr("Objects");
    }
 
    /**

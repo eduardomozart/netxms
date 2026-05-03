@@ -42,7 +42,7 @@ public class DashboardsPerspective extends ObjectsPerspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(DashboardsPerspective.class).tr("Monitoring");
+      return i18n.tr("Monitoring");
    }
 
    /**

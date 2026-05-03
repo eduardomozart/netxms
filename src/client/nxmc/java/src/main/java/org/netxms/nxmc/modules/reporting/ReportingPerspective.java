@@ -47,7 +47,7 @@ public class ReportingPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(ReportingPerspective.class).tr("Business");
+      return i18n.tr("Business");
    }
 
    /**

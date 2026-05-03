@@ -85,7 +85,7 @@ public class ConfigurationPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Administration");
+      return i18n.tr("Administration");
    }
 
    /**
