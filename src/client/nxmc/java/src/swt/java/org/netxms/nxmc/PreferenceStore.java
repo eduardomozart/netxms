@@ -113,13 +113,21 @@ public class PreferenceStore extends AbstractPreferenceStore
 
    /**
     * Load preferences from server user attributes and attach session for future saves.
-    * Called once after successful login.
+    * Called once after successful login. The {@code Connect.*} keys already loaded from
+    * the local file are preserved across the server-side deserialisation.
     *
     * @param session active NXCSession
     */
    public static void loadFromServer(NXCSession session)
    {
+      Properties connectKeys = new Properties();
+      for (String key : instance.properties.stringPropertyNames())
+      {
+         if (key.startsWith("Connect."))
+            connectKeys.setProperty(key, instance.properties.getProperty(key));
+      }
       loadFromServer(instance, session);
+      instance.properties.putAll(connectKeys);
    }
 
    /**

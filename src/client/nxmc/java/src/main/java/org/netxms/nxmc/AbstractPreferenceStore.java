@@ -83,7 +83,7 @@ public abstract class AbstractPreferenceStore extends Memento implements IPrefer
          String encoded = session.getAttributeForCurrentUser(".nxmc.preferences");
          if ((encoded != null) && !encoded.isEmpty())
          {
-            store.merge(encoded);
+            store.deserialize(encoded);
             logger.debug("Preferences loaded from server");
          }
       }
