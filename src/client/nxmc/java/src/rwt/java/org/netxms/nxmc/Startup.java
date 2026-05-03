@@ -158,7 +158,6 @@ public class Startup implements EntryPoint, StartupParameters
       logger.info("Language: " + language);
       RWT.setLocale(Locale.forLanguageTag(language));
 
-      DateFormatFactory.createInstance();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
