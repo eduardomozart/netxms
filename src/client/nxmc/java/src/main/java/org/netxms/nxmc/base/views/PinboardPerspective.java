@@ -37,7 +37,7 @@ public class PinboardPerspective extends Perspective
 {
    private static final Logger logger = LoggerFactory.getLogger(PinboardPerspective.class);
 
-   private static final I18n i18n = LocalizationHelper.getI18n(PinboardPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(PinboardPerspective.class);
 
    /**
     * @param name
@@ -45,7 +45,7 @@ public class PinboardPerspective extends Perspective
     */
    public PinboardPerspective()
    {
-      super("pinboard", i18n.tr("Pinboard"), "icons/perspectives/pinboard.svg");
+      super("pinboard", () -> LocalizationHelper.getI18n(PinboardPerspective.class).tr("Pinboard"), "icons/perspectives/pinboard.svg");
    }
 
    /**

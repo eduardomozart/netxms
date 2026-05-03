@@ -48,6 +48,7 @@ public class LanguagePage extends PropertyPage
     * Available languages
     */
    private static final Language[] languages = {
+      new Language("auto", Registry.IS_WEB_CLIENT ? "Auto-Detect (Browser Language)" : "Auto-Detect (OS Language)"),
       new Language("de", "Deutsch - German"),
       new Language("en", "English"),
       new Language("es", "Español - Spanish"),
@@ -77,7 +78,7 @@ public class LanguagePage extends PropertyPage
       layout.marginWidth = 0;
       dialogArea.setLayout(layout);
 
-      final String currentLanguage = settings.getAsString("nxmc.language", "en");
+      final String currentLanguage = settings.getAsString("nxmc.language", "auto");
       languageSelector = new LabeledCombo(dialogArea, SWT.NONE);
       languageSelector.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
       languageSelector.setLabel(i18n.tr("Selected language"));

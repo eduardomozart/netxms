@@ -38,14 +38,14 @@ public class ToolsPerspective extends Perspective
 
    private List<ToolDescriptor> elements = new ArrayList<ToolDescriptor>();
 
-   private static final I18n i18n = LocalizationHelper.getI18n(ToolsPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(ToolsPerspective.class);
 
    /**
     * The constructor.
     */
    public ToolsPerspective()
    {
-      super("tools", i18n.tr("Tools"), "icons/perspectives/tools.svg");
+      super("tools", () -> LocalizationHelper.getI18n(ToolsPerspective.class).tr("Tools"), "icons/perspectives/tools.svg");
 
       ServiceLoader<ToolDescriptor> loader = ServiceLoader.load(ToolDescriptor.class, getClass().getClassLoader());
       for(ToolDescriptor e : loader)
@@ -62,7 +62,7 @@ public class ToolsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Administration");
+      return LocalizationHelper.getI18n(ToolsPerspective.class).tr("Administration");
    }
 
    /**

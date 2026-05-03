@@ -32,7 +32,7 @@ import org.xnap.commons.i18n.I18n;
  */
 public class GraphsPerspective extends Perspective
 {
-   private static final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(GraphsPerspective.class);
 
    private Object currentSelection = null;
 
@@ -41,7 +41,7 @@ public class GraphsPerspective extends Perspective
     */
    public GraphsPerspective()
    {
-      super("graphs", i18n.tr("Graphs"), "icons/perspectives/graphs.svg");
+      super("graphs", () -> LocalizationHelper.getI18n(GraphsPerspective.class).tr("Graphs"), "icons/perspectives/graphs.svg");
    }
 
    /**
@@ -50,7 +50,7 @@ public class GraphsPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Monitoring");
+      return LocalizationHelper.getI18n(GraphsPerspective.class).tr("Monitoring");
    }
 
    /**

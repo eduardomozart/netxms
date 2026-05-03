@@ -80,9 +80,7 @@ public abstract class Perspective
    private UIElementFilter elementFilter;
 
    /**
-    * Create new perspective. The supplier is called each time
-    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
-    * time.
+    * Create new perspective.
     *
     * @param id perspective ID
     * @param name perspective display name
@@ -90,8 +88,22 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
+      this(id, () -> name, imagePath);
+   }
+
+   /**
+    * Create new perspective with a lazily-evaluated display name. The supplier is called each time
+    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
+    * time.
+    *
+    * @param id perspective ID
+    * @param nameSupplier supplier that returns the perspective display name
+    * @param imagePath path to perspective SVG image resource
+    */
+   protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
+   {
       this.id = id;
-      this.name = name;
+      this.nameSupplier = nameSupplier;
       this.imagePath = imagePath;
 
       navigationSelectionListener = new ISelectionChangedListener() {
@@ -103,7 +115,7 @@ public abstract class Perspective
       };
 
       configurePerspective(configuration);
-      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
+      logger.debug("Perspective \"" + nameSupplier.get() + "\" configuration: " + configuration);
    }
 
    /**

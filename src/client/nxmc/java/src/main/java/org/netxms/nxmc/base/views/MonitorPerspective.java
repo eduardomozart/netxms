@@ -38,14 +38,14 @@ public class MonitorPerspective extends Perspective
 
    private List<MonitorDescriptor> monitors = new ArrayList<MonitorDescriptor>();
 
-   private static final I18n i18n = LocalizationHelper.getI18n(MonitorPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(MonitorPerspective.class);
 
    /**
     * The constructor.
     */
    public MonitorPerspective()
    {
-      super("monitor", i18n.tr("Monitor"), "icons/perspectives/monitor.svg");
+      super("monitor", () -> LocalizationHelper.getI18n(MonitorPerspective.class).tr("Monitor"), "icons/perspectives/monitor.svg");
 
       ServiceLoader<MonitorDescriptor> loader = ServiceLoader.load(MonitorDescriptor.class, getClass().getClassLoader());
       for(MonitorDescriptor e : loader)
@@ -60,7 +60,7 @@ public class MonitorPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return i18n.tr("Analysis");
+      return LocalizationHelper.getI18n(MonitorPerspective.class).tr("Analysis");
    }
 
    /**
