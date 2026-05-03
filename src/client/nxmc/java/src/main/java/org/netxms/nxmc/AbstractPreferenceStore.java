@@ -382,7 +382,7 @@ public abstract class AbstractPreferenceStore extends Memento implements IPrefer
    @Override
    public void setDefault(String name, double value)
    {
-      setDefault(name, value);
+      setDefault(name, Double.toString(value));
    }
 
    /**
@@ -391,7 +391,7 @@ public abstract class AbstractPreferenceStore extends Memento implements IPrefer
    @Override
    public void setDefault(String name, float value)
    {
-      setDefault(name, value);
+      setDefault(name, Float.toString(value));
    }
 
    /**

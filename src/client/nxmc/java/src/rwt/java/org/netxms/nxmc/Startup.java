@@ -155,7 +155,7 @@ public class Startup implements EntryPoint, StartupParameters
       PreferenceStore.open();
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+         language = RWT.getRequest().getLocale().toLanguageTag();
       logger.info("Language: " + language);
       RWT.setLocale(Locale.forLanguageTag(language));
 
@@ -188,9 +188,12 @@ public class Startup implements EntryPoint, StartupParameters
          }
 
          PreferenceStore.loadFromServer(Registry.getSession());
-         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
-         logger.info("Post-login language: " + postLoginLanguage);
-         RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
+         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
+         if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
+         {
+            logger.info("Post-login language: " + postLoginLanguage);
+            RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
+         }
 
          display.addListener(SWT.Dispose, (e) -> {
             logger.info("Main display disposed");

@@ -134,7 +134,7 @@ public class Startup
 
       PreferenceStore.open();
 
-      String language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+      String language = null;
       for(String s : args)
       {
          if (s.startsWith("-language="))
@@ -142,6 +142,8 @@ public class Startup
             language = s.substring(10);
          }
       }
+      if ((language == null) || language.isEmpty())
+         language = Locale.getDefault().toLanguageTag();
       logger.info("Language: " + language);
       Locale.setDefault(Locale.forLanguageTag(language));
 
@@ -183,6 +185,12 @@ public class Startup
       {
          NXCSession session = Registry.getSession();
          PreferenceStore.loadFromServer(session);
+         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
+         if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
+         {
+            logger.info("Post-login language: " + postLoginLanguage);
+            Locale.setDefault(Locale.forLanguageTag(postLoginLanguage));
+         }
          DataCollectionDisplayInfo.init();
          MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);
