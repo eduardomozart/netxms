@@ -18,11 +18,14 @@
  */
 package org.netxms.nxmc;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Base64;
 import java.util.Properties;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
@@ -34,13 +37,16 @@ import org.slf4j.LoggerFactory;
  * is held in a static field. All shared logic lives in {@link AbstractPreferenceStore}.
  *
  * In addition to server-side persistence, this variant maintains a local file at
- * {@code <stateDir>/nxmc.preferences} in plain Java {@link Properties} format so that
- * all preferences (including server address, login history, UI state, etc.) are
- * available before a server connection has been established.
+ * {@code <stateDir>/nxmc.preferences} in plain Java {@link Properties} format. The
+ * local file stores only the {@code Connect.*} keys (server address, login history,
+ * per-server credentials, etc.) which are never synced to the server. All other
+ * preferences are synced to the server via the {@code .nxmc.preferences} user
+ * attribute and are never written to the local file.
  */
 public class PreferenceStore extends AbstractPreferenceStore
 {
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
+   private static final String LOCAL_KEY_PREFIX = "Connect.";
 
    private static PreferenceStore instance = null;
    private static File localFile = null;
@@ -116,16 +122,23 @@ public class PreferenceStore extends AbstractPreferenceStore
    }
 
    /**
-    * Persist all current preferences to the local file in plain Java properties
-    * format so that they are available before the next server login.
+    * Persist the current {@code Connect.*} preferences to the local file in plain
+    * Java properties format. Only these keys are written; all other preferences are
+    * managed exclusively via server-side user attributes.
     */
    private static void saveLocalFile()
    {
       if (localFile == null || instance == null)
          return;
+      Properties connectProps = new Properties();
+      for (String key : instance.properties.stringPropertyNames())
+      {
+         if (key.startsWith(LOCAL_KEY_PREFIX))
+            connectProps.setProperty(key, instance.properties.getProperty(key));
+      }
       try (OutputStream out = Files.newOutputStream(localFile.toPath()))
       {
-         instance.properties.store(out, "NetXMS Management Console - local preferences");
+         connectProps.store(out, "NetXMS Management Console - local connection preferences");
          logger.debug("Local preferences saved to {}", localFile.getAbsolutePath());
       }
       catch(IOException e)
@@ -137,13 +150,68 @@ public class PreferenceStore extends AbstractPreferenceStore
    /**
     * {@inheritDoc}
     *
-    * Saves all preferences to the local file on every property change so that
-    * the current state is available before the next server login.
+    * Saves the local file only when a {@code Connect.*} key changes. All other
+    * keys are persisted exclusively to the server via the inherited save mechanism.
     */
    @Override
    protected void onPropertyChange(String property, String oldValue, String newValue)
    {
       super.onPropertyChange(property, oldValue, newValue);
-      saveLocalFile();
+      if (property.startsWith(LOCAL_KEY_PREFIX))
+         saveLocalFile();
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * Excludes {@code Connect.*} keys from the Base64 blob sent to the server so
+    * that connection-specific settings (server address, login history, etc.) are
+    * never stored in server-side user attributes.
+    */
+   @Override
+   protected String serialize()
+   {
+      Properties serverProps = new Properties();
+      for (String key : properties.stringPropertyNames())
+      {
+         if (!key.startsWith(LOCAL_KEY_PREFIX))
+            serverProps.setProperty(key, properties.getProperty(key));
+      }
+      try (ByteArrayOutputStream out = new ByteArrayOutputStream(8192))
+      {
+         serverProps.store(out, "");
+         return Base64.getEncoder().encodeToString(out.toByteArray());
+      }
+      catch(IOException e)
+      {
+         return null;
+      }
+   }
+
+   /**
+    * {@inheritDoc}
+    *
+    * Skips any {@code Connect.*} keys present in the server-side blob so that
+    * connection settings from one server are never overwritten by data loaded
+    * from another server.
+    */
+   @Override
+   protected void merge(String encoded)
+   {
+      try
+      {
+         byte[] bytes = Base64.getDecoder().decode(encoded);
+         Properties incoming = new Properties();
+         incoming.load(new ByteArrayInputStream(bytes));
+         for (String key : incoming.stringPropertyNames())
+         {
+            if (!key.startsWith(LOCAL_KEY_PREFIX))
+               properties.setProperty(key, incoming.getProperty(key));
+         }
+      }
+      catch(Exception e)
+      {
+         logger.debug("Failed to merge encoded preferences from server", e);
+      }
    }
 }
