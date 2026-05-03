@@ -138,7 +138,6 @@ public class Startup implements EntryPoint, StartupParameters
       {
          stateDir.mkdir();
       }
-      Registry.setStateDir(stateDir);
       logger.info("NetXMS Management Console version " + VersionInfo.version() + " starting");
       logger.info("State directory: " + stateDir.getAbsolutePath());
 
@@ -157,6 +156,8 @@ public class Startup implements EntryPoint, StartupParameters
          language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
       RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
+
+      Registry.setStateDir(stateDir);
 
       DateFormatFactory.createInstance();
       SharedIcons.init();
