@@ -47,7 +47,7 @@ public final class LocalizationHelper
     */
    public static I18n getI18n(Class<?> c)
    {
-      return I18nFactory.getI18n(c, locale, I18nFactory.FALLBACK);
+      return I18nFactory.getI18n(c, RWT.getLocale(), I18nFactory.FALLBACK);
    }
 
    /**
