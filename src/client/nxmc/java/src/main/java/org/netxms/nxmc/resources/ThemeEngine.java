@@ -244,6 +244,11 @@ public class ThemeEngine
    private void reload(Display display)
    {
       PreferenceStore ps = PreferenceStore.getInstance(display);
+      if (ps == null)
+      {
+         loadDefaultTheme(display);
+         return;
+      }
       String currentTheme = ps.getString("CurrentTheme");
       if ((currentTheme == null) || currentTheme.isEmpty() || currentTheme.equalsIgnoreCase("[automatic]"))
       {
