@@ -33,6 +33,7 @@ import org.eclipse.rap.rwt.RWT;
 import org.eclipse.rap.rwt.internal.service.ContextProvider;
 import org.eclipse.rap.rwt.service.UISession;
 import org.eclipse.swt.widgets.Display;
+import org.netxms.client.NXCSession;
 import org.netxms.nxmc.services.PreferenceInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
    private static final String COOKIE_NAME = "nxmcStoreId";
    private static final int COOKIE_MAX_AGE_SEC = 3600 * 24 * 90; // 3 months
+   private static final String SERVER_ATTR_NAME = "nxmc.preferences";
 
    /**
     * Open local store
@@ -150,8 +152,36 @@ public class PreferenceStore extends Memento implements IPreferenceStore
       return (PreferenceStore)RWT.getUISession(display).getAttribute("netxms.preferenceStore");
    }
 
+   /**
+    * Load preferences from server user attributes and attach session for future saves.
+    * Server-side values overlay the local file-based values. Called once after successful login.
+    *
+    * @param session active NXCSession
+    */
+   public static void loadFromServer(NXCSession session)
+   {
+      PreferenceStore store = getInstance();
+      if (store == null)
+         return;
+      try
+      {
+         String encoded = session.getAttributeForCurrentUser(SERVER_ATTR_NAME);
+         if ((encoded != null) && !encoded.isEmpty())
+         {
+            store.deserialize(encoded);
+            logger.debug("Preferences loaded from server");
+         }
+      }
+      catch(Exception e)
+      {
+         logger.error("Error loading preferences from server", e);
+      }
+      store.serverSession = session;
+   }
+
    private File storeFile;
    private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
+   private NXCSession serverSession = null;
 
    /**
     * Default constructor
@@ -257,6 +287,30 @@ public class PreferenceStore extends Memento implements IPreferenceStore
             l.propertyChange(event);
       }
       save();
+      saveToServer();
+   }
+
+   /**
+    * Save preferences to server user attributes asynchronously.
+    */
+   private void saveToServer()
+   {
+      if (serverSession == null)
+         return;
+      final NXCSession session = serverSession;
+      final String encoded = serialize();
+      Thread thread = new Thread(() -> {
+         try
+         {
+            session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
+         }
+         catch(Exception e)
+         {
+            logger.warn("Error saving preferences to server", e);
+         }
+      }, "PreferenceSaver");
+      thread.setDaemon(true);
+      thread.start();
    }
 
    /**

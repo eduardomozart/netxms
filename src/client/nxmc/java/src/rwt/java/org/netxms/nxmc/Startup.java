@@ -187,6 +187,11 @@ public class Startup implements EntryPoint, StartupParameters
             return 0;
          }
 
+         PreferenceStore.loadFromServer(Registry.getSession());
+         String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+         logger.info("Post-login language: " + postLoginLanguage);
+         RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
+
          display.addListener(SWT.Dispose, (e) -> {
             logger.info("Main display disposed");
             NXCSession session = Registry.getSession(display);
