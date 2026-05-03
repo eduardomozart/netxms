@@ -22,7 +22,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.reporting.views.ReportNavigationView;
 import org.netxms.nxmc.modules.reporting.views.ReportView;
 
@@ -31,8 +30,6 @@ import org.netxms.nxmc.modules.reporting.views.ReportView;
  */
 public class ReportingPerspective extends Perspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(ReportingPerspective.class);
-
    /**
     * Create reporting perspective
     */
