@@ -153,10 +153,9 @@ public class Startup implements EntryPoint, StartupParameters
       PreferenceStore.open(stateDir.getAbsolutePath());
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = PreferenceStore.getInstance().getAsString("nxmc.language", "auto");
+         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
-      if (!"auto".equals(language))
-         RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
+      RWT.setLocale(Locale.forLanguageTag(language));
 
       Registry.setStateDir(stateDir);
 
@@ -197,17 +196,6 @@ public class Startup implements EntryPoint, StartupParameters
          });
 
          kioskMode = Boolean.parseBoolean(getParameter("kiosk-mode"));
-
-         // Re-apply the locale before building the main window so that
-         // perspective names (resolved lazily via Supplier<String>) and all
-         // other UI elements use the correct language.  Re-read PreferenceStore
-         // so that a language saved during doLogin() takes effect, but keep the
-         // ?lang URL parameter as the highest-priority override.
-         String postLoginLanguage = getParameter("lang");
-         if ((postLoginLanguage == null) || postLoginLanguage.isEmpty())
-            postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", "auto");
-         if (!"auto".equals(postLoginLanguage))
-            RWT.setLocale(LocalizationHelper.localeFromLanguageCode(postLoginLanguage));
 
          if (!kioskMode)
          {
