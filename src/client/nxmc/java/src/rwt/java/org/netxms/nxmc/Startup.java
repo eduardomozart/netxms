@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -152,7 +152,6 @@ public class Startup implements EntryPoint, StartupParameters
       }
       logger.info("Registered themes: " + sb.toString());
 
-      PreferenceStore.open();
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
          language = RWT.getRequest().getLocale().toLanguageTag();
@@ -187,6 +186,7 @@ public class Startup implements EntryPoint, StartupParameters
             return 0;
          }
 
+         PreferenceStore.open();
          PreferenceStore.loadFromServer(Registry.getSession());
          String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
          if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
@@ -194,6 +194,7 @@ public class Startup implements EntryPoint, StartupParameters
             logger.info("Post-login language: " + postLoginLanguage);
             RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
          }
+         DateFormatFactory.createInstance();
 
          display.addListener(SWT.Dispose, (e) -> {
             logger.info("Main display disposed");

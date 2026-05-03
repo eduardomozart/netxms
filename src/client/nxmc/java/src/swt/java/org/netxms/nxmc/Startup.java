@@ -1,6 +1,6 @@
 /**
  * NetXMS - open source network management system
- * Copyright (C) 2003-2025 Raden Solutions
+ * Copyright (C) 2003-2026 Raden Solutions
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -132,8 +132,6 @@ public class Startup
       windowIcons[5] = ResourceManager.getImage(iconResourcePrefix + "16x16.png");
       Window.setDefaultImages(windowIcons);
 
-      PreferenceStore.open();
-
       String language = null;
       for(String s : args)
       {
@@ -147,7 +145,6 @@ public class Startup
       logger.info("Language: " + language);
       Locale.setDefault(Locale.forLanguageTag(language));
 
-      DateFormatFactory.updateFromPreferences();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
@@ -184,6 +181,7 @@ public class Startup
       if (doLogin(display, args))
       {
          NXCSession session = Registry.getSession();
+         PreferenceStore.open();
          PreferenceStore.loadFromServer(session);
          String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
          if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
@@ -191,6 +189,7 @@ public class Startup
             logger.info("Post-login language: " + postLoginLanguage);
             Locale.setDefault(Locale.forLanguageTag(postLoginLanguage));
          }
+         DateFormatFactory.updateFromPreferences();
          DataCollectionDisplayInfo.init();
          MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);
