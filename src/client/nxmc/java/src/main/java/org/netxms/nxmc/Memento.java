@@ -615,6 +615,7 @@ public class Memento
       }
       catch(Exception e)
       {
+         logger.debug("Failed to merge encoded preferences", e);
       }
    }
 }
