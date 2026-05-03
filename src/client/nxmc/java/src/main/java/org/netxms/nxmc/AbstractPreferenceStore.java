@@ -80,7 +80,7 @@ public abstract class AbstractPreferenceStore extends Memento implements IPrefer
          return;
       try
       {
-         String encoded = session.getAttributeForCurrentUser("nxmc.preferences");
+         String encoded = session.getAttributeForCurrentUser(".nxmc.preferences");
          if ((encoded != null) && !encoded.isEmpty())
          {
             store.deserialize(encoded);
@@ -117,7 +117,7 @@ public abstract class AbstractPreferenceStore extends Memento implements IPrefer
       pendingSave = saveScheduler.schedule(() -> {
          try
          {
-            session.setAttributeForCurrentUser("nxmc.preferences", encoded);
+            session.setAttributeForCurrentUser(".nxmc.preferences", encoded);
          }
          catch(Exception e)
          {
