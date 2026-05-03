@@ -149,7 +149,7 @@ public class PreferenceStore extends AbstractPreferenceStore
       }
       try (OutputStream out = Files.newOutputStream(localFile.toPath()))
       {
-         connectProps.store(out, "NetXMS Management Console - local connection preferences");
+         // connectProps.store(out, "NetXMS Management Console - local connection preferences");
          logger.debug("Local preferences saved to {}", localFile.getAbsolutePath());
       }
       catch(IOException e)
