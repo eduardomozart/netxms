@@ -82,6 +82,7 @@ import org.netxms.nxmc.modules.objecttools.ObjectToolsCache;
 import org.netxms.nxmc.modules.snmp.shared.MibCache;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
+import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,6 +153,8 @@ public class Startup implements EntryPoint, StartupParameters
       }
       logger.info("Registered themes: " + sb.toString());
 
+      PreferenceStore.open();
+
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
          language = RWT.getRequest().getLocale().toLanguageTag();
@@ -185,7 +188,6 @@ public class Startup implements EntryPoint, StartupParameters
             return 0;
          }
 
-         PreferenceStore.open();
          PreferenceStore.loadFromServer(Registry.getSession());
          String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
          if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
@@ -194,6 +196,8 @@ public class Startup implements EntryPoint, StartupParameters
             RWT.setLocale(Locale.forLanguageTag(postLoginLanguage));
          }
          DateFormatFactory.createInstance();
+         ThemeEngine.reload();
+         StatusDisplayInfo.updateColors();
 
          display.addListener(SWT.Dispose, (e) -> {
             logger.info("Main display disposed");

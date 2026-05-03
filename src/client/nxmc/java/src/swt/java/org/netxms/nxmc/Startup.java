@@ -82,6 +82,7 @@ import org.netxms.nxmc.modules.snmp.shared.MibCache;
 import org.netxms.nxmc.resources.ResourceManager;
 import org.netxms.nxmc.resources.SharedIcons;
 import org.netxms.nxmc.resources.StatusDisplayInfo;
+import org.netxms.nxmc.resources.ThemeEngine;
 import org.netxms.nxmc.tools.MessageDialogHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,6 +146,7 @@ public class Startup
       logger.info("Language: " + language);
       Locale.setDefault(Locale.forLanguageTag(language));
 
+      PreferenceStore.open();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
@@ -181,7 +183,6 @@ public class Startup
       if (doLogin(display, args))
       {
          NXCSession session = Registry.getSession();
-         PreferenceStore.open();
          PreferenceStore.loadFromServer(session);
          String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
          if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
@@ -190,6 +191,8 @@ public class Startup
             Locale.setDefault(Locale.forLanguageTag(postLoginLanguage));
          }
          DateFormatFactory.updateFromPreferences();
+         ThemeEngine.reload();
+         StatusDisplayInfo.updateStatusColors();
          DataCollectionDisplayInfo.init();
          MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);

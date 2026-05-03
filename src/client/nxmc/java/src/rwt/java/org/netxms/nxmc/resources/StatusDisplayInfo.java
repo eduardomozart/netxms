@@ -110,6 +110,18 @@ public final class StatusDisplayInfo
       return (StatusDisplayInfo)RWT.getUISession().getAttribute("netxms.statusDisplayInfo");
    }
 
+   /**
+    * Update status colors for the current RWT session. Called after user
+    * preferences are loaded from the server so that any saved color overrides
+    * are applied to the already-initialised instance.
+    */
+   public static void updateColors()
+   {
+      StatusDisplayInfo instance = getInstance();
+      if (instance != null)
+         instance.updateStatusColors();
+   }
+
 	/**
 	 * Update status colors
 	 */
