@@ -18,7 +18,6 @@
  */
 package org.netxms.nxmc;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +48,6 @@ import org.slf4j.LoggerFactory;
 public class PreferenceStore extends AbstractPreferenceStore
 {
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
-   private static final String LOCAL_KEY_PREFIX = "Connect.";
 
    private static PreferenceStore instance = null;
    private static File localFile = null;
@@ -138,7 +136,7 @@ public class PreferenceStore extends AbstractPreferenceStore
       Properties connectProps = new Properties();
       for (String key : instance.properties.stringPropertyNames())
       {
-         if (key.startsWith(LOCAL_KEY_PREFIX))
+         if (key.startsWith("Connect."))
             connectProps.setProperty(key, instance.properties.getProperty(key));
       }
       try (OutputStream out = Files.newOutputStream(localFile.toPath()))
@@ -165,7 +163,7 @@ public class PreferenceStore extends AbstractPreferenceStore
       Properties serverProps = new Properties();
       for (String key : properties.stringPropertyNames())
       {
-         if (!key.startsWith(LOCAL_KEY_PREFIX))
+         if (!key.startsWith("Connect."))
             serverProps.setProperty(key, properties.getProperty(key));
       }
       try (ByteArrayOutputStream out = new ByteArrayOutputStream(8192))
@@ -176,33 +174,6 @@ public class PreferenceStore extends AbstractPreferenceStore
       catch(IOException e)
       {
          return null;
-      }
-   }
-
-   /**
-    * {@inheritDoc}
-    *
-    * Skips any {@code Connect.*} keys present in the server-side blob so that
-    * connection settings from one server are never overwritten by data loaded
-    * from another server.
-    */
-   @Override
-   protected void merge(String encoded)
-   {
-      try
-      {
-         byte[] bytes = Base64.getDecoder().decode(encoded);
-         Properties incoming = new Properties();
-         incoming.load(new ByteArrayInputStream(bytes));
-         for (String key : incoming.stringPropertyNames())
-         {
-            if (!key.startsWith(LOCAL_KEY_PREFIX))
-               properties.setProperty(key, incoming.getProperty(key));
-         }
-      }
-      catch(Exception e)
-      {
-         logger.debug("Failed to merge encoded preferences from server", e);
       }
    }
 }
