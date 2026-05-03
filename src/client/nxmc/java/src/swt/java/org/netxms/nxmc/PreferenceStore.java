@@ -18,10 +18,6 @@
  */
 package org.netxms.nxmc;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -47,11 +43,11 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    private static PreferenceStore instance = null;
 
    /**
-    * Open local store
+    * Open preference store.
     */
-   protected static void open(String stateDir)
+   protected static void open()
    {
-      instance = new PreferenceStore(new File(stateDir + File.separator + "nxmc.preferences"));
+      instance = new PreferenceStore();
       ServiceLoader<PreferenceInitializer> loader = ServiceLoader.load(PreferenceInitializer.class, PreferenceStore.class.getClassLoader());
       for(PreferenceInitializer pi : loader)
       {
@@ -90,7 +86,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
 
    /**
     * Load preferences from server user attributes and attach session for future saves.
-    * Server-side values overlay the local file-based values. Called once after successful login.
+    * Called once after successful login.
     *
     * @param session active NXCSession
     */
@@ -115,7 +111,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
       store.serverSession = session;
    }
 
-   private File storeFile;
    private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
    private volatile NXCSession serverSession = null;
    private final ScheduledExecutorService saveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -128,66 +123,16 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    /**
     * Default constructor
     */
-   private PreferenceStore(File storeFile)
+   private PreferenceStore()
    {
       super();
-      this.storeFile = storeFile;
-      if (storeFile.exists())
-      {
-         FileReader reader = null;
-         try
-         {
-            reader = new FileReader(storeFile);
-            properties.load(reader);
-         }
-         catch(Exception e)
-         {
-            logger.error("Error reading local preferences from " + storeFile.getAbsolutePath(), e);
-         }
-         finally
-         {
-            if (reader != null)
-            {
-               try
-               {
-                  reader.close();
-               }
-               catch(IOException e)
-               {
-               }
-            }
-         }
-      }
    }
 
    /**
-    * Save preference store to local file and schedule a debounced write to server user attributes.
+    * Schedule a debounced write of preferences to server user attributes.
     */
    private synchronized void save()
    {
-      FileWriter writer = null;
-      try
-      {
-         writer = new FileWriter(storeFile);
-         properties.store(writer, "NXMC local preferences");
-      }
-      catch(Exception e)
-      {
-         logger.error("Error writing local preferences to " + storeFile.getAbsolutePath(), e);
-      }
-      finally
-      {
-         if (writer != null)
-         {
-            try
-            {
-               writer.close();
-            }
-            catch(IOException e)
-            {
-            }
-         }
-      }
       if (serverSession == null)
          return;
       final NXCSession session = serverSession;

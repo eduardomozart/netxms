@@ -152,7 +152,7 @@ public class Startup implements EntryPoint, StartupParameters
       }
       logger.info("Registered themes: " + sb.toString());
 
-      PreferenceStore.open(stateDir.getAbsolutePath());
+      PreferenceStore.open();
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
          language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");

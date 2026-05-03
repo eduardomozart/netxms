@@ -132,7 +132,7 @@ public class Startup
       windowIcons[5] = ResourceManager.getImage(iconResourcePrefix + "16x16.png");
       Window.setDefaultImages(windowIcons);
 
-      PreferenceStore.open(stateDir.getAbsolutePath());
+      PreferenceStore.open();
 
       String language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       for(String s : args)
@@ -184,6 +184,7 @@ public class Startup
          NXCSession session = Registry.getSession();
          PreferenceStore.loadFromServer(session);
          DataCollectionDisplayInfo.init();
+         MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);
          ObjectToolsCache.init();
          ObjectToolsCache.attachSession(display, session);

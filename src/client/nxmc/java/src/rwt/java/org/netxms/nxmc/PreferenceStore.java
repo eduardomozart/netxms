@@ -18,14 +18,9 @@
  */
 package org.netxms.nxmc;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -34,14 +29,11 @@ import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.rap.rwt.RWT;
-import org.eclipse.rap.rwt.internal.service.ContextProvider;
-import org.eclipse.rap.rwt.service.UISession;
 import org.eclipse.swt.widgets.Display;
 import org.netxms.client.NXCSession;
 import org.netxms.nxmc.services.PreferenceInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import jakarta.servlet.http.Cookie;
 
 /**
  * Local preference store
@@ -49,15 +41,13 @@ import jakarta.servlet.http.Cookie;
 public class PreferenceStore extends Memento implements IPreferenceStore
 {
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
-   private static final String COOKIE_NAME = "nxmcStoreId";
-   private static final int COOKIE_MAX_AGE_SEC = 3600 * 24 * 90; // 3 months
 
    /**
-    * Open local store
+    * Open preference store.
     */
-   protected static void open(String stateDir)
+   protected static void open()
    {
-      PreferenceStore instance = new PreferenceStore(new File(stateDir + File.separator + "nxmc.preferences." + getStoreId()));
+      PreferenceStore instance = new PreferenceStore();
       ServiceLoader<PreferenceInitializer> loader = ServiceLoader.load(PreferenceInitializer.class, PreferenceStore.class.getClassLoader());
       for(PreferenceInitializer pi : loader)
       {
@@ -72,66 +62,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
          }
       }
       RWT.getUISession().setAttribute("netxms.preferenceStore", instance);
-   }
-
-   /**
-    * Get store ID from session or cookie
-    *
-    * @return store ID from session or cookie
-    */
-   private static String getStoreId()
-   {
-      UISession uiSession = ContextProvider.getUISession();
-      String result = (String)uiSession.getAttribute(COOKIE_NAME);
-      if (result == null)
-      {
-         result = getStoreIdFromCookie();
-         if (result == null)
-         {
-            result = UUID.randomUUID().toString();
-         }
-         Cookie cookie = new Cookie(COOKIE_NAME, result);
-         cookie.setSecure(ContextProvider.getRequest().isSecure());
-         cookie.setMaxAge(COOKIE_MAX_AGE_SEC);
-         cookie.setHttpOnly(true);
-         ContextProvider.getResponse().addCookie(cookie);
-         uiSession.setAttribute(COOKIE_NAME, result);
-      }
-      return result;
-   }
-
-   /**
-    * Get store ID from cookie
-    *
-    * @return store ID or null
-    */
-   private static String getStoreIdFromCookie()
-   {
-      String result = null;
-      Cookie[] cookies = ContextProvider.getRequest().getCookies();
-      if (cookies != null)
-      {
-         for(int i = 0; result == null && i < cookies.length; i++)
-         {
-            Cookie cookie = cookies[i];
-            if (COOKIE_NAME.equals(cookie.getName()))
-            {
-               String value = cookie.getValue();
-               // Validate cookies to prevent cookie manipulation and related attacks
-               // see https://bugs.eclipse.org/bugs/show_bug.cgi?id=275380
-               try
-               {
-                  UUID.fromString(value);
-                  result = value;
-               }
-               catch(IllegalArgumentException e)
-               {
-                  logger.warn("Invalid store ID \"" + value + "\" received from client");
-               }
-            }
-         }
-      }
-      return result;
    }
 
    /**
@@ -157,7 +87,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
 
    /**
     * Load preferences from server user attributes and attach session for future saves.
-    * Server-side values overlay the local file-based values. Called once after successful login.
+    * Called once after successful login.
     *
     * @param session active NXCSession
     */
@@ -182,7 +112,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
       store.serverSession = session;
    }
 
-   private File storeFile;
    private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
    private volatile NXCSession serverSession = null;
    private final ScheduledExecutorService saveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -195,66 +124,16 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    /**
     * Default constructor
     */
-   private PreferenceStore(File storeFile)
+   private PreferenceStore()
    {
       super();
-      this.storeFile = storeFile;
-      if (storeFile.exists())
-      {
-         FileReader reader = null;
-         try
-         {
-            reader = new FileReader(storeFile);
-            properties.load(reader);
-         }
-         catch(Exception e)
-         {
-            logger.error("Error reading local preferences from " + storeFile.getAbsolutePath(), e);
-         }
-         finally
-         {
-            if (reader != null)
-            {
-               try
-               {
-                  reader.close();
-               }
-               catch(IOException e)
-               {
-               }
-            }
-         }
-      }
    }
 
    /**
-    * Save preference store to local file and schedule a debounced write to server user attributes.
+    * Schedule a debounced write of preferences to server user attributes.
     */
    private synchronized void save()
    {
-      FileWriter writer = null;
-      try
-      {
-         writer = new FileWriter(storeFile);
-         properties.store(writer, "NXMC local preferences");
-      }
-      catch(Exception e)
-      {
-         logger.error("Error writing local preferences to " + storeFile.getAbsolutePath(), e);
-      }
-      finally
-      {
-         if (writer != null)
-         {
-            try
-            {
-               writer.close();
-            }
-            catch(IOException e)
-            {
-            }
-         }
-      }
       if (serverSession == null)
          return;
       final NXCSession session = serverSession;
