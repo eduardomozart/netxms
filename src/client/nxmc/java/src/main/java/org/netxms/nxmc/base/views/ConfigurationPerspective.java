@@ -51,7 +51,7 @@ import org.xnap.commons.i18n.I18n;
 public class ConfigurationPerspective extends Perspective
 {
    private static final Logger logger = LoggerFactory.getLogger(ConfigurationPerspective.class);
-   private static final I18n i18n = LocalizationHelper.getI18n(ConfigurationPerspective.class);
+   private final I18n i18n = LocalizationHelper.getI18n(ConfigurationPerspective.class);
 
    private List<ConfigurationPerspectiveElement> elements = new ArrayList<ConfigurationPerspectiveElement>();
    private ConfigurationPerspectiveElement previousSelectedElement = null;
@@ -62,7 +62,7 @@ public class ConfigurationPerspective extends Perspective
     */
    public ConfigurationPerspective()
    {
-      super("configuration", i18n.tr("Configuration"), "icons/perspectives/configuration.svg");
+      super("configuration", LocalizationHelper.getI18n(ConfigurationPerspective.class).tr("Configuration"), "icons/perspectives/configuration.svg");
 
       ServiceLoader<ConfigurationPerspectiveElement> loader = ServiceLoader.load(ConfigurationPerspectiveElement.class, getClass().getClassLoader());
       for(ConfigurationPerspectiveElement e : loader)
