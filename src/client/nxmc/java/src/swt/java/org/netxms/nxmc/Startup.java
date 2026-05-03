@@ -133,6 +133,8 @@ public class Startup
       windowIcons[5] = ResourceManager.getImage(iconResourcePrefix + "16x16.png");
       Window.setDefaultImages(windowIcons);
 
+      PreferenceStore.open();
+
       String language = null;
       for(String s : args)
       {
@@ -146,7 +148,6 @@ public class Startup
       logger.info("Language: " + language);
       Locale.setDefault(Locale.forLanguageTag(language));
 
-      PreferenceStore.open();
       SharedIcons.init();
       StatusDisplayInfo.init(display);
       ObjectIcons.init(display);
