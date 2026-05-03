@@ -177,8 +177,7 @@ public class AlarmSounds extends PropertyPage
          buttonList.add(i, button);
       }
 
-      getShell().getDisplay().asyncExec(new Runnable() {
-         
+      new Thread("AlarmSoundsLoader") {
          @Override
          public void run()
          {
@@ -194,35 +193,47 @@ public class AlarmSounds extends PropertyPage
                   @Override
                   public void run()
                   {
-                     MessageDialogHelper.openError(getShell(), i18n.tr("Not possible to get melody list."),
-                           i18n.tr(" Not possible to get melody list. Error: ")+ e.getMessage());
+                     if (!getShell().isDisposed())
+                        MessageDialogHelper.openError(getShell(), i18n.tr("Not possible to get melody list."),
+                              i18n.tr(" Not possible to get melody list. Error: ") + e.getMessage());
                   }
                });
+               return;
             }
 
-            for(ServerFile s : serverFiles)
-            {
-               soundList.add(s.getName());
-            }
-            soundList.add(""); //$NON-NLS-1$
+            final ServerFile[] loadedFiles = serverFiles;
+            getShell().getDisplay().asyncExec(new Runnable() {
+               @Override
+               public void run()
+               {
+                  if (getShell().isDisposed())
+                     return;
 
-            for(int i = 0; i < 6; i++)
-            {
-               currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
-            }
-            soundList.addAll(currentSoundList);
+                  for(ServerFile s : loadedFiles)
+                  {
+                     soundList.add(s.getName());
+                  }
+                  soundList.add(""); //$NON-NLS-1$
 
-            Combo newCombo = null;
+                  for(int i = 0; i < 6; i++)
+                  {
+                     currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
+                  }
+                  soundList.addAll(currentSoundList);
 
-            for(int i = 0; i < 6; i++)
-            {
-               newCombo = comboList.get(i);
-               newCombo.setEnabled(true);
-               newCombo.setItems(soundList.toArray(new String[soundList.size()]));
-               newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
-            }
+                  Combo newCombo = null;
+
+                  for(int i = 0; i < 6; i++)
+                  {
+                     newCombo = comboList.get(i);
+                     newCombo.setEnabled(true);
+                     newCombo.setItems(soundList.toArray(new String[soundList.size()]));
+                     newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
+                  }
+               }
+            });
          }
-      });
+      }.start();
       return dialogArea;
    }
    

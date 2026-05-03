@@ -33,6 +33,7 @@ import org.eclipse.rap.rwt.RWT;
 import org.eclipse.rap.rwt.internal.service.ContextProvider;
 import org.eclipse.rap.rwt.service.UISession;
 import org.eclipse.swt.widgets.Display;
+import org.netxms.client.NXCSession;
 import org.netxms.nxmc.services.PreferenceInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -547,5 +548,43 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    public void setValue(String name, boolean value)
    {
       set(name, value); 
+   }
+
+   /**
+    * Load preferences from server user attribute ".nxmc.preferences".
+    *
+    * @param session active NXCSession
+    */
+   public void loadFromServer(NXCSession session)
+   {
+      try
+      {
+         String encodedData = session.getAttributeForCurrentUser(".nxmc.preferences");
+         if ((encodedData != null) && !encodedData.isEmpty())
+            deserialize(encodedData);
+      }
+      catch(Exception e)
+      {
+         logger.error("Failed to load preferences from server", e);
+      }
+   }
+
+   /**
+    * Save preferences to server user attribute ".nxmc.preferences".
+    *
+    * @param session active NXCSession
+    */
+   public void saveToServer(NXCSession session)
+   {
+      try
+      {
+         String encodedData = serialize();
+         if (encodedData != null)
+            session.setAttributeForCurrentUser(".nxmc.preferences", encodedData);
+      }
+      catch(Exception e)
+      {
+         logger.error("Failed to save preferences to server", e);
+      }
    }
 }

@@ -913,6 +913,15 @@ public class MainWindow extends Window implements MessageAreaHolder
       dlg.setBlockOnOpen(true);
       dlg.open();
 
+      final NXCSession session = Registry.getSession();
+      new Thread("PreferencesSave") {
+         @Override
+         public void run()
+         {
+            PreferenceStore.getInstance().saveToServer(session);
+         }
+      }.start();
+
       showServerClock = PreferenceStore.getInstance().getAsBoolean("Appearance.ShowServerClock", false);
       if (showServerClock && (serverClock == null))
       {
