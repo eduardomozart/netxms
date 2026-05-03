@@ -26,6 +26,10 @@ import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -181,7 +185,13 @@ public class PreferenceStore extends Memento implements IPreferenceStore
 
    private File storeFile;
    private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
-   private NXCSession serverSession = null;
+   private volatile NXCSession serverSession = null;
+   private final ScheduledExecutorService saveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+      Thread t = new Thread(r, "PreferenceSaver");
+      t.setDaemon(true);
+      return t;
+   });
+   private ScheduledFuture<?> pendingSave = null;
 
    /**
     * Default constructor
@@ -291,15 +301,19 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    }
 
    /**
-    * Save preferences to server user attributes asynchronously.
+    * Schedule an asynchronous save of preferences to server user attributes.
+    * Rapid successive changes are debounced: only the last snapshot within a
+    * 500 ms window is sent to the server.
     */
-   private void saveToServer()
+   private synchronized void saveToServer()
    {
       if (serverSession == null)
          return;
       final NXCSession session = serverSession;
       final String encoded = serialize();
-      Thread thread = new Thread(() -> {
+      if (pendingSave != null)
+         pendingSave.cancel(false);
+      pendingSave = saveScheduler.schedule(() -> {
          try
          {
             session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
@@ -308,9 +322,7 @@ public class PreferenceStore extends Memento implements IPreferenceStore
          {
             logger.warn("Error saving preferences to server", e);
          }
-      }, "PreferenceSaver");
-      thread.setDaemon(true);
-      thread.start();
+      }, 500, TimeUnit.MILLISECONDS);
    }
 
    /**
