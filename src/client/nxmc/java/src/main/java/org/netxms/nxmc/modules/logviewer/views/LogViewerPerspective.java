@@ -36,14 +36,14 @@ public class LogViewerPerspective extends Perspective
 {
    private static final Logger logger = LoggerFactory.getLogger(LogViewerPerspective.class);
 
-   private final I18n i18n = LocalizationHelper.getI18n(LogViewerPerspective.class);
+   private static final I18n i18n = LocalizationHelper.getI18n(LogViewerPerspective.class);
 
    /**
     * The constructor.
     */
    public LogViewerPerspective()
    {
-      super("logs", () -> LocalizationHelper.getI18n(LogViewerPerspective.class).tr("Logs"), "icons/perspectives/logs.svg");
+      super("logs", i18n.tr("Logs"), "icons/perspectives/logs.svg");
    }
 
    /**
@@ -52,7 +52,7 @@ public class LogViewerPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(LogViewerPerspective.class).tr("Analysis");
+      return i18n.tr("Analysis");
    }
 
    /**

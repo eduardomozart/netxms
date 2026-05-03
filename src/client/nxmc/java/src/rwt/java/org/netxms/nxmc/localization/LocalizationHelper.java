@@ -90,7 +90,7 @@ public final class LocalizationHelper
     */
    public static Locale localeFromLanguageCode(String languageCode)
    {
-      Locale locale = Locale.forLanguageTag(languageCode.replace('_', '-'));
+      Locale locale = Locale.forLanguageTag(languageCode);
       logger.debug("localeFromLanguageCode(\"{}\") -> language={}, country={}, toString={}, toLanguageTag={}",
             languageCode, locale.getLanguage(), locale.getCountry(), locale, locale.toLanguageTag());
       return locale;

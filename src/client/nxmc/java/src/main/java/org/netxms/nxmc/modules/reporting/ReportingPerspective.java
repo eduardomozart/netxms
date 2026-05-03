@@ -31,14 +31,14 @@ import org.netxms.nxmc.modules.reporting.views.ReportView;
  */
 public class ReportingPerspective extends Perspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(ReportingPerspective.class);
+   private static final I18n i18n = LocalizationHelper.getI18n(ReportingPerspective.class);
 
    /**
     * Create reporting perspective
     */
    public ReportingPerspective()
    {
-      super("reporting", () -> LocalizationHelper.getI18n(ReportingPerspective.class).tr("Reporting"), "icons/perspectives/reporting.svg");
+      super("reporting", i18n.tr("Reporting"), "icons/perspectives/reporting.svg");
    }
 
    /**
@@ -47,7 +47,7 @@ public class ReportingPerspective extends Perspective
    @Override
    public String getSectionName()
    {
-      return LocalizationHelper.getI18n(ReportingPerspective.class).tr("Business");
+      return i18n.tr("Business");
    }
 
    /**
