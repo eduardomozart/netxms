@@ -185,6 +185,7 @@ public class Startup
       {
          NXCSession session = Registry.getSession();
          PreferenceStore.loadFromServer(session);
+         PreferenceStore.saveLocalFile();
          String postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language");
          if ((postLoginLanguage != null) && !postLoginLanguage.isEmpty())
          {

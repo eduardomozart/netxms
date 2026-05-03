@@ -42,6 +42,9 @@ import org.slf4j.LoggerFactory;
  * per-server credentials, etc.) which are never synced to the server. All other
  * preferences are synced to the server via the {@code .nxmc.preferences} user
  * attribute and are never written to the local file.
+ *
+ * The local file is written once after a successful login via {@link #saveLocalFile()},
+ * not on every individual property change.
  */
 public class PreferenceStore extends AbstractPreferenceStore
 {
@@ -125,8 +128,10 @@ public class PreferenceStore extends AbstractPreferenceStore
     * Persist the current {@code Connect.*} preferences to the local file in plain
     * Java properties format. Only these keys are written; all other preferences are
     * managed exclusively via server-side user attributes.
+    *
+    * Called once after a successful login rather than on every property change.
     */
-   private static void saveLocalFile()
+   public static void saveLocalFile()
    {
       if (localFile == null || instance == null)
          return;
@@ -145,20 +150,6 @@ public class PreferenceStore extends AbstractPreferenceStore
       {
          logger.warn("Failed to save local preferences to {}", localFile.getAbsolutePath(), e);
       }
-   }
-
-   /**
-    * {@inheritDoc}
-    *
-    * Saves the local file only when a {@code Connect.*} key changes. All other
-    * keys are persisted exclusively to the server via the inherited save mechanism.
-    */
-   @Override
-   protected void onPropertyChange(String property, String oldValue, String newValue)
-   {
-      super.onPropertyChange(property, oldValue, newValue);
-      if (property.startsWith(LOCAL_KEY_PREFIX))
-         saveLocalFile();
    }
 
    /**
