@@ -143,7 +143,7 @@ public class Startup
          }
       }
       logger.info("Language: " + language);
-      Locale.setDefault(LocalizationHelper.localeFromLanguageCode(language));
+      Locale.setDefault(Locale.forLanguageTag(language));
 
       DateFormatFactory.updateFromPreferences();
       SharedIcons.init();

@@ -155,7 +155,7 @@ public class Startup implements EntryPoint, StartupParameters
       if ((language == null) || language.isEmpty())
          language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
-      RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
+      RWT.setLocale(Locale.forLanguageTag(language.replace('_', '-')));
 
       Registry.setStateDir(stateDir);
 
