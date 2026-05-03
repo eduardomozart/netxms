@@ -25,10 +25,15 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.widgets.Display;
+import org.netxms.client.NXCSession;
 import org.netxms.nxmc.services.PreferenceInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,8 +88,42 @@ public class PreferenceStore extends Memento implements IPreferenceStore
       return instance;
    }
 
+   /**
+    * Load preferences from server user attributes and attach session for future saves.
+    * Server-side values overlay the local file-based values. Called once after successful login.
+    *
+    * @param session active NXCSession
+    */
+   public static void loadFromServer(NXCSession session)
+   {
+      PreferenceStore store = getInstance();
+      if (store == null)
+         return;
+      try
+      {
+         String encoded = session.getAttributeForCurrentUser(SERVER_ATTR_NAME);
+         if ((encoded != null) && !encoded.isEmpty())
+         {
+            store.deserialize(encoded);
+            logger.debug("Preferences loaded from server");
+         }
+      }
+      catch(Exception e)
+      {
+         logger.error("Error loading preferences from server", e);
+      }
+      store.serverSession = session;
+   }
+
    private File storeFile;
    private Set<IPropertyChangeListener> changeListeners = new HashSet<IPropertyChangeListener>();
+   private volatile NXCSession serverSession = null;
+   private final ScheduledExecutorService saveScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+      Thread t = new Thread(r, "PreferenceSaver");
+      t.setDaemon(true);
+      return t;
+   });
+   private ScheduledFuture<?> pendingSave = null;
 
    /**
     * Default constructor
@@ -122,9 +161,9 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    }
 
    /**
-    * Save preference store
+    * Save preference store to local file and schedule a debounced write to server user attributes.
     */
-   private void save()
+   private synchronized void save()
    {
       FileWriter writer = null;
       try
@@ -149,6 +188,22 @@ public class PreferenceStore extends Memento implements IPreferenceStore
             }
          }
       }
+      if (serverSession == null)
+         return;
+      final NXCSession session = serverSession;
+      final String encoded = serialize();
+      if (pendingSave != null)
+         pendingSave.cancel(false);
+      pendingSave = saveScheduler.schedule(() -> {
+         try
+         {
+            session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
+         }
+         catch(Exception e)
+         {
+            logger.warn("Error saving preferences to server", e);
+         }
+      }, 500, TimeUnit.MILLISECONDS);
    }
 
    /**

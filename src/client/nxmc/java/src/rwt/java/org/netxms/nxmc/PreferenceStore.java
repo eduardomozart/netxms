@@ -51,7 +51,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    private static final Logger logger = LoggerFactory.getLogger(PreferenceStore.class);
    private static final String COOKIE_NAME = "nxmcStoreId";
    private static final int COOKIE_MAX_AGE_SEC = 3600 * 24 * 90; // 3 months
-   private static final String SERVER_ATTR_NAME = "nxmc.preferences";
 
    /**
     * Open local store
@@ -229,9 +228,9 @@ public class PreferenceStore extends Memento implements IPreferenceStore
    }
 
    /**
-    * Save preference store
+    * Save preference store to local file and schedule a debounced write to server user attributes.
     */
-   private void save()
+   private synchronized void save()
    {
       FileWriter writer = null;
       try
@@ -256,6 +255,22 @@ public class PreferenceStore extends Memento implements IPreferenceStore
             }
          }
       }
+      if (serverSession == null)
+         return;
+      final NXCSession session = serverSession;
+      final String encoded = serialize();
+      if (pendingSave != null)
+         pendingSave.cancel(false);
+      pendingSave = saveScheduler.schedule(() -> {
+         try
+         {
+            session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
+         }
+         catch(Exception e)
+         {
+            logger.warn("Error saving preferences to server", e);
+         }
+      }, 500, TimeUnit.MILLISECONDS);
    }
 
    /**
@@ -297,32 +312,6 @@ public class PreferenceStore extends Memento implements IPreferenceStore
             l.propertyChange(event);
       }
       save();
-      saveToServer();
-   }
-
-   /**
-    * Schedule an asynchronous save of preferences to server user attributes.
-    * Rapid successive changes are debounced: only the last snapshot within a
-    * 500 ms window is sent to the server.
-    */
-   private synchronized void saveToServer()
-   {
-      if (serverSession == null)
-         return;
-      final NXCSession session = serverSession;
-      final String encoded = serialize();
-      if (pendingSave != null)
-         pendingSave.cancel(false);
-      pendingSave = saveScheduler.schedule(() -> {
-         try
-         {
-            session.setAttributeForCurrentUser(SERVER_ATTR_NAME, encoded);
-         }
-         catch(Exception e)
-         {
-            logger.warn("Error saving preferences to server", e);
-         }
-      }, 500, TimeUnit.MILLISECONDS);
    }
 
    /**

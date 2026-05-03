@@ -182,8 +182,8 @@ public class Startup
       if (doLogin(display, args))
       {
          NXCSession session = Registry.getSession();
+         PreferenceStore.loadFromServer(session);
          DataCollectionDisplayInfo.init();
-         MaintenanceTimePeriods.init(session);
          MibCache.init(session, display);
          ObjectToolsCache.init();
          ObjectToolsCache.attachSession(display, session);
