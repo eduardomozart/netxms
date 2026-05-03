@@ -133,7 +133,7 @@ public class Startup
       windowIcons[5] = ResourceManager.getImage(iconResourcePrefix + "16x16.png");
       Window.setDefaultImages(windowIcons);
 
-      PreferenceStore.open();
+      PreferenceStore.open(stateDir);
 
       String language = null;
       for(String s : args)

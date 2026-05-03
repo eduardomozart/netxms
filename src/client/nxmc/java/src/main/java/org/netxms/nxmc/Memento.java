@@ -597,4 +597,24 @@ public class Memento
       {
       }
    }
+
+   /**
+    * Merge base-64 encoded content into this memento. Existing keys are kept; keys present in
+    * the encoded content override any locally-held values for the same key.
+    *
+    * @param encoded base64 encoded content
+    */
+   protected void merge(String encoded)
+   {
+      try
+      {
+         byte[] bytes = Base64.getDecoder().decode(encoded);
+         Properties incoming = new Properties();
+         incoming.load(new ByteArrayInputStream(bytes));
+         properties.putAll(incoming);
+      }
+      catch(Exception e)
+      {
+      }
+   }
 }
