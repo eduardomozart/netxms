@@ -206,23 +206,7 @@ public abstract class ObjectsPerspective extends Perspective implements ISelecti
     */
    protected ObjectsPerspective(String id, String name, String imagePath, SubtreeType subtreeType, ObjectFilter objectFilter)
    {
-      this(id, () -> name, imagePath, subtreeType, objectFilter);
-   }
-
-   /**
-    * Create new object perspective with a lazily-evaluated display name.
-    * If object filter is provided, as top level objects will be selected objects that passed filter
-    * themselves and does not have accessible parents at all or none of their parents passed filter.
-    *
-    * @param id perspective ID
-    * @param nameSupplier supplier that returns the perspective display name
-    * @param imagePath path to perspective SVG image resource
-    * @param subtreeType object subtree type
-    * @param objectFilter additional filter for top level objects (optional, can be null)
-    */
-   protected ObjectsPerspective(String id, Supplier<String> nameSupplier, String imagePath, SubtreeType subtreeType, ObjectFilter objectFilter)
-   {
-      super(id, nameSupplier, imagePath);
+      super(id, name, imagePath);
       this.subtreeType = subtreeType;
       this.objectFilter = objectFilter;
       imageEditConfig = ResourceManager.getImage("icons/object-views/agent-config.png");
