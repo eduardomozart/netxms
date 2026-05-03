@@ -353,7 +353,11 @@ public class CustomAttributes extends PropertyPage
       @Override
       public String getColumnText(Object element, int columnIndex)
       {
-         return (columnIndex == 0) ? ((Entry<String, String>)element).getKey() : ((Entry<String, String>)element).getValue();
+         if (columnIndex == 0)
+            return ((Entry<String, String>)element).getKey();
+         if (".nxmc.preferences".equals(((Entry<String, String>)element).getKey()))
+            return "[...]";
+         return ((Entry<String, String>)element).getValue();
       }
    }
 }

@@ -18,6 +18,8 @@
  */
 package org.netxms.nxmc.modules.users.dialogs;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -91,14 +93,38 @@ public class CustomAttributeEditDialog extends Dialog
       if (name != null)
          nameText.setText(name);
 
-      valueText = new LabeledText(dialogArea, SWT.NONE);
+      boolean isPreferences = ".nxmc.preferences".equals(name);
+      valueText = new LabeledText(dialogArea, SWT.NONE,
+            isPreferences ? SWT.BORDER | SWT.MULTI | SWT.WRAP | SWT.V_SCROLL : SWT.BORDER | SWT.SINGLE);
       valueText.setLabel(i18n.tr("Value"));
       gd = new GridData();
       gd.grabExcessHorizontalSpace = true;
       gd.horizontalAlignment = SWT.FILL;
+      if (isPreferences)
+      {
+         gd.grabExcessVerticalSpace = true;
+         gd.verticalAlignment = SWT.FILL;
+         gd.heightHint = 300;
+      }
       valueText.setLayoutData(gd);
       if (value != null)
-         valueText.setText(value);
+      {
+         if (isPreferences)
+         {
+            try
+            {
+               valueText.setText(new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8));
+            }
+            catch(Exception e)
+            {
+               valueText.setText("");
+            }
+         }
+         else
+         {
+            valueText.setText(value);
+         }
+      }
 
       return dialogArea;
    }
@@ -115,7 +141,9 @@ public class CustomAttributeEditDialog extends Dialog
          MessageDialogHelper.openWarning(getShell(), i18n.tr("Warning"), i18n.tr("Custom attribute name cannot be empty"));
          return;
       }
-      value = valueText.getText();
+      value = ".nxmc.preferences".equals(name)
+            ? Base64.getEncoder().encodeToString(valueText.getText().getBytes(StandardCharsets.UTF_8))
+            : valueText.getText();
       super.okPressed();
    }
 
