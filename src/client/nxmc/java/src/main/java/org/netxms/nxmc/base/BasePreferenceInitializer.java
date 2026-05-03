@@ -18,7 +18,7 @@
  */
 package org.netxms.nxmc.base;
 
-import org.netxms.nxmc.PreferenceStore;
+import org.netxms.nxmc.AbstractPreferenceStore;
 import org.netxms.nxmc.localization.DateFormatFactory;
 import org.netxms.nxmc.services.PreferenceInitializer;
 
@@ -28,10 +28,10 @@ import org.netxms.nxmc.services.PreferenceInitializer;
 public class BasePreferenceInitializer implements PreferenceInitializer
 {
    /**
-    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.PreferenceStore)
+    * @see org.netxms.nxmc.services.PreferenceInitializer#initializeDefaultPreferences(org.netxms.nxmc.AbstractPreferenceStore)
     */
    @Override
-   public void initializeDefaultPreferences(PreferenceStore ps)
+   public void initializeDefaultPreferences(AbstractPreferenceStore ps)
    {
       ps.setDefault("HTTP_PROXY_ENABLED", false); 
       ps.setDefault("HTTP_PROXY_SERVER", "");  
