@@ -21,6 +21,7 @@ package org.netxms.nxmc.base.views;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -58,6 +59,7 @@ public abstract class Perspective
 
    private String id;
    private String name;
+   private Supplier<String> nameSupplier;
    private String imagePath;
    private PerspectiveConfiguration configuration = new PerspectiveConfiguration();
    private Window window;
@@ -78,7 +80,9 @@ public abstract class Perspective
    private UIElementFilter elementFilter;
 
    /**
-    * Create new perspective.
+    * Create new perspective. The supplier is called each time
+    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
+    * time.
     *
     * @param id perspective ID
     * @param name perspective display name
@@ -235,7 +239,7 @@ public abstract class Perspective
    {
       if ((content == null) || content.isDisposed())
       {
-         logger.debug("Creating content for perspective " + name);
+         logger.debug("Creating content for perspective " + getName());
          createWidgets(parent);
       }
       else
@@ -514,7 +518,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return name;
+      return nameSupplier.get();
    }
 
    /**

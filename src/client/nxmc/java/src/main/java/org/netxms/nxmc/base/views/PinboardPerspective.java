@@ -35,9 +35,8 @@ import org.xnap.commons.i18n.I18n;
  */
 public class PinboardPerspective extends Perspective
 {
-   
    private static final Logger logger = LoggerFactory.getLogger(PinboardPerspective.class);
-   
+
    private static final I18n i18n = LocalizationHelper.getI18n(PinboardPerspective.class);
 
    /**
