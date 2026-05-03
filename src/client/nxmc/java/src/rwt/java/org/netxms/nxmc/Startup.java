@@ -153,10 +153,9 @@ public class Startup implements EntryPoint, StartupParameters
       PreferenceStore.open(stateDir.getAbsolutePath());
       String language = getParameter("lang");
       if ((language == null) || language.isEmpty())
-         language = PreferenceStore.getInstance().getAsString("nxmc.language", "auto");
+         language = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
       logger.info("Language: " + language);
-      if (!"auto".equals(language))
-         RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
+      RWT.setLocale(LocalizationHelper.localeFromLanguageCode(language));
 
       Registry.setStateDir(stateDir);
 
@@ -205,9 +204,8 @@ public class Startup implements EntryPoint, StartupParameters
          // ?lang URL parameter as the highest-priority override.
          String postLoginLanguage = getParameter("lang");
          if ((postLoginLanguage == null) || postLoginLanguage.isEmpty())
-            postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", "auto");
-         if (!"auto".equals(postLoginLanguage))
-            RWT.setLocale(LocalizationHelper.localeFromLanguageCode(postLoginLanguage));
+            postLoginLanguage = PreferenceStore.getInstance().getAsString("nxmc.language", "en");
+         RWT.setLocale(LocalizationHelper.localeFromLanguageCode(postLoginLanguage));
 
          if (!kioskMode)
          {
