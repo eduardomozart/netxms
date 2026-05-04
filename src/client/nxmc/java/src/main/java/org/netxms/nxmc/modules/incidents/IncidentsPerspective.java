@@ -22,21 +22,18 @@ import org.netxms.nxmc.base.views.Perspective;
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.netxms.nxmc.modules.incidents.views.IncidentsView;
-import org.xnap.commons.i18n.I18n;
 
 /**
  * Incident management perspective
  */
 public class IncidentsPerspective extends Perspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(IncidentsPerspective.class);
-
    /**
     * Create incidents perspective
     */
    public IncidentsPerspective()
    {
-      super("incidents", "Incidents", "icons/perspectives/incidents.svg");
+      super("incidents", () -> LocalizationHelper.getI18n(IncidentsPerspective.class).tr("Incidents"), "icons/perspectives/incidents.svg");
    }
 
    /**

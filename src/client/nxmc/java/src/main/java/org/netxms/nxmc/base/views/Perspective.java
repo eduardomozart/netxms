@@ -47,7 +47,6 @@ import org.netxms.nxmc.base.widgets.CompositeWithMessageArea;
 import org.netxms.nxmc.base.widgets.MessageAreaHolder;
 import org.netxms.nxmc.keyboard.KeyStroke;
 import org.netxms.nxmc.tools.ImageCache;
-import org.netxms.nxmc.localization.LocalizationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +59,7 @@ public abstract class Perspective
 
    private String id;
    private String name;
+   private Supplier<String> nameSupplier;
    private String imagePath;
    private PerspectiveConfiguration configuration = new PerspectiveConfiguration();
    private Window window;
@@ -88,8 +88,22 @@ public abstract class Perspective
     */
    protected Perspective(String id, String name, String imagePath)
    {
+      this(id, () -> name, imagePath);
+   }
+
+   /**
+    * Create new perspective with a lazily-evaluated display name. The supplier is called each time
+    * {@link #getName()} is invoked, allowing the name to reflect the current user locale at call
+    * time.
+    *
+    * @param id perspective ID
+    * @param nameSupplier supplier that returns the perspective display name
+    * @param imagePath path to perspective SVG image resource
+    */
+   protected Perspective(String id, Supplier<String> nameSupplier, String imagePath)
+   {
       this.id = id;
-      this.name = name;
+      this.nameSupplier = nameSupplier;
       this.imagePath = imagePath;
 
       navigationSelectionListener = new ISelectionChangedListener() {
@@ -101,7 +115,7 @@ public abstract class Perspective
       };
 
       configurePerspective(configuration);
-      logger.debug("Perspective \"" + name + "\" configuration: " + configuration);
+      logger.debug("Perspective \"" + nameSupplier.get() + "\" configuration: " + configuration);
    }
 
    /**
@@ -516,7 +530,7 @@ public abstract class Perspective
     */
    public String getName()
    {
-      return LocalizationHelper.getI18n(getClass()).tr(name);
+      return nameSupplier.get();
    }
 
    /**

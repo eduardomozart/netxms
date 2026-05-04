@@ -40,7 +40,7 @@ public class NetworkPerspective extends ObjectsPerspective
 
    public NetworkPerspective()
    {
-      super("objects.network", "Network", "icons/perspectives/network.svg", SubtreeType.NETWORK,
+      super("objects.network", () -> LocalizationHelper.getI18n(NetworkPerspective.class).tr("Network"), "icons/perspectives/network.svg", SubtreeType.NETWORK,
             (AbstractObject o) -> {
                if ((o instanceof Interface) || (o instanceof VPNConnector))
                   return false;

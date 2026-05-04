@@ -20,7 +20,6 @@ package org.netxms.nxmc.modules.assetmanagement;
 
 import org.netxms.nxmc.base.views.PerspectiveConfiguration;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.modules.objects.ObjectsPerspective;
 import org.netxms.nxmc.modules.objects.SubtreeType;
 
@@ -29,11 +28,9 @@ import org.netxms.nxmc.modules.objects.SubtreeType;
  */
 public class AssetsPerspective extends ObjectsPerspective
 {
-   private final I18n i18n = LocalizationHelper.getI18n(AssetsPerspective.class);
-
    public AssetsPerspective()
    {
-      super("objects.assets", "Assets", "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
+      super("objects.assets", () -> LocalizationHelper.getI18n(AssetsPerspective.class).tr("Assets"), "icons/perspectives/assets.svg", SubtreeType.ASSETS, null);
    }
 
    /**

@@ -31,7 +31,7 @@ public class MapsPerspective extends ObjectsPerspective
 
    public MapsPerspective()
    {
-      super("objects.maps", "Maps", "icons/perspectives/maps.svg", SubtreeType.MAPS, null);
+      super("objects.maps", () -> LocalizationHelper.getI18n(MapsPerspective.class).tr("Maps"), "icons/perspectives/maps.svg", SubtreeType.MAPS, null);
    }
 
    /**

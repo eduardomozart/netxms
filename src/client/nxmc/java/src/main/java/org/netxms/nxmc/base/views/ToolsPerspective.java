@@ -24,7 +24,6 @@ import java.util.ServiceLoader;
 import org.netxms.client.NXCSession;
 import org.netxms.nxmc.Registry;
 import org.netxms.nxmc.localization.LocalizationHelper;
-import org.xnap.commons.i18n.I18n;
 import org.netxms.nxmc.services.ToolDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,14 +37,12 @@ public class ToolsPerspective extends Perspective
 
    private List<ToolDescriptor> elements = new ArrayList<ToolDescriptor>();
 
-   private final I18n i18n = LocalizationHelper.getI18n(ToolsPerspective.class);
-
    /**
     * The constructor.
     */
    public ToolsPerspective()
    {
-      super("tools", "Tools", "icons/perspectives/tools.svg");
+      super("tools", () -> LocalizationHelper.getI18n(ToolsPerspective.class).tr("Tools"), "icons/perspectives/tools.svg");
 
       ServiceLoader<ToolDescriptor> loader = ServiceLoader.load(ToolDescriptor.class, getClass().getClassLoader());
       for(ToolDescriptor e : loader)
