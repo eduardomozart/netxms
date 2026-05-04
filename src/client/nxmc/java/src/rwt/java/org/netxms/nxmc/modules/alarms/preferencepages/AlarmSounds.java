@@ -196,8 +196,8 @@ public class AlarmSounds extends PropertyPage implements ServerSyncedPreferenceP
          buttonList.add(i, button);
       }
 
-      final Display display = parent.getDisplay();
-      new Thread("AlarmSoundsLoader") {
+      getShell().getDisplay().asyncExec(new Runnable() {
+         
          @Override
          public void run()
          {
@@ -209,51 +209,39 @@ public class AlarmSounds extends PropertyPage implements ServerSyncedPreferenceP
             catch(final Exception e)
             {
                logger.error("Failed to list melody server files", e);
-               display.asyncExec(new Runnable() {
+               getShell().getDisplay().asyncExec(new Runnable() {
                   @Override
                   public void run()
                   {
-                     if (!display.isDisposed())
-                        MessageDialogHelper.openError(display.getActiveShell(), i18n.tr("Not possible to get melody list."),
-                              i18n.tr(" Not possible to get melody list. Error: ") + e.getMessage());
+                     MessageDialogHelper.openError(getShell(), i18n.tr("Not possible to get melody list."),
+                           i18n.tr(" Not possible to get melody list. Error: ")+ e.getMessage());
                   }
                });
-               return;
             }
 
-            final ServerFile[] loadedFiles = serverFiles;
-            display.asyncExec(new Runnable() {
-               @Override
-               public void run()
-               {
-                  if (display.isDisposed())
-                     return;
+            for(ServerFile s : serverFiles)
+            {
+               soundList.add(s.getName());
+            }
+            soundList.add(""); //$NON-NLS-1$
 
-                  for(ServerFile s : loadedFiles)
-                  {
-                     soundList.add(s.getName());
-                  }
-                  soundList.add(""); //$NON-NLS-1$
+            for(int i = 0; i < 6; i++)
+            {
+               currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
+            }
+            soundList.addAll(currentSoundList);
 
-                  for(int i = 0; i < 6; i++)
-                  {
-                     currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
-                  }
-                  soundList.addAll(currentSoundList);
+            Combo newCombo = null;
 
-                  Combo newCombo = null;
-
-                  for(int i = 0; i < 6; i++)
-                  {
-                     newCombo = comboList.get(i);
-                     newCombo.setEnabled(true);
-                     newCombo.setItems(soundList.toArray(new String[soundList.size()]));
-                     newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
-                  }
-               }
-            });
+            for(int i = 0; i < 6; i++)
+            {
+               newCombo = comboList.get(i);
+               newCombo.setEnabled(true);
+               newCombo.setItems(soundList.toArray(new String[soundList.size()]));
+               newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
+            }
          }
-      }.start();
+      });
       return dialogArea;
    }
    
