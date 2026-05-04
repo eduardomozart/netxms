@@ -34,8 +34,11 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.netxms.client.NXCSession;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.localization.DateFormatFactory;
@@ -47,8 +50,28 @@ import org.xnap.commons.i18n.I18n;
 /**
  * Regional settings page
  */
-public class RegionalSettingsPage extends PropertyPage
+public class RegionalSettingsPage extends PropertyPage implements ServerSyncedPreferencePage
 {
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "DateFormatFactory.Format.DateTime");
+      PreferenceServerSync.loadKey(session, store, "DateFormatFactory.Format.Date");
+      PreferenceServerSync.loadKey(session, store, "DateFormatFactory.Format.Time");
+      PreferenceServerSync.loadKey(session, store, "DateFormatFactory.Format.ShortTime");
+      PreferenceServerSync.loadKey(session, store, "DateFormatFactory.UseServerTimeZone");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "DateFormatFactory.Format.DateTime");
+      PreferenceServerSync.saveKey(session, store, "DateFormatFactory.Format.Date");
+      PreferenceServerSync.saveKey(session, store, "DateFormatFactory.Format.Time");
+      PreferenceServerSync.saveKey(session, store, "DateFormatFactory.Format.ShortTime");
+      PreferenceServerSync.saveKey(session, store, "DateFormatFactory.UseServerTimeZone");
+   }
+
    private final I18n i18n = LocalizationHelper.getI18n(RegionalSettingsPage.class);
 
 	private Combo dateTimeFormat;

@@ -28,8 +28,11 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.base.widgets.LabeledCombo;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -40,8 +43,20 @@ import org.xnap.commons.i18n.I18n;
 /**
  * "Appearance" preference page
  */
-public class LanguagePage extends PropertyPage
+public class LanguagePage extends PropertyPage implements ServerSyncedPreferencePage
 {
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "nxmc.language");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "nxmc.language");
+   }
+
    private final I18n i18n = LocalizationHelper.getI18n(LanguagePage.class);
 
    /**

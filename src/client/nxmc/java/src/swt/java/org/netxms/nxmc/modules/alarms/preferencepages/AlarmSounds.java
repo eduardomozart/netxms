@@ -44,8 +44,10 @@ import org.eclipse.swt.widgets.Group;
 import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
 import org.netxms.client.server.ServerFile;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.login.LoginJob;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -61,11 +63,11 @@ import org.xnap.commons.i18n.I18n;
 /**
  * Alarm sound configuration
  */
-public class AlarmSounds extends PropertyPage
+public class AlarmSounds extends PropertyPage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(AlarmSounds.class);
    private static Logger logger = LoggerFactory.getLogger(LoginJob.class);
-   
+
    private NXCSession session;
    private ServerFile[] serverFiles = null;
    private File workspaceDir;
@@ -87,6 +89,23 @@ public class AlarmSounds extends PropertyPage
       setPreferenceStore(ps);
       session = Registry.getSession();
    }
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "AlarmNotifier.LocalSound");
+      for(String severity : AlarmNotifier.SEVERITY_TEXT)
+         PreferenceServerSync.loadKey(session, store, "AlarmNotifier.Sound." + severity);
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "AlarmNotifier.LocalSound");
+      for(String severity : AlarmNotifier.SEVERITY_TEXT)
+         PreferenceServerSync.saveKey(session, store, "AlarmNotifier.Sound." + severity);
+   }
+
 
    /**
     * @see org.eclipse.jface.preference.PreferencePage#createContents(org.eclipse.swt.widgets.Composite)

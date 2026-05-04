@@ -29,7 +29,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.base.widgets.LabeledText;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -39,10 +42,34 @@ import org.xnap.commons.i18n.I18n;
 /**
  * HTTP proxy preferences
  */
-public class HttpProxyPage extends PropertyPage
+public class HttpProxyPage extends PropertyPage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(HttpProxyPage.class);
-   
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_ENABLED");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_SERVER");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_PORT");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_EXCLUSIONS");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_AUTH");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_LOGIN");
+      PreferenceServerSync.loadKey(session, store, "HTTP_PROXY_PASSWORD");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_ENABLED");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_SERVER");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_PORT");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_EXCLUSIONS");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_AUTH");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_LOGIN");
+      PreferenceServerSync.saveKey(session, store, "HTTP_PROXY_PASSWORD");
+   }
+
 	private Button checkUseProxy;
 	private LabeledText editProxyServer;
 	private LabeledText editProxyPort;

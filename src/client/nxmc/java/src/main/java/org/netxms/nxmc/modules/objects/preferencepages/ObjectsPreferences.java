@@ -28,7 +28,10 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.editors.TimePeriodEditor;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.xnap.commons.i18n.I18n;
@@ -36,7 +39,7 @@ import org.xnap.commons.i18n.I18n;
 /**
  * Preferences page for object display
  */
-public class ObjectsPreferences extends FieldEditorPreferencePage
+public class ObjectsPreferences extends FieldEditorPreferencePage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(ObjectsPreferences.class);
 
@@ -52,6 +55,30 @@ public class ObjectsPreferences extends FieldEditorPreferencePage
    {
       super(LocalizationHelper.getI18n(ObjectsPreferences.class).tr("Objects"), FieldEditorPreferencePage.FLAT);
       setPreferenceStore(PreferenceStore.getInstance());
+   }
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "ObjectsFullSync");
+      PreferenceServerSync.loadKey(session, store, "CustomAttributes.ShowHidden");
+      PreferenceServerSync.loadKey(session, store, "ObjectBrowser.useServerFilterSettings");
+      PreferenceServerSync.loadKey(session, store, "ObjectBrowser.filterAutoApply");
+      PreferenceServerSync.loadKey(session, store, "ObjectBrowser.filterDelay");
+      PreferenceServerSync.loadKey(session, store, "ObjectBrowser.filterMinLength");
+      PreferenceServerSync.loadCountedGroup(session, store, "Maintenance.TimeMenuSize", "Maintenance.TimeMenuEntry.");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "ObjectsFullSync");
+      PreferenceServerSync.saveKey(session, store, "CustomAttributes.ShowHidden");
+      PreferenceServerSync.saveKey(session, store, "ObjectBrowser.useServerFilterSettings");
+      PreferenceServerSync.saveKey(session, store, "ObjectBrowser.filterAutoApply");
+      PreferenceServerSync.saveKey(session, store, "ObjectBrowser.filterDelay");
+      PreferenceServerSync.saveKey(session, store, "ObjectBrowser.filterMinLength");
+      PreferenceServerSync.saveCountedGroup(session, store, "Maintenance.TimeMenuSize", "Maintenance.TimeMenuEntry.");
    }
 
    /**
