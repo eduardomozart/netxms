@@ -21,7 +21,10 @@ package org.netxms.nxmc.modules.networkmaps.preferencepage;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IntegerFieldEditor;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.xnap.commons.i18n.I18n;
 
@@ -29,7 +32,7 @@ import org.xnap.commons.i18n.I18n;
  * General preferences page for network maps
  *
  */
-public class GeneralMapPreferences extends FieldEditorPreferencePage
+public class GeneralMapPreferences extends FieldEditorPreferencePage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(GeneralMapPreferences.class);
 
@@ -38,6 +41,27 @@ public class GeneralMapPreferences extends FieldEditorPreferencePage
       super(LocalizationHelper.getI18n(GeneralMapPreferences.class).tr("Network Maps"), FieldEditorPreferencePage.FLAT);
       setPreferenceStore(PreferenceStore.getInstance());
    }
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "NetMap.ShowStatusIcon");
+      PreferenceServerSync.loadKey(session, store, "NetMap.ShowStatusFrame");
+      PreferenceServerSync.loadKey(session, store, "NetMap.ShowStatusBackground");
+      PreferenceServerSync.loadKey(session, store, "NetMap.TranslucentLabelBkgnd");
+      PreferenceServerSync.loadKey(session, store, "NetMap.DefaultLinkWidth");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "NetMap.ShowStatusIcon");
+      PreferenceServerSync.saveKey(session, store, "NetMap.ShowStatusFrame");
+      PreferenceServerSync.saveKey(session, store, "NetMap.ShowStatusBackground");
+      PreferenceServerSync.saveKey(session, store, "NetMap.TranslucentLabelBkgnd");
+      PreferenceServerSync.saveKey(session, store, "NetMap.DefaultLinkWidth");
+   }
+
 
    /**
     * @see org.eclipse.jface.preference.FieldEditorPreferencePage#createFieldEditors()

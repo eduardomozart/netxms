@@ -34,7 +34,10 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.dialogs.ThemeEditDialog;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.resources.DefaultDarkTheme;
@@ -49,9 +52,21 @@ import org.slf4j.LoggerFactory;
 /**
  * Theme preferences
  */
-public class ThemesPage extends PropertyPage
+public class ThemesPage extends PropertyPage implements ServerSyncedPreferencePage
 {
    private static final Logger logger = LoggerFactory.getLogger(ThemesPage.class);
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "CurrentTheme");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "CurrentTheme");
+   }
 
    private Combo themeSelector;
    private Button importButton;

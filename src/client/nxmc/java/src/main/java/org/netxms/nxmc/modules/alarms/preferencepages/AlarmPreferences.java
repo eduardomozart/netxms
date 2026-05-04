@@ -20,8 +20,11 @@ package org.netxms.nxmc.modules.alarms.preferencepages;
 
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.netxms.client.NXCSession;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.editors.TimePeriodEditor;
 import org.netxms.nxmc.localization.LocalizationHelper;
 import org.xnap.commons.i18n.I18n;
@@ -29,7 +32,7 @@ import org.xnap.commons.i18n.I18n;
 /**
  * "Alarms" preference page
  */
-public class AlarmPreferences extends FieldEditorPreferencePage
+public class AlarmPreferences extends FieldEditorPreferencePage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(AlarmPreferences.class);
 
@@ -38,6 +41,25 @@ public class AlarmPreferences extends FieldEditorPreferencePage
       super(LocalizationHelper.getI18n(AlarmPreferences.class).tr("Alarms"), FieldEditorPreferencePage.FLAT);
       setPreferenceStore(PreferenceStore.getInstance());
    }
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "AlarmList.BlinkOutstandingAlarm");
+      PreferenceServerSync.loadKey(session, store, "TrayIcon.ShowAlarmPopups");
+      PreferenceServerSync.loadKey(session, store, "AlarmNotifier.OutstandingAlarmsReminder");
+      PreferenceServerSync.loadCountedGroup(session, store, "AlarmList.AckMenuSize", "AlarmList.AckMenuEntry.");
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "AlarmList.BlinkOutstandingAlarm");
+      PreferenceServerSync.saveKey(session, store, "TrayIcon.ShowAlarmPopups");
+      PreferenceServerSync.saveKey(session, store, "AlarmNotifier.OutstandingAlarmsReminder");
+      PreferenceServerSync.saveCountedGroup(session, store, "AlarmList.AckMenuSize", "AlarmList.AckMenuEntry.");
+   }
+
 
    /**
     * @see org.eclipse.jface.preference.FieldEditorPreferencePage#createFieldEditors()

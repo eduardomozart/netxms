@@ -587,4 +587,30 @@ public class PreferenceStore extends Memento implements IPreferenceStore
          logger.error("Failed to save preferences to server", e);
       }
    }
+
+   /**
+    * Load preferences for a single page from the server.
+    * Each preference key managed by the page is fetched individually as its own
+    * server user attribute (attribute name = {@code "." + key}).
+    *
+    * @param session active NXCSession
+    * @param page preference page implementing ServerSyncedPreferencePage
+    */
+   public void loadPageFromServer(NXCSession session, ServerSyncedPreferencePage page)
+   {
+      page.loadFromServer(session, this);
+   }
+
+   /**
+    * Save preferences for a single page to the server.
+    * Each preference key managed by the page is written individually as its own
+    * server user attribute (attribute name = {@code "." + key}).
+    *
+    * @param session active NXCSession
+    * @param page preference page implementing ServerSyncedPreferencePage
+    */
+   public void savePageToServer(NXCSession session, ServerSyncedPreferencePage page)
+   {
+      page.saveToServer(session, this);
+   }
 }
