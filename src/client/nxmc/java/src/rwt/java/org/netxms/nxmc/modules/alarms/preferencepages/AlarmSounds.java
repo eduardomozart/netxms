@@ -43,8 +43,10 @@ import org.eclipse.swt.widgets.Group;
 import org.netxms.client.NXCException;
 import org.netxms.client.NXCSession;
 import org.netxms.client.server.ServerFile;
+import org.netxms.nxmc.PreferenceServerSync;
 import org.netxms.nxmc.PreferenceStore;
 import org.netxms.nxmc.Registry;
+import org.netxms.nxmc.ServerSyncedPreferencePage;
 import org.netxms.nxmc.base.login.LoginJob;
 import org.netxms.nxmc.base.propertypages.PropertyPage;
 import org.netxms.nxmc.localization.LocalizationHelper;
@@ -61,11 +63,11 @@ import org.xnap.commons.i18n.I18n;
 /**
  * Alarm sound configuration
  */
-public class AlarmSounds extends PropertyPage
+public class AlarmSounds extends PropertyPage implements ServerSyncedPreferencePage
 {
    private final I18n i18n = LocalizationHelper.getI18n(AlarmSounds.class);
    private static Logger logger = LoggerFactory.getLogger(LoginJob.class);
-   
+
    private NXCSession session;
    private ServerFile[] serverFiles = null;
    private File workspaceDir;
@@ -87,6 +89,23 @@ public class AlarmSounds extends PropertyPage
       setPreferenceStore(ps);
       session = Registry.getSession();
    }
+
+   @Override
+   public void loadFromServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.loadKey(session, store, "AlarmNotifier.LocalSound");
+      for(String severity : AlarmNotifier.SEVERITY_TEXT)
+         PreferenceServerSync.loadKey(session, store, "AlarmNotifier.Sound." + severity);
+   }
+
+   @Override
+   public void saveToServer(NXCSession session, PreferenceStore store)
+   {
+      PreferenceServerSync.saveKey(session, store, "AlarmNotifier.LocalSound");
+      for(String severity : AlarmNotifier.SEVERITY_TEXT)
+         PreferenceServerSync.saveKey(session, store, "AlarmNotifier.Sound." + severity);
+   }
+
 
    /**
     * @see org.eclipse.jface.preference.PreferencePage#createContents(org.eclipse.swt.widgets.Composite)
@@ -177,8 +196,8 @@ public class AlarmSounds extends PropertyPage
          buttonList.add(i, button);
       }
 
-      getShell().getDisplay().asyncExec(new Runnable() {
-         
+      final Display display = parent.getDisplay();
+      new Thread("AlarmSoundsLoader") {
          @Override
          public void run()
          {
@@ -190,39 +209,51 @@ public class AlarmSounds extends PropertyPage
             catch(final Exception e)
             {
                logger.error("Failed to list melody server files", e);
-               getShell().getDisplay().asyncExec(new Runnable() {
+               display.asyncExec(new Runnable() {
                   @Override
                   public void run()
                   {
-                     MessageDialogHelper.openError(getShell(), i18n.tr("Not possible to get melody list."),
-                           i18n.tr(" Not possible to get melody list. Error: ")+ e.getMessage());
+                     if (!display.isDisposed())
+                        MessageDialogHelper.openError(display.getActiveShell(), i18n.tr("Not possible to get melody list."),
+                              i18n.tr(" Not possible to get melody list. Error: ") + e.getMessage());
                   }
                });
+               return;
             }
 
-            for(ServerFile s : serverFiles)
-            {
-               soundList.add(s.getName());
-            }
-            soundList.add(""); //$NON-NLS-1$
+            final ServerFile[] loadedFiles = serverFiles;
+            display.asyncExec(new Runnable() {
+               @Override
+               public void run()
+               {
+                  if (display.isDisposed())
+                     return;
 
-            for(int i = 0; i < 6; i++)
-            {
-               currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
-            }
-            soundList.addAll(currentSoundList);
+                  for(ServerFile s : loadedFiles)
+                  {
+                     soundList.add(s.getName());
+                  }
+                  soundList.add(""); //$NON-NLS-1$
 
-            Combo newCombo = null;
+                  for(int i = 0; i < 6; i++)
+                  {
+                     currentSoundList.add(i, ps.getAsString("AlarmNotifier.Sound." + AlarmNotifier.SEVERITY_TEXT[i], "")); //$NON-NLS-1$
+                  }
+                  soundList.addAll(currentSoundList);
 
-            for(int i = 0; i < 6; i++)
-            {
-               newCombo = comboList.get(i);
-               newCombo.setEnabled(true);
-               newCombo.setItems(soundList.toArray(new String[soundList.size()]));
-               newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
-            }
+                  Combo newCombo = null;
+
+                  for(int i = 0; i < 6; i++)
+                  {
+                     newCombo = comboList.get(i);
+                     newCombo.setEnabled(true);
+                     newCombo.setItems(soundList.toArray(new String[soundList.size()]));
+                     newCombo.select(newCombo.indexOf(currentSoundList.get(i)));
+                  }
+               }
+            });
          }
-      });
+      }.start();
       return dialogArea;
    }
    

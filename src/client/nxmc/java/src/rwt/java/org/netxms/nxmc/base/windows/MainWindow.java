@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.preference.IPreferencePage;
+import org.eclipse.jface.preference.IPreferenceNode;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferenceManager;
 import org.eclipse.jface.preference.PreferenceNode;
@@ -912,6 +914,22 @@ public class MainWindow extends Window implements MessageAreaHolder
       };
       dlg.setBlockOnOpen(true);
       dlg.open();
+
+      final NXCSession session = Registry.getSession();
+      final List<IPreferenceNode> nodes = pm.getElements(PreferenceManager.PRE_ORDER);
+      new Thread("PreferencesSave") {
+         @Override
+         public void run()
+         {
+            PreferenceStore store = PreferenceStore.getInstance();
+            for(IPreferenceNode node : nodes)
+            {
+               IPreferencePage page = node.getPage();
+               if (page instanceof ServerSyncedPreferencePage)
+                  store.savePageToServer(session, (ServerSyncedPreferencePage)page);
+            }
+         }
+      }.start();
 
       showServerClock = PreferenceStore.getInstance().getAsBoolean("Appearance.ShowServerClock", false);
       if (showServerClock && (serverClock == null))
