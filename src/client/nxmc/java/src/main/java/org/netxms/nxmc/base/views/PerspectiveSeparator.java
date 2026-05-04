@@ -32,7 +32,7 @@ public class PerspectiveSeparator extends Perspective
     */
    public PerspectiveSeparator(int priority)
    {
-      super("separator." + priority, "separator", null);
+      super("separator." + priority, () -> "separator", null);
       this.priority = priority;
    }
 
